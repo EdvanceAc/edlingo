@@ -3159,6 +3159,15 @@
                     courseWizardData.prerequisites = document.getElementById('prerequisites')?.value;
                     courseWizardData.materials = document.getElementById('requiredMaterials')?.value;
                     courseWizardData.syllabus = document.getElementById('courseSyllabus')?.value;
+                    
+                    // Collect lesson data
+                    try {
+                        courseWizardData.lessons = collectLessonsData();
+                        console.log('✅ Lessons data collected and saved to courseWizardData:', courseWizardData.lessons);
+                    } catch (error) {
+                        console.error('❌ Error collecting lessons data:', error);
+                        courseWizardData.lessons = [];
+                    }
                     break;
                 case 3: // Instructor Settings
                     courseWizardData.instructorName = document.getElementById('instructorName')?.value;
@@ -3858,14 +3867,75 @@
                     created_at: new Date().toISOString()
                 };
                 
-                // Create course using Supabase
-                const { data, error } = await supabase
+                // Create course using Supabase Admin client for proper permissions
+                console.log('🔧 Using admin client for course creation to bypass RLS policies');
+                console.log('📋 Course data being inserted:', courseData);
+                
+                const client = supabaseAdmin || supabase;
+                console.log('🔑 Using client:', client === supabaseAdmin ? 'supabaseAdmin' : 'supabase (fallback)');
+                
+                const { data, error } = await client
                     .from('courses')
                     .insert([courseData])
                     .select();
                 
                 if (error) {
                     throw error;
+                }
+                
+                const createdCourse = data[0];
+                console.log('✅ Course created successfully:', createdCourse);
+                
+                // Now save lessons if any exist
+                if (courseWizardData.lessons && courseWizardData.lessons.length > 0) {
+                    console.log('💾 Saving lessons for course:', createdCourse.id);
+                    
+                    try {
+                        // Collect lessons data
+                        const lessonsData = await collectLessonsData();
+                        
+                        if (lessonsData && lessonsData.length > 0) {
+                            // Use IPC to save lessons if in Electron environment
+                            if (window.electronAPI) {
+                                const result = await window.electronAPI.invoke('db:createLessons', createdCourse.id, lessonsData);
+                                if (result.success) {
+                                    console.log('✅ Lessons saved successfully via Electron IPC');
+                                } else {
+                                    console.error('❌ Failed to save lessons via IPC:', result.error);
+                                    throw new Error(result.error);
+                                }
+                            } else {
+                                // Fallback to direct Supabase insertion for web environment
+                                const lessonsToInsert = lessonsData.map(lesson => ({
+                                    course_id: createdCourse.id,
+                                    title: lesson.title,
+                                    description: lesson.description || '',
+                                    lesson_type: lesson.type || 'content',
+                                    content: lesson.content,
+                                    order_index: lesson.order_index || 0,
+                                    duration_minutes: lesson.duration || 30,
+                                    difficulty_level: lesson.level || 'beginner',
+                                    learning_objectives: lesson.objectives || [],
+                                    is_published: publishImmediately
+                                }));
+                                
+                                const { error: lessonsError } = await client
+                                    .from('lessons')
+                                    .insert(lessonsToInsert);
+                                
+                                if (lessonsError) {
+                                    console.error('❌ Failed to save lessons:', lessonsError);
+                                    throw lessonsError;
+                                }
+                                
+                                console.log('✅ Lessons saved successfully via direct Supabase');
+                            }
+                        }
+                    } catch (lessonError) {
+                        console.error('❌ Error saving lessons:', lessonError);
+                        // Don't fail the entire course creation, just warn
+                        showError('Course created but failed to save lessons: ' + lessonError.message);
+                    }
                 }
                 
                 const message = publishImmediately ? 'Course created and published successfully!' : 'Course created as draft successfully!';
@@ -4318,19 +4388,12 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     continue;
                 }
                 
-                const lessonData = {
-                    title: titleElement.value,
-                    level: levelElement.value,
-                    duration: durationElement.value,
-                    content_type: contentTypeElement.value,
-                    objectives: objectivesElement.value,
-                    content_items: []
-                };
+                const materials = [];
                 
-                // Collect content items for this lesson
-                const contentItems = lessonItem.querySelectorAll('.content-item');
-                for (let j = 0; j < contentItems.length; j++) {
-                    const contentItem = contentItems[j];
+                // Collect materials for this lesson
+                const contentItemElements = lessonItem.querySelectorAll('.content-item');
+                for (let j = 0; j < contentItemElements.length; j++) {
+                    const contentItem = contentItemElements[j];
                     
                     const contentTypeElement = contentItem.querySelector('.content-type');
                     const contentTitleElement = contentItem.querySelector('.content-title');
@@ -4340,72 +4403,151 @@ After running this SQL, refresh the admin dashboard to see the user management w
                         continue;
                     }
                     
-                    const contentType = contentTypeElement.value;
-                    const contentTitle = contentTitleElement.value;
+                    const materialType = contentTypeElement.value;
+                    const materialTitle = contentTitleElement.value;
                     
-                    const contentData = {
-                        type: contentType,
-                        title: contentTitle,
-                        order: j + 1
+                    // Base material data structure matching the enhanced lesson_materials schema
+                    const materialData = {
+                        type: materialType,
+                        content: materialTitle,
+                        order_number: j + 1,
+                        file_url: null,
+                        file_size: null,
+                        file_type: null,
+                        duration: null,
+                        metadata: {}
                     };
                     
-                    // Collect type-specific data
-                    switch(contentType) {
+                    // Collect type-specific data and handle file uploads
+                    switch(materialType) {
                         case 'text':
-                            contentData.text_content = contentItem.querySelector('.content-text')?.value || '';
+                            const textContent = contentItem.querySelector('.content-text')?.value || '';
+                            materialData.content = textContent;
+                            materialData.metadata = {
+                                title: materialTitle,
+                                word_count: textContent.split(' ').length
+                            };
                             break;
+                            
                         case 'image':
-                            contentData.alt_text = contentItem.querySelector('.content-alt')?.value || '';
-                            contentData.caption = contentItem.querySelector('.content-caption')?.value || '';
-                            // Handle file upload for images
                             const imageFile = contentItem.querySelector('.content-file')?.files[0];
                             if (imageFile) {
-                                contentData.file_url = await uploadSingleFile(imageFile, 'lesson-content');
+                                try {
+                                    materialData.file_url = await uploadSingleFile(imageFile, 'lesson-content');
+                                    materialData.file_size = imageFile.size;
+                                    materialData.file_type = imageFile.type;
+                                    materialData.metadata = {
+                                        title: materialTitle,
+                                        alt_text: contentItem.querySelector('.content-alt')?.value || '',
+                                        caption: contentItem.querySelector('.content-caption')?.value || ''
+                                    };
+                                } catch (error) {
+                                    console.error('Failed to upload image file:', error);
+                                }
                             }
                             break;
+                            
                         case 'audio':
-                            contentData.duration = contentItem.querySelector('.content-duration')?.value || '';
-                            contentData.transcript = contentItem.querySelector('.content-transcript')?.value || '';
-                            // Handle file upload for audio
                             const audioFile = contentItem.querySelector('.content-file')?.files[0];
                             if (audioFile) {
-                                contentData.file_url = await uploadSingleFile(audioFile, 'lesson-content');
+                                try {
+                                    materialData.file_url = await uploadSingleFile(audioFile, 'lesson-content');
+                                    materialData.file_size = audioFile.size;
+                                    materialData.file_type = audioFile.type;
+                                    const durationValue = contentItem.querySelector('.content-duration')?.value;
+                                    materialData.duration = durationValue ? parseInt(durationValue) : null;
+                                    materialData.metadata = {
+                                        title: materialTitle,
+                                        transcript: contentItem.querySelector('.content-transcript')?.value || '',
+                                        quality: 'standard'
+                                    };
+                                } catch (error) {
+                                    console.error('Failed to upload audio file:', error);
+                                }
                             }
                             break;
+                            
                         case 'video':
-                            contentData.duration = contentItem.querySelector('.content-duration')?.value || '';
-                            contentData.description = contentItem.querySelector('.content-description')?.value || '';
-                            // Handle file upload for video
                             const videoFile = contentItem.querySelector('.content-file')?.files[0];
                             if (videoFile) {
-                                contentData.file_url = await uploadSingleFile(videoFile, 'lesson-content');
+                                try {
+                                    materialData.file_url = await uploadSingleFile(videoFile, 'lesson-content');
+                                    materialData.file_size = videoFile.size;
+                                    materialData.file_type = videoFile.type;
+                                    const durationValue = contentItem.querySelector('.content-duration')?.value;
+                                    materialData.duration = durationValue ? parseInt(durationValue) : null;
+                                    materialData.metadata = {
+                                        title: materialTitle,
+                                        description: contentItem.querySelector('.content-description')?.value || '',
+                                        resolution: '720p',
+                                        has_subtitles: false
+                                    };
+                                } catch (error) {
+                                    console.error('Failed to upload video file:', error);
+                                }
                             }
                             break;
+                            
                         case 'pdf':
-                            contentData.page_range = contentItem.querySelector('.content-pages')?.value || '';
-                            contentData.synonym = contentItem.querySelector('.content-synonym')?.value || '';
-                            contentData.instructions = contentItem.querySelector('.content-instructions')?.value || '';
-                            // Handle file upload for PDF
                             const pdfFile = contentItem.querySelector('.content-file')?.files[0];
                             if (pdfFile) {
-                                contentData.file_url = await uploadSingleFile(pdfFile, 'lesson-content');
+                                try {
+                                    materialData.file_url = await uploadSingleFile(pdfFile, 'lesson-content');
+                                    materialData.file_size = pdfFile.size;
+                                    materialData.file_type = pdfFile.type;
+                                    materialData.metadata = {
+                                        title: materialTitle,
+                                        page_range: contentItem.querySelector('.content-pages')?.value || '',
+                                        instructions: contentItem.querySelector('.content-instructions')?.value || '',
+                                        page_count: 0 // Would need PDF parsing to get actual count
+                                    };
+                                } catch (error) {
+                                    console.error('Failed to upload PDF file:', error);
+                                }
                             }
                             break;
+                            
                         case 'quiz':
-                            contentData.quiz_type = contentItem.querySelector('.quiz-type')?.value || 'multiple-choice';
-                            contentData.question_count = contentItem.querySelector('.quiz-questions')?.value || 5;
-                            // Quiz questions would be handled separately
+                            materialData.content = materialTitle;
+                            materialData.metadata = {
+                                title: materialTitle,
+                                quiz_type: contentItem.querySelector('.quiz-type')?.value || 'multiple-choice',
+                                question_count: parseInt(contentItem.querySelector('.quiz-questions')?.value) || 5,
+                                time_limit: 30,
+                                passing_score: 70
+                            };
+                            break;
+                            
+                        case 'interactive':
+                            materialData.content = materialTitle;
+                            materialData.metadata = {
+                                title: materialTitle,
+                                interaction_type: 'exercise',
+                                estimated_time: 15
+                            };
                             break;
                     }
                     
-                    lessonData.content_items.push(contentData);
+                    materials.push(materialData);
                 }
+                
+                // Create lesson data structure that matches the enhanced database schema
+                const lessonData = {
+                    title: titleElement.value,
+                    description: `${contentTypeElement.value} lesson for ${levelElement.value} level - ${objectivesElement.value}`,
+                    order_number: i + 1,
+                    materials: materials
+                };
                 
                 lessons.push(lessonData);
             }
             
+            console.log('📋 Collected lessons data with multimedia materials:', lessons);
             return lessons;
          }
+
+         // Make collectLessonsData available globally
+         window.collectLessonsData = collectLessonsData;
 
          // Helper function to upload a single file
          async function uploadSingleFile(file, folder) {
@@ -4413,23 +4555,45 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 const fileName = `${Date.now()}_${file.name}`;
                 const filePath = `${folder}/${fileName}`;
                 
-                const { data, error } = await supabase.storage
-                    .from('course-materials')
-                    .upload(filePath, file);
-                
-                if (error) throw error;
-                
-                // Get public URL
-                const { data: { publicUrl } } = supabase.storage
-                    .from('course-materials')
-                    .getPublicUrl(filePath);
-                
-                return publicUrl;
+                // Use IPC for file upload if in Electron environment
+                if (window.electronAPI) {
+                    // Convert file to buffer for IPC
+                    const arrayBuffer = await file.arrayBuffer();
+                    const buffer = new Uint8Array(arrayBuffer);
+                    
+                    const result = await window.electronAPI.invoke('db:uploadFile', buffer, fileName, 'course-materials', filePath);
+                    
+                    if (result.success) {
+                        console.log('✅ File uploaded successfully via Electron IPC:', result.result);
+                        return result.result;
+                    } else {
+                        console.error('❌ Failed to upload file via IPC:', result.error);
+                        throw new Error(result.error);
+                    }
+                } else {
+                    // Fallback to direct Supabase upload for web environment
+                    const { data, error } = await supabase.storage
+                        .from('course-materials')
+                        .upload(filePath, file);
+                    
+                    if (error) throw error;
+                    
+                    // Get public URL
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('course-materials')
+                        .getPublicUrl(filePath);
+                    
+                    console.log('✅ File uploaded successfully via direct Supabase:', publicUrl);
+                    return publicUrl;
+                }
             } catch (error) {
-                console.error('Error uploading file:', error);
+                console.error('❌ Error uploading file:', error);
                 throw error;
             }
          }
+
+         // Make uploadSingleFile available globally
+         window.uploadSingleFile = uploadSingleFile;
 
         // Assignment form submission
         document.getElementById('assignmentForm').addEventListener('submit', async function(e) {
@@ -4632,6 +4796,15 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 if (durationElement) durationElement.value = 12;
                 if (hoursElement) hoursElement.value = 5;
                 
+                // Populate instructor fields for test course
+                const instructorNameElement = document.getElementById('instructorName');
+                const instructorEmailElement = document.getElementById('instructorEmail');
+                const instructorBioElement = document.getElementById('instructorBio');
+                
+                if (instructorNameElement) instructorNameElement.value = 'Test Instructor';
+                if (instructorEmailElement) instructorEmailElement.value = 'test@example.com';
+                if (instructorBioElement) instructorBioElement.value = 'Test instructor bio for debugging purposes';
+                
                 // Update modal title and button
                 const modalTitleElement = document.getElementById('courseModalTitle');
                 const submitBtnElement = document.getElementById('finishBtn');
@@ -4769,6 +4942,15 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 if (languageElement) languageElement.value = course.language || 'Spanish';
                 if (durationElement) durationElement.value = course.duration_weeks || course.duration || 8;
                 if (hoursElement) hoursElement.value = course.hours_per_week || 3;
+                
+                // Populate instructor fields
+                const instructorNameElement = document.getElementById('instructorName');
+                const instructorEmailElement = document.getElementById('instructorEmail');
+                const instructorBioElement = document.getElementById('instructorBio');
+                
+                if (instructorNameElement) instructorNameElement.value = course.instructor_name || '';
+                if (instructorEmailElement) instructorEmailElement.value = course.instructor_email || '';
+                if (instructorBioElement) instructorBioElement.value = course.instructor_bio || '';
 
                 // Update modal title and button
                 const modalTitleElement = document.getElementById('courseModalTitle');
@@ -4801,23 +4983,39 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
 
         async function deleteCourse(courseId) {
+            console.log('🗑️ Delete course called with ID:', courseId);
+            
             if (!confirm('Are you sure you want to delete this course?')) {
+                console.log('❌ User cancelled course deletion');
                 return;
             }
             
+            console.log('✅ User confirmed deletion, proceeding...');
+            
             try {
-                const { error } = await supabase
+                // Use admin client for delete operations to bypass RLS
+                const client = supabaseAdmin || supabase;
+                console.log('🔧 Using client:', client === supabaseAdmin ? 'Admin' : 'Regular');
+                
+                const { data, error } = await client
                     .from('courses')
                     .delete()
                     .eq('id', courseId);
                 
-                if (error) throw error;
+                console.log('📊 Delete operation result:', { data, error });
                 
+                if (error) {
+                    console.error('❌ Supabase delete error:', error);
+                    throw error;
+                }
+                
+                console.log('✅ Course deleted successfully, reloading courses...');
                 await loadCourses();
                 updateLastUpdated();
+                console.log('✅ Course list reloaded');
             } catch (error) {
-                console.error('Error deleting course:', error);
-                showError('Failed to delete course');
+                console.error('❌ Error deleting course:', error);
+                showError(`Failed to delete course: ${error.message}`);
             }
         }
 
@@ -4950,23 +5148,39 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
 
         async function deleteAssignment(assignmentId) {
+            console.log('🗑️ Delete assignment called with ID:', assignmentId);
+            
             if (!confirm('Are you sure you want to delete this assignment?')) {
+                console.log('❌ User cancelled assignment deletion');
                 return;
             }
             
+            console.log('✅ User confirmed deletion, proceeding...');
+            
             try {
-                const { error } = await supabase
+                // Use admin client for delete operations to bypass RLS
+                const client = supabaseAdmin || supabase;
+                console.log('🔧 Using client:', client === supabaseAdmin ? 'Admin' : 'Regular');
+                
+                const { data, error } = await client
                     .from('assignments')
                     .delete()
                     .eq('id', assignmentId);
                 
-                if (error) throw error;
+                console.log('📊 Delete operation result:', { data, error });
                 
+                if (error) {
+                    console.error('❌ Supabase delete error:', error);
+                    throw error;
+                }
+                
+                console.log('✅ Assignment deleted successfully, reloading assignments...');
                 await loadAssignments();
                 updateLastUpdated();
+                console.log('✅ Assignment list reloaded');
             } catch (error) {
-                console.error('Error deleting assignment:', error);
-                showError('Failed to delete assignment');
+                console.error('❌ Error deleting assignment:', error);
+                showError(`Failed to delete assignment: ${error.message}`);
             }
         }
 

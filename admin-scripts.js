@@ -24,6 +24,14 @@ function initializeCourseService() {
                     return result.course;
                 },
                 
+                async updateCourse(courseId, courseData) {
+                    const result = await window.electronAPI.invoke('db:updateCourse', courseId, courseData);
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to update course');
+                    }
+                    return result.course;
+                },
+                
                 validateCourseData(courseData) {
                     const errors = [];
                     
@@ -145,13 +153,6 @@ function collectCourseFormData() {
         formData.price = parseFloat(document.getElementById('coursePrice')?.value) || 0;
         formData.currency = document.getElementById('courseCurrency')?.value || 'USD';
         
-        // Skills Focus checkboxes
-        const skillsChecked = [];
-        document.querySelectorAll('input[name="skills"]:checked').forEach(checkbox => {
-            skillsChecked.push(checkbox.value);
-        });
-        formData.skills_focus = skillsChecked;
-        
         // Step 2: Course Content & Lessons
         formData.learning_objectives = document.getElementById('learningObjectives')?.value || '';
         formData.prerequisites = document.getElementById('prerequisites')?.value || '';
@@ -254,11 +255,72 @@ async function submitCourseToDatabase(formData, isDraft = false) {
             initializeCourseService();
         }
         
-        // Use secure course service for database operations
-        const createdCourse = await courseService.createCourse(formData, isDraft);
+        // Check if this is an edit operation
+        const courseForm = document.getElementById('courseForm');
+        const isEdit = courseForm && courseForm.dataset.isEdit === 'true';
+        const courseId = courseForm && courseForm.dataset.courseId;
         
-        console.log('✅ Course created successfully:', createdCourse);
-        return createdCourse;
+        let resultCourse;
+        
+        if (isEdit && courseId) {
+            console.log('📝 Updating existing course:', courseId);
+            // Use secure course service for update operations
+            resultCourse = await courseService.updateCourse(courseId, formData);
+            console.log('✅ Course updated successfully:', resultCourse);
+        } else {
+            console.log('🆕 Creating new course');
+            // Use secure course service for create operations
+            resultCourse = await courseService.createCourse(formData, isDraft);
+            console.log('✅ Course created successfully:', resultCourse);
+        }
+        
+        // Collect and save lesson data if any lessons exist
+        try {
+            console.log('📚 Collecting lesson data...');
+            
+            // Check if collectLessonsData function exists (from admin-dashboard.html)
+            if (typeof collectLessonsData === 'function') {
+                const lessonsData = await collectLessonsData();
+                
+                if (lessonsData && lessonsData.length > 0) {
+                    console.log('📝 Found lessons to save:', lessonsData.length);
+                    
+                    // Save lessons using appropriate service
+                    if (window.electronAPI) {
+                        // Electron environment
+                        const result = await window.electronAPI.invoke('db:createLessons', resultCourse.id, lessonsData);
+                        if (result.success) {
+                            console.log('✅ Lessons saved successfully via Electron');
+                        } else {
+                            console.warn('⚠️ Failed to save lessons via Electron:', result.error);
+                        }
+                    } else if (window.supabaseAdminClient || window.supabaseClient) {
+                        // Web environment with Supabase
+                        const client = window.supabaseAdminClient || window.supabaseClient;
+                        const { data, error } = await client
+                            .rpc('create_lessons_with_materials', {
+                                p_course_id: resultCourse.id,
+                                p_lessons: lessonsData
+                            });
+                        
+                        if (error) {
+                            console.warn('⚠️ Failed to save lessons via Supabase:', error);
+                        } else {
+                            console.log('✅ Lessons saved successfully via Supabase:', data?.length || 0);
+                        }
+                    }
+                } else {
+                    console.log('ℹ️ No lessons to save');
+                }
+            } else {
+                console.log('ℹ️ collectLessonsData function not available');
+            }
+        } catch (lessonError) {
+            console.warn('⚠️ Error saving lessons (course still created):', lessonError);
+            // Don't throw here - course was created successfully, lesson saving is secondary
+        }
+        
+        return resultCourse;
         
     } catch (error) {
         console.error('❌ Error submitting course:', error);
@@ -267,10 +329,15 @@ async function submitCourseToDatabase(formData, isDraft = false) {
 }
 
 // Show success message
-function showSuccessMessage(course, isDraft = false) {
-    const message = isDraft 
-        ? `Course "${course.title}" saved as draft successfully!`
-        : `Course "${course.title}" published successfully!`;
+function showSuccessMessage(course, isDraft = false, isEdit = false) {
+    let message;
+    if (isEdit) {
+        message = `Course "${course.title}" updated successfully!`;
+    } else {
+        message = isDraft 
+            ? `Course "${course.title}" saved as draft successfully!`
+            : `Course "${course.title}" published successfully!`;
+    }
         
     // Create and show success notification
     const notification = document.createElement('div');
@@ -347,11 +414,15 @@ async function handleCourseFormSubmission(isDraft = false) {
             return false;
         }
         
+        // Check if this is an edit operation
+        const courseForm = document.getElementById('courseForm');
+        const isEdit = courseForm && courseForm.dataset.isEdit === 'true';
+        
         // Submit to database via secure service
-        const createdCourse = await submitCourseToDatabase(formData, isDraft);
+        const resultCourse = await submitCourseToDatabase(formData, isDraft);
         
         // Show success message
-        showSuccessMessage(createdCourse, isDraft);
+        showSuccessMessage(resultCourse, isDraft, isEdit);
         
         // Close modal and reset form
         closeCourseModal();
@@ -376,6 +447,9 @@ function resetCourseForm() {
     const form = document.getElementById('courseForm');
     if (form) {
         form.reset();
+        // Clear edit state
+        delete form.dataset.courseId;
+        delete form.dataset.isEdit;
     }
     
     // Reset wizard to first step

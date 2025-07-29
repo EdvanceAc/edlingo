@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import aiService from '../services/aiService';
+import { useAuth } from '../contexts/AuthContext';
 
 const AIContext = createContext();
 
@@ -12,6 +13,7 @@ export const useAI = () => {
 };
 
 export const AIProvider = ({ children }) => {
+  const { user } = useAuth();
   const [aiStatus, setAiStatus] = useState('not_initialized');
   const [aiSettings, setAiSettings] = useState({
     provider: 'transformers',
@@ -97,11 +99,29 @@ export const AIProvider = ({ children }) => {
       const isGeminiReady = fullStatus.gemini?.isReady || false;
       const isBackendReady = fullStatus.backend?.isReady || false;
       
-      if (isGeminiReady || isBackendReady || aiService.browserMode) {
-        setAiStatus('ready');
+      console.log('AI Status Check:', {
+        isGeminiReady,
+        isBackendReady,
+        browserMode: aiService.browserMode,
+        fullStatus
+      });
+      
+      // In browser mode, we only need Gemini to be ready
+      // In Electron mode, we need either Gemini or backend to be ready
+      if (aiService.browserMode) {
+        if (isGeminiReady) {
+          setAiStatus('ready');
+        } else {
+          setAiStatus('error');
+          throw new Error('Gemini API key required in browser mode');
+        }
       } else {
-        setAiStatus('error');
-        throw new Error('No AI providers available');
+        if (isGeminiReady || isBackendReady) {
+          setAiStatus('ready');
+        } else {
+          setAiStatus('error');
+          throw new Error('No AI providers available');
+        }
       }
     } catch (error) {
       console.error('Failed to initialize AI:', error);
@@ -121,7 +141,9 @@ export const AIProvider = ({ children }) => {
       const result = await aiService.generateLanguageLearningResponse(message, {
         targetLanguage: options.targetLanguage || 'English',
         userLevel: options.userLevel || 'intermediate',
-        focusArea: options.focusArea || 'conversation'
+        focusArea: options.focusArea || 'conversation',
+        sessionId: currentSessionId,
+        user: user
       });
 
       // Handle different response formats
@@ -182,8 +204,11 @@ export const AIProvider = ({ children }) => {
   };
 
   const startNewSession = () => {
-    setCurrentSessionId(null);
+    const newSessionId = crypto.randomUUID();
+    setCurrentSessionId(newSessionId);
     setConversationHistory([]);
+    console.log('Started new session with ID:', newSessionId);
+    return newSessionId;
   };
 
   const getCurrentSessionId = () => {

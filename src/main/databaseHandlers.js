@@ -117,6 +117,41 @@ function setupDatabaseHandlers() {
     }
   });
 
+  // Lesson Management Handlers
+  ipcMain.handle('db:createLessons', async (event, courseId, lessons) => {
+    try {
+      return await databaseService.createLessons(courseId, lessons);
+    } catch (error) {
+      console.error('Error in createLessons handler:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('db:getLessons', async (event, courseId) => {
+    try {
+      const lessons = await databaseService.getLessons(courseId);
+      return { success: true, lessons };
+    } catch (error) {
+      console.error('Error getting lessons:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // File Upload Handler
+  ipcMain.handle('db:uploadFile', async (event, fileBuffer, fileName, bucket, path) => {
+    try {
+      // Convert buffer back to File-like object
+      const file = new Blob([fileBuffer], { type: 'application/octet-stream' });
+      file.name = fileName;
+      
+      const result = await databaseService.uploadFile(file, bucket, path);
+      return { success: true, result };
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Add other DB handlers here...
 }
 

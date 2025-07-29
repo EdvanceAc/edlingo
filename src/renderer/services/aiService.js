@@ -149,7 +149,9 @@ class AIService {
       console.log('Using Supabase Gemini service for language learning response');
       const supabaseResult = await supabaseGeminiService.sendMessage(userMessage, {
         userLevel,
-        focusArea: chatMode
+        focusArea: chatMode,
+        sessionId: options.sessionId,
+        user: options.user
       });
       
       if (supabaseResult.success) {

@@ -228,6 +228,149 @@ class DatabaseService {
     // Implementation for updating vocabulary
     return true;
   }
+
+  /**
+   * Create lessons for a course with multimedia support
+   * @param {string} courseId - Course ID to create lessons for
+   * @param {Array} lessonsData - Array of lesson data
+   * @returns {Array} Created lessons data
+   */
+  async createLessons(courseId, lessonsData) {
+    await this.ensureInitialized();
+    
+    try {
+      console.log('🚀 Creating lessons with materials in database...', { courseId, lessonCount: lessonsData.length });
+      
+      // Use the enhanced database function for multimedia support
+      const { data, error } = await this.supabaseAdmin
+        .rpc('create_lessons_with_materials', {
+          p_course_id: courseId,
+          p_lessons: lessonsData
+        });
+        
+      if (error) {
+        console.error('❌ Supabase error creating lessons with materials:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+      
+      console.log('✅ Lessons with materials created successfully:', data.length);
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Error creating lessons with materials:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get lessons for a course with multimedia materials
+   * @param {string} courseId - Course ID to get lessons for
+   * @returns {Array} List of lessons with materials
+   */
+  async getLessons(courseId) {
+    await this.ensureInitialized();
+    
+    try {
+      // Use the enhanced function to get lessons with all materials
+      const { data, error } = await this.supabase
+        .rpc('get_course_lessons_with_materials', {
+          p_course_id: courseId
+        });
+        
+      if (error) {
+        throw new Error(`Database error: ${error.message}`);
+      }
+      
+      // Group materials by lesson
+      const lessonsMap = new Map();
+      data.forEach(row => {
+        if (!lessonsMap.has(row.lesson_id)) {
+          lessonsMap.set(row.lesson_id, {
+            id: row.lesson_id,
+            title: row.lesson_title,
+            description: row.lesson_description,
+            order_index: row.lesson_order,
+            lesson_type: row.lesson_type,
+            duration_minutes: row.duration_minutes,
+            difficulty_level: row.difficulty_level,
+            learning_objectives: row.learning_objectives,
+            is_published: row.is_published,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            materials: []
+          });
+        }
+        
+        if (row.material_id) {
+          lessonsMap.get(row.lesson_id).materials.push({
+            id: row.material_id,
+            type: row.material_type,
+            content: row.material_content,
+            order_number: row.material_order,
+            file_url: row.file_url,
+            file_size: row.file_size,
+            file_type: row.file_type,
+            duration: row.duration,
+            metadata: row.metadata
+          });
+        }
+      });
+      
+      const lessons = Array.from(lessonsMap.values())
+        .sort((a, b) => a.order_index - b.order_index)
+        .map(lesson => ({
+          ...lesson,
+          materials: lesson.materials.sort((a, b) => a.order_number - b.order_number)
+        }));
+      
+      return lessons;
+    } catch (error) {
+      console.error('❌ Error fetching lessons with materials:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload file to Supabase storage
+   * @param {File} file - File to upload
+   * @param {string} bucket - Storage bucket name
+   * @param {string} path - File path in storage
+   * @returns {Object} Upload result with public URL
+   */
+  async uploadFile(file, bucket = 'lesson-content', path) {
+    await this.ensureInitialized();
+    
+    try {
+      console.log('🚀 Uploading file to storage...', { fileName: file.name, bucket, path });
+      
+      const { data, error } = await this.supabaseAdmin.storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+        
+      if (error) {
+        console.error('❌ Storage upload error:', error);
+        throw new Error(`Storage error: ${error.message}`);
+      }
+      
+      // Get public URL
+      const { data: urlData } = this.supabaseAdmin.storage
+        .from(bucket)
+        .getPublicUrl(path);
+      
+      console.log('✅ File uploaded successfully:', urlData.publicUrl);
+      return {
+        path: data.path,
+        publicUrl: urlData.publicUrl
+      };
+      
+    } catch (error) {
+      console.error('❌ Error uploading file:', error);
+      throw error;
+    }
+  }
 }
 
 // Create singleton instance

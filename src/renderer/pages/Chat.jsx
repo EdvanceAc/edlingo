@@ -30,7 +30,9 @@ const Chat = () => {
     getStatusColor,
     conversationHistory,
     isGeminiAvailable,
-    getAIStatus
+    getAIStatus,
+    startNewSession,
+    getCurrentSessionId
   } = useAI();
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -52,6 +54,14 @@ const Chat = () => {
       });
     }
   }, [aiStatus, initializeAI]);
+
+  useEffect(() => {
+    // Start a new session when the chat component mounts
+    if (isReady && !getCurrentSessionId()) {
+      startNewSession();
+      console.log('Started new chat session');
+    }
+  }, [isReady, startNewSession, getCurrentSessionId]);
 
   // Streaming event listeners removed for simple chatbot
 
