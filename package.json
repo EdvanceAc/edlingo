@@ -4,7 +4,7 @@
   "description": "Modern Language Learning Desktop App",
   "main": "src/main/main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http://localhost:3002 && cross-env NODE_ENV=development NODE_OPTIONS=--no-deprecation electron .\"",
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:3002 && cross-env NODE_ENV=development electron .\"",
     "build": "vite build && electron-builder",
     "build:netlify": "vite build",
     "preview": "vite preview",

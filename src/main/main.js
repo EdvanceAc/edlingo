@@ -9,11 +9,21 @@ const isDev = process.env.NODE_ENV === 'development';
 const databaseService = require('../services/databaseService');
 const { setupDatabaseHandlers } = require('./databaseHandlers');
 
-// Additional warning suppression
+// Handle deprecation warnings more gracefully
 const originalEmit = process.emit;
 process.emit = function (name, data, ...args) {
-  if (name === 'warning' && typeof data === 'object' && data.name === 'DeprecationWarning' && data.message.includes('util._extend')) {
-    return false;
+  // Specifically handle the util._extend deprecation warning
+  // This is a temporary solution until all dependencies are updated
+  if (name === 'warning' && typeof data === 'object' && data.name === 'DeprecationWarning') {
+    // Log the warning in development mode but don't crash the app
+    if (isDev && !data.message.includes('ExperimentalWarning')) {
+      console.warn(`Deprecation warning: ${data.message}`);
+      console.warn('Consider updating dependencies or polyfilling deprecated APIs');
+    }
+    // Suppress only specific warnings that we can't fix immediately
+    if (data.message.includes('util._extend')) {
+      return false;
+    }
   }
   return originalEmit.apply(process, arguments);
 };
@@ -174,6 +184,19 @@ function createMenu() {
 function setupIPC() {
   // Setup database handlers for course management
   setupDatabaseHandlers();
+  
+  // Theme management handlers
+  ipcMain.handle('theme:get', async () => {
+    // Get theme from user preferences or default to 'light'
+    // This is a simple implementation - expand as needed
+    return app.getPreferredSystemTheme?.() || 'light';
+  });
+  
+  ipcMain.handle('theme:set', async (event, theme) => {
+    // Store theme preference (implement storage as needed)
+    console.log(`Theme set to: ${theme}`);
+    return { success: true, theme };
+  });
   
   // ==================== NON-DATABASE OPERATIONS ====================
 
