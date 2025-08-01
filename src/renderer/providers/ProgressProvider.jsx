@@ -207,8 +207,16 @@ export function ProgressProvider({ children }) {
   const checkAchievements = useCallback((newProgress) => {
     const newAchievements = [];
     
+    // Ensure newProgress and achievements array exist
+    if (!newProgress || typeof newProgress !== 'object') {
+      return newAchievements;
+    }
+    
+    // Ensure achievements is an array
+    const currentAchievements = Array.isArray(newProgress.achievements) ? newProgress.achievements : [];
+    
     ACHIEVEMENTS.forEach(achievement => {
-      if (Array.isArray(newProgress.achievements) && newProgress.achievements.includes(achievement.id)) return;
+      if (currentAchievements.includes(achievement.id)) return;
       
       let earned = false;
       
@@ -245,11 +253,13 @@ export function ProgressProvider({ children }) {
           break;
         case 'daily_goal_week':
           // Check if daily goal was met for 7 consecutive days
-          const weekValues = Object.values(newProgress.weeklyStats);
-          const consecutiveDays = weekValues.reduce((count, minutes) => {
-            return minutes >= newProgress.daily_goal ? count + 1 : 0;
-          }, 0);
-          earned = consecutiveDays >= 7;
+          if (newProgress.weeklyStats && typeof newProgress.weeklyStats === 'object') {
+            const weekValues = Object.values(newProgress.weeklyStats);
+            const consecutiveDays = weekValues.reduce((count, minutes) => {
+              return minutes >= (newProgress.daily_goal || 30) ? count + 1 : 0;
+            }, 0);
+            earned = consecutiveDays >= 7;
+          }
           break;
       }
       

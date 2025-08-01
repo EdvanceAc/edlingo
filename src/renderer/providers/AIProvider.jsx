@@ -124,9 +124,16 @@ export const AIProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to initialize AI:', error);
-      // Don't throw error, just log it and continue with fallback
-      console.warn('AI initialization failed, continuing with fallback functionality');
-      setAiStatus('ready'); // Set to ready to allow fallback responses
+      
+      // Check if it's a Gemini API suspension error
+      if (error.message && (error.message.includes('CONSUMER_SUSPENDED') || error.message.includes('Permission denied'))) {
+        console.warn('Gemini API key suspended or permission denied, continuing with fallback mode');
+        setAiStatus('ready'); // Allow fallback functionality
+      } else {
+        // Don't throw error, just log it and continue with fallback
+        console.warn('AI initialization failed, continuing with fallback functionality');
+        setAiStatus('ready'); // Set to ready to allow fallback responses
+      }
     } finally {
       setIsInitializing(false);
     }
@@ -271,11 +278,18 @@ export const AIProvider = ({ children }) => {
     
     // Utilities
     getStatusMessage: () => {
+      const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const hasValidApiKey = envApiKey && envApiKey !== 'your_gemini_api_key_here' && envApiKey.length > 20;
+      
       switch (aiStatus) {
-        case 'ready': return 'AI Ready (Fallback Mode)';
-        case 'initializing': return 'Loading AI...';
-        case 'error': return 'AI Limited - Using Fallback';
-        default: return 'AI Offline';
+        case 'ready': 
+          return hasValidApiKey ? 'AI Ready' : 'AI Ready (Fallback Mode)';
+        case 'initializing': 
+          return 'Loading AI...';
+        case 'error': 
+          return 'AI Limited - Using Fallback';
+        default: 
+          return 'AI Offline';
       }
     },
     

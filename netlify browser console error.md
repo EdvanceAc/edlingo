@@ -1,36 +1,44 @@
-# EdLingo Environment Configuration
+hook.js:608 Failed to initialize Gemini service: _n: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent: [403 ] Permission denied: Consumer 'api_key:AIzaSyDr1onXBzRitEaW27nJAFVe68a68MKaVAM' has been suspended. [{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"CONSUMER_SUSPENDED","domain":"googleapis.com","metadata":{"containerInfo":"api_key:AIzaSyDr1onXBzRitEaW27nJAFVe68a68MKaVAM","consumer":"projects/219383639311","service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Permission denied: Consumer 'api_key:AIzaSyDr1onXBzRitEaW27nJAFVe68a68MKaVAM' has been suspended."}]
+    at mo (https://capable-raindrop-38659a.netlify.app/assets/ai-google-mpHQ4ir7.js:61:2233)
+    at async fo (https://capable-raindrop-38659a.netlify.app/assets/ai-google-mpHQ4ir7.js:61:1790)
+    at async In (https://capable-raindrop-38659a.netlify.app/assets/ai-google-mpHQ4ir7.js:107:156)
+    at async Qs.initialize (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:7:73658)
+    at async Ws._initializeModels (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:110:2561)
+    at async Ws.initialize (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:110:2208)
+    at async b (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:136:9661)
+    at async https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:136:8784
+overrideMethod	@	hook.js:608
 
-# Supabase Configuration
-VITE_SUPABASE_URL=https://ecglfwqylqchdyuhmtuv.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0
-SUPABASE_URL=https://ecglfwqylqchdyuhmtuv.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0
-# Service role key for admin operations - GET THIS FROM SUPABASE PROJECT SETTINGS > API
-# IMPORTANT: Replace with your actual service_role key from Supabase dashboard
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg
-VITE_SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg
+ProgressProvider.jsx:211 Uncaught TypeError: Cannot read properties of null (reading 'includes')
+    at ProgressProvider.jsx:211:36
+    at Array.forEach (<anonymous>)
+    at ProgressProvider.jsx:210:18
+    at ProgressProvider.jsx:291:31
+    at Fv (react-dom.development.js:15721:41)
+    at Vv (react-dom.development.js:15845:22)
+    at $v (react-dom.development.js:16185:10)
+    at Object.useState (react-dom.development.js:17096:16)
+    at Object.oe [as useState] (react.development.js:1622:21)
+    at _s (ProgressProvider.jsx:72:43)Understand this error
+hook.js:608 The above error occurred in the <_s> component:
 
-# Supabase MCP Server Configuration
-# Get these from: Supabase Dashboard → Settings → API → Project Settings
-SUPABASE_PROJECT_REF=ecglfwqylqchdyuhmtuv
-# Get this from: Supabase Dashboard → Settings → API → Generate new token
-# IMPORTANT: You need to create a Personal Access Token for MCP server access
-SUPABASE_ACCESS_TOKEN=sbp_97957041030c8bfb7583c8b7114568a1c004e30c
+    at _s (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:1:18995)
+    at Ts (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:7:2657)
+    at ks (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:1:14876)
+    at Ls (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:7:1375)
+    at wn (https://capable-raindrop-38659a.netlify.app/assets/index-DfZsQ02f.js:188:18840)
 
-
-
-# Google Gemini AI Configuration
-# Get your API key from: https://aistudio.google.com/app/apikey
-VITE_GEMINI_API_KEY=AIzaSyByTDREdEdtVu2CkAyWDZ8rHyg3Jyikmv4
-# Google Drive Configuration
-
-VITE_GOOGLE_CLIENT_ID=219383639311-fomh0ue6c4fne39kh90kgj7ifj8pqeju.apps.googleusercontent.com
-VITE_GOOGLE_DRIVE_FOLDER_ID=1ibO4FjxO2Vro0VHzZRFs5QRUbRH4hZeh
-
-# Alternative Google API Configuration (for other services)
-GOOGLE_API_KEY=AIzaSyByTDREdEdtVu2CkAyWDZ8rHyg3Jyikmv4
-VITE_GOOGLE_API_KEY=AIzaSyByTDREdEdtVu2CkAyWDZ8rHyg3Jyikmv4
-
-# Development Settings
-NODE_ENV=development
-VITE_APP_ENV=development
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+overrideMethod @ hook.js:608Understand this error
+react-dom.development.js:12050 Uncaught TypeError: Cannot read properties of null (reading 'includes')
+    at ProgressProvider.jsx:211:36
+    at Array.forEach (<anonymous>)
+    at ProgressProvider.jsx:210:18
+    at ProgressProvider.jsx:291:31
+    at Fv (react-dom.development.js:15721:41)
+    at Vv (react-dom.development.js:15845:22)
+    at $v (react-dom.development.js:16185:10)
+    at Object.useState (react-dom.development.js:17096:16)
+    at Object.oe [as useState] (react.development.js:1622:21)
+    at _s (ProgressProvider.jsx:72:43)Understand this error
