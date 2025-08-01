@@ -5,6 +5,34 @@ All notable changes to the EdLingo project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2024-12-27
+
+### 🐛 Fixed
+- **Course Editing Duplicate Issue**: Resolved critical bug where editing a course created duplicate entries instead of updating existing records
+  - Modified `submitCourseToDatabase` function in `admin-scripts.js` to properly detect edit vs create operations
+  - Added conditional logic to call `courseService.updateCourse` for existing courses
+  - Enhanced form state management with `dataset.isEdit` and `dataset.courseId` properties
+  - Improved success messaging to differentiate between course creation and updates
+  - Added proper form reset functionality to clear edit state after operations
+
+- **Gemini Chat Service**: Fixed "Unknown error occurred" issues in Supabase Gemini service
+  - Corrected response format handling in `supabaseGeminiService.js` to match Edge Function output
+  - Fixed AI initialization logic in `AIProvider.jsx` for browser mode with Gemini API
+  - Added automatic session ID creation when none is provided
+  - Enhanced error handling and debugging logs for better troubleshooting
+
+### 🛠️ Technical Improvements
+- **Database Operations**: Enhanced course update functionality with proper IPC handlers
+- **AI Service**: Improved browser mode detection and Gemini API key validation
+- **Error Handling**: Better error messages and logging throughout the application
+- **Code Quality**: Refactored course management logic for better maintainability
+
+### ✨ Enhanced
+- Course editing workflow now properly updates existing records
+- Gemini chat responses now work correctly without mock fallbacks
+- Improved user feedback for course management operations
+- Better session management for AI chat functionality
+
 ## [1.0.4] - 2024-12-26
 
 ### Added
