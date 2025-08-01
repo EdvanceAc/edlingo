@@ -89,6 +89,27 @@ class SupabaseGeminiService {
   
     } catch (error) {
       console.error('Supabase Gemini service error:', error);
+      
+      // Check if it's a Gemini API key suspension error
+      if (error.message && error.message.includes('CONSUMER_SUSPENDED')) {
+        console.warn('Gemini API key has been suspended, using fallback response');
+        return {
+          success: false,
+          error: 'API_KEY_SUSPENDED',
+          message: 'I\'m currently experiencing technical difficulties with my AI service. I\'ll provide a basic response to help you continue learning.'
+        };
+      }
+      
+      // Check for permission denied errors
+      if (error.message && (error.message.includes('Permission denied') || error.message.includes('403'))) {
+        console.warn('Gemini API permission denied, using fallback response');
+        return {
+          success: false,
+          error: 'PERMISSION_DENIED',
+          message: 'I\'m having trouble accessing my AI capabilities right now. Let me provide a helpful response based on common language learning patterns.'
+        };
+      }
+      
       return {
         success: false,
         error: error.message,

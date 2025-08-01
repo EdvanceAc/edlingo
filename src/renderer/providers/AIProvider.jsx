@@ -106,27 +106,27 @@ export const AIProvider = ({ children }) => {
         fullStatus
       });
       
-      // In browser mode, we only need Gemini to be ready
-      // In Electron mode, we need either Gemini or backend to be ready
+      // In browser mode, gracefully handle Gemini API failures
       if (aiService.browserMode) {
         if (isGeminiReady) {
           setAiStatus('ready');
         } else {
-          setAiStatus('error');
-          throw new Error('Gemini API key required in browser mode');
+          console.warn('Gemini API not available in browser mode, using fallback responses');
+          setAiStatus('ready'); // Still set to ready to allow fallback functionality
         }
       } else {
         if (isGeminiReady || isBackendReady) {
           setAiStatus('ready');
         } else {
-          setAiStatus('error');
-          throw new Error('No AI providers available');
+          console.warn('No AI providers available, using fallback responses');
+          setAiStatus('ready'); // Still set to ready to allow fallback functionality
         }
       }
     } catch (error) {
       console.error('Failed to initialize AI:', error);
-      setAiStatus('error');
-      throw error;
+      // Don't throw error, just log it and continue with fallback
+      console.warn('AI initialization failed, continuing with fallback functionality');
+      setAiStatus('ready'); // Set to ready to allow fallback responses
     } finally {
       setIsInitializing(false);
     }
@@ -272,9 +272,9 @@ export const AIProvider = ({ children }) => {
     // Utilities
     getStatusMessage: () => {
       switch (aiStatus) {
-        case 'ready': return 'AI Ready';
+        case 'ready': return 'AI Ready (Fallback Mode)';
         case 'initializing': return 'Loading AI...';
-        case 'error': return 'AI Unavailable - Check API Key';
+        case 'error': return 'AI Limited - Using Fallback';
         default: return 'AI Offline';
       }
     },

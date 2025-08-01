@@ -164,6 +164,11 @@ class AIService {
       }
     } catch (supabaseError) {
       console.warn('Supabase Gemini service failed:', supabaseError.message);
+      // Check if it's an API key issue and provide appropriate fallback
+      if (supabaseError.message && (supabaseError.message.includes('CONSUMER_SUSPENDED') || supabaseError.message.includes('Permission denied'))) {
+        console.log('Using enhanced fallback due to API key issues');
+        return this._generateEnhancedLanguageLearningFallback(userMessage, chatMode, userLevel, targetLanguage);
+      }
     }
 
     // If in browser mode, return fallback response
@@ -533,6 +538,51 @@ Return as JSON format.`;
     ];
     
     return responses[Math.floor(Math.random() * responses.length)];
+  }
+
+  // Enhanced fallback for API key issues
+  _generateEnhancedLanguageLearningFallback(userMessage, chatMode, userLevel, targetLanguage) {
+    const message = userMessage.toLowerCase();
+    
+    // Provide more contextual responses based on user input
+    if (message.includes('hello') || message.includes('hi')) {
+      return {
+        success: true,
+        response: `Hello! I'm here to help you learn ${targetLanguage}. Even though my AI service is temporarily limited, I can still provide basic language learning support. What would you like to practice today?`,
+        provider: 'enhanced-fallback'
+      };
+    }
+    
+    if (message.includes('grammar') || message.includes('correct')) {
+      return {
+        success: true,
+        response: `For ${userLevel} level grammar in ${targetLanguage}, focus on: 1) Subject-verb agreement, 2) Proper tense usage, 3) Word order. While my AI is limited right now, these fundamentals will help you improve!`,
+        provider: 'enhanced-fallback'
+      };
+    }
+    
+    if (message.includes('vocabulary') || message.includes('word')) {
+      return {
+        success: true,
+        response: `Building vocabulary is essential for ${targetLanguage} learning! Try: 1) Learning 5 new words daily, 2) Using them in sentences, 3) Reading simple texts. My AI service will be back soon with more personalized help!`,
+        provider: 'enhanced-fallback'
+      };
+    }
+    
+    if (message.includes('practice') || message.includes('exercise')) {
+      return {
+        success: true,
+        response: `Great that you want to practice! For ${userLevel} level ${targetLanguage}: Try speaking aloud, write short paragraphs, and listen to simple content. I'm working with limited AI right now, but these methods are proven effective!`,
+        provider: 'enhanced-fallback'
+      };
+    }
+    
+    // Default enhanced response
+    return {
+      success: true,
+      response: `I understand you're working on your ${targetLanguage} skills at ${userLevel} level. While my AI service is temporarily limited, I encourage you to keep practicing! Focus on daily conversation, reading, and listening. My full capabilities will return soon.`,
+      provider: 'enhanced-fallback'
+    };
   }
 
   _generateLanguageLearningFallback(userMessage, chatMode, userLevel, targetLanguage) {
