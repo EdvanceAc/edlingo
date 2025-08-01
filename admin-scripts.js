@@ -143,9 +143,9 @@ function collectCourseFormData() {
     try {
         // Step 1: Basic Information
         formData.title = document.getElementById('courseTitle')?.value || '';
-        formData.category = document.getElementById('courseCategory')?.value || '';
+        formData.category = document.getElementById('courseCategory')?.value || 'General';
         formData.description = document.getElementById('courseDescription')?.value || '';
-        formData.level = document.getElementById('cefrLevel')?.value || ''; // Map to 'level' column in database
+        formData.cefr_level = document.getElementById('cefrLevel')?.value || ''; // Use cefr_level column name
         formData.language = document.getElementById('courseLanguage')?.value || '';
         formData.duration_weeks = parseInt(document.getElementById('courseDuration')?.value) || 0;
         formData.hours_per_week = parseInt(document.getElementById('courseHours')?.value) || 0;

@@ -4234,8 +4234,9 @@ After running this SQL, refresh the admin dashboard to see the user management w
             const title = formData.get('title');
             const description = formData.get('description');
             const level = formData.get('level');
+            const publishStatus = formData.get('publishStatus'); // Get publish status from radio buttons
             
-            console.log('Form data:', { title, description, level });
+            console.log('Form data:', { title, description, level, publishStatus });
             
             // Check if this is an edit operation
             const isEdit = e.target.dataset.isEdit === 'true';
@@ -4290,11 +4291,11 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     title: title,
                     description: description,
                     language: languageElement ? languageElement.value : 'Spanish',
-                    level: level || 'A1', // Use level column as per database schema
+                    cefr_level: level || 'A1', // Use cefr_level column as per database schema
                     duration_weeks: durationElement ? parseInt(durationElement.value) : 10,
                     hours_per_week: hoursElement ? parseInt(hoursElement.value) : 3,
                     category: categoryElement ? categoryElement.value : 'language',
-                    is_active: true,
+                    is_active: publishStatus === 'publish', // Set active only if publish is selected
                     learning_objectives: learningObjectives,
                     prerequisites: prerequisites,
                     required_materials: '', // Default empty materials

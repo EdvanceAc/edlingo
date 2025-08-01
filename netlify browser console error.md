@@ -1,0 +1,36 @@
+# EdLingo Environment Configuration
+
+# Supabase Configuration
+VITE_SUPABASE_URL=https://ecglfwqylqchdyuhmtuv.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0
+SUPABASE_URL=https://ecglfwqylqchdyuhmtuv.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0
+# Service role key for admin operations - GET THIS FROM SUPABASE PROJECT SETTINGS > API
+# IMPORTANT: Replace with your actual service_role key from Supabase dashboard
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg
+VITE_SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg
+
+# Supabase MCP Server Configuration
+# Get these from: Supabase Dashboard → Settings → API → Project Settings
+SUPABASE_PROJECT_REF=ecglfwqylqchdyuhmtuv
+# Get this from: Supabase Dashboard → Settings → API → Generate new token
+# IMPORTANT: You need to create a Personal Access Token for MCP server access
+SUPABASE_ACCESS_TOKEN=sbp_97957041030c8bfb7583c8b7114568a1c004e30c
+
+
+
+# Google Gemini AI Configuration
+# Get your API key from: https://aistudio.google.com/app/apikey
+VITE_GEMINI_API_KEY=AIzaSyByTDREdEdtVu2CkAyWDZ8rHyg3Jyikmv4
+# Google Drive Configuration
+
+VITE_GOOGLE_CLIENT_ID=219383639311-fomh0ue6c4fne39kh90kgj7ifj8pqeju.apps.googleusercontent.com
+VITE_GOOGLE_DRIVE_FOLDER_ID=1ibO4FjxO2Vro0VHzZRFs5QRUbRH4hZeh
+
+# Alternative Google API Configuration (for other services)
+GOOGLE_API_KEY=AIzaSyByTDREdEdtVu2CkAyWDZ8rHyg3Jyikmv4
+VITE_GOOGLE_API_KEY=AIzaSyByTDREdEdtVu2CkAyWDZ8rHyg3Jyikmv4
+
+# Development Settings
+NODE_ENV=development
+VITE_APP_ENV=development

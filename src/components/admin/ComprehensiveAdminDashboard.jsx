@@ -67,7 +67,7 @@ const ComprehensiveAdminDashboard = () => {
     language: '',
     level: '',
     instructor: '',
-    status: 'draft',
+    is_active: false, // Use is_active instead of status
     price: 0,
     duration: '',
     difficulty: 'beginner'

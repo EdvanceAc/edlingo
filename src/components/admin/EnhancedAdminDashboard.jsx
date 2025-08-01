@@ -60,7 +60,7 @@ const EnhancedAdminDashboard = () => {
     language: '',
     level: '',
     instructor: '',
-    status: 'draft',
+    is_active: false, // Use is_active instead of status
     price: 0,
     duration: '',
     difficulty: 'beginner'
@@ -124,7 +124,7 @@ const EnhancedAdminDashboard = () => {
           level: "B1",
           students: 156,
           completion: 82,
-          status: "draft",
+          is_active: false, // Use is_active instead of status
           lastUpdated: "3 days ago",
           instructor: "Hans Mueller",
           description: "Practice German conversation",
@@ -235,7 +235,7 @@ const EnhancedAdminDashboard = () => {
       language: '',
       level: '',
       instructor: '',
-      status: 'draft',
+      is_active: false, // Use is_active instead of status
       price: 0,
       duration: '',
       difficulty: 'beginner'
@@ -250,7 +250,7 @@ const EnhancedAdminDashboard = () => {
       language: course.language || '',
       level: course.level || '',
       instructor: course.instructor || '',
-      status: course.status || 'draft',
+      is_active: course.is_active || false, // Use is_active instead of status
       price: course.price || 0,
       duration: course.duration || '',
       difficulty: course.difficulty || 'beginner'
@@ -454,12 +454,11 @@ const EnhancedAdminDashboard = () => {
               <label className="block text-sm font-medium mb-2">Status</label>
               <select
                 className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={courseFormData.status}
-                onChange={(e) => setCourseFormData(prev => ({ ...prev, status: e.target.value }))}
+                value={courseFormData.is_active ? 'active' : 'inactive'}
+                onChange={(e) => setCourseFormData(prev => ({ ...prev, is_active: e.target.value === 'active' }))}
               >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
+                <option value="active">Active</option>
               </select>
             </div>
             
