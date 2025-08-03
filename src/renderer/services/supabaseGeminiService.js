@@ -7,6 +7,159 @@ class SupabaseGeminiService {
     this.currentSessionId = null;
   }
 
+  async sendStreamingMessage(message, options = {}) {
+    try {
+      let currentSessionId = options.sessionId || this.currentSessionId;
+      if (!currentSessionId) {
+        currentSessionId = crypto.randomUUID();
+        this.currentSessionId = currentSessionId;
+        console.log('Auto-created new session for streaming:', currentSessionId);
+      }
+
+      // Get current user
+      let user = options.user;
+      if (!user) {
+        const { data: { user: authUser }, error: userError } = await this.supabase.auth.getUser();
+        if (userError || !authUser) {
+          user = { id: '8584505a-79b2-4b39-a368-03045f8a4f6a' };
+        } else {
+          user = authUser;
+        }
+      }
+
+      const requestData = {
+        message,
+        user_id: user.id,
+        session_id: currentSessionId,
+        user_level: options.userLevel || 'beginner',
+        focus_area: options.focusArea || 'conversation'
+      };
+
+      // Get the function URL
+      const { data: { session } } = await this.supabase.auth.getSession();
+      const functionUrl = `${this.supabase.supabaseUrl}/functions/v1/process-gemini-chat?stream=true`;
+      
+      // Create optimized streaming request with faster timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for streaming
+      
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/stream',
+          'Authorization': `Bearer ${session?.access_token || this.supabase.supabaseKey}`,
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify(requestData),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Handle streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+      let buffer = '';
+
+      return {
+        success: true,
+        sessionId: currentSessionId,
+        provider: 'supabase-gemini-streaming',
+        stream: {
+          async *[Symbol.asyncIterator]() {
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) {
+                  // Process any remaining buffer
+                  if (buffer.trim()) {
+                    const lines = buffer.split('\n');
+                    for (const line of lines) {
+                      if (line.startsWith('data: ')) {
+                        try {
+                          const data = JSON.parse(line.slice(6));
+                          if (data.chunk) {
+                            fullResponse += data.chunk;
+                            yield {
+                              chunk: data.chunk,
+                              fullResponse,
+                              done: data.done || false
+                            };
+                          }
+                          if (data.done) {
+                            return { fullResponse, done: true };
+                          }
+                        } catch (e) {
+                          console.warn('Failed to parse streaming data:', e);
+                        }
+                      }
+                    }
+                  }
+                  return { fullResponse, done: true };
+                }
+
+                // Decode chunk and add to buffer (optimized processing)
+                const chunk = decoder.decode(value, { stream: true });
+                buffer += chunk;
+                
+                // Process complete lines immediately for faster response
+                let newlineIndex;
+                while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
+                  const line = buffer.slice(0, newlineIndex);
+                  buffer = buffer.slice(newlineIndex + 2);
+                  
+                  if (line.startsWith('data: ')) {
+                    try {
+                      const data = JSON.parse(line.slice(6));
+                      
+                      if (data.error) {
+                        throw new Error(data.error);
+                      }
+                      
+                      if (data.chunk) {
+                        fullResponse += data.chunk;
+                        yield {
+                          chunk: data.chunk,
+                          fullResponse,
+                          done: data.done || false
+                        };
+                      }
+                      
+                      if (data.done) {
+                        return { fullResponse, done: true };
+                      }
+                    } catch (e) {
+                      console.warn('Failed to parse streaming data:', e);
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Streaming error:', error);
+              throw error;
+            } finally {
+              reader.releaseLock();
+            }
+          }
+        }
+      };
+
+    } catch (error) {
+      console.error('Streaming request failed:', error);
+      
+      // Fallback to non-streaming
+      console.log('Falling back to non-streaming request');
+      return this.sendMessage(message, { ...options, streaming: false });
+    }
+  }
+
   async initialize() {
     if (this.isInitialized) return;
 
@@ -25,6 +178,13 @@ class SupabaseGeminiService {
   async sendMessage(message, options = {}) {
     if (!this.isInitialized) {
       await this.initialize();
+    }
+
+    // Check if streaming is enabled
+    const enableStreaming = options.streaming || false;
+    
+    if (enableStreaming) {
+      return this.sendStreamingMessage(message, options);
     }
 
     try {
@@ -57,38 +217,79 @@ class SupabaseGeminiService {
         focus_area: options.focusArea || 'conversation'
       };
   
-      // Call the Edge Function
-      const { data, error } = await this.supabase.functions.invoke('process-gemini-chat', {
-        body: requestData
-      });
-  
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(`Failed to process message: ${error.message}`);
+      // Implement timeout and retry logic (optimized for streaming)
+      const maxAttempts = 2;
+      const timeoutMs = 10000; // Reduced to 10 seconds for faster failure detection
+      
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          console.log(`Attempt ${attempt}/${maxAttempts} for Gemini request`);
+          
+          // Create timeout promise
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
+          );
+          
+          // Create the actual request promise
+          const requestPromise = this.supabase.functions.invoke('process-gemini-chat', {
+            body: requestData,
+            headers: enableStreaming ? { 'Accept': 'text/stream' } : {}
+          });
+          
+          // Race between timeout and actual request
+          const { data, error } = await Promise.race([requestPromise, timeoutPromise]);
+          
+          if (error) {
+            console.error('Edge function error:', error);
+            throw new Error(`Failed to process message: ${error.message}`);
+          }
+
+          // Check if there's an error in the response
+          if (data.error) {
+            throw new Error(data.error || 'Unknown error occurred');
+          }
+
+          // The Edge Function returns { response: aiMessage }
+          if (!data.response) {
+            throw new Error('No response received from AI');
+          }
+
+          // Success - return the result
+          return {
+            success: true,
+            message: data.response,
+            sessionId: currentSessionId,
+            provider: 'supabase-gemini',
+            attempt: attempt
+          };
+          
+        } catch (attemptError) {
+          console.warn(`Attempt ${attempt} failed:`, attemptError.message);
+          
+          // If this is the last attempt, throw the error
+          if (attempt === maxAttempts) {
+            throw attemptError;
+          }
+          
+          // Wait before retrying (ultra-fast backoff strategy)
+          const backoffDelay = Math.min(250 * attempt, 1000); // Linear backoff: 250ms, 500ms max
+          console.log(`Waiting ${backoffDelay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        }
       }
-
-      // Check if there's an error in the response
-      if (data.error) {
-        throw new Error(data.error || 'Unknown error occurred');
-      }
-
-      // The Edge Function returns { response: aiMessage }
-      if (!data.response) {
-        throw new Error('No response received from AI');
-      }
-
-      // Keep the current session ID since we're using it
-      // this.currentSessionId remains the same
-
-      return {
-        success: true,
-        message: data.response,
-        sessionId: currentSessionId,
-        provider: 'supabase-gemini'
-      };
   
     } catch (error) {
       console.error('Supabase Gemini service error:', error);
+      
+      // Handle timeout errors specifically
+      if (error.message === 'Request timed out') {
+        console.warn('Request timed out after multiple attempts');
+        return {
+          success: false,
+          error: 'TIMEOUT',
+          message: 'The response is taking longer than expected. Please try a shorter message or wait a moment before trying again.'
+        };
+      }
       
       // Check if it's a Gemini API key suspension error
       if (error.message && error.message.includes('CONSUMER_SUSPENDED')) {
@@ -107,6 +308,15 @@ class SupabaseGeminiService {
           success: false,
           error: 'PERMISSION_DENIED',
           message: 'I\'m having trouble accessing my AI capabilities right now. Let me provide a helpful response based on common language learning patterns.'
+        };
+      }
+      
+      // Check for network-related errors
+      if (error.message && (error.message.includes('network') || error.message.includes('fetch'))) {
+        return {
+          success: false,
+          error: 'NETWORK_ERROR',
+          message: 'Network connection issue detected. Please check your internet connection and try again.'
         };
       }
       

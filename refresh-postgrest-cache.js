@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -36,8 +37,8 @@ async function refreshPostgRESTCache() {
       
       // Method 2: Try to trigger schema reload by making a simple query
       const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id, native_language, target_language, assessment_completed')
+        .from('user_progress')
+        .select('*, daily_streak')
         .limit(1);
       
       if (error) {
@@ -98,7 +99,7 @@ async function testUserProfileOperations() {
     // Test 2: Test the specific insert operation that's failing
     console.log('\nTest 2: Testing insert operation...');
     const testProfile = {
-      id: 'test-user-' + Date.now(),
+      id: crypto.randomUUID(),
       email: 'test@example.com',
       full_name: 'Test User',
       target_language: 'English',

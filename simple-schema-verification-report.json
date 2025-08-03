@@ -1,0 +1,83 @@
+{
+  "timestamp": "2025-08-02T23:11:51.111Z",
+  "schemaVerification": {
+    "tables": {
+      "user_profiles": true,
+      "user_progress": true,
+      "notifications": true,
+      "courses": true,
+      "lessons": true
+    },
+    "columns": {
+      "user_profiles": {
+        "id": true,
+        "user_id": true,
+        "email": true,
+        "full_name": true,
+        "created_at": true,
+        "updated_at": true
+      },
+      "user_progress": {
+        "id": true,
+        "user_id": true,
+        "current_level": true,
+        "total_xp": true,
+        "daily_streak": true,
+        "last_study_date": true,
+        "lessons_completed": true,
+        "created_at": true,
+        "updated_at": true
+      },
+      "notifications": {
+        "id": true,
+        "user_id": true,
+        "content": true,
+        "created_at": true,
+        "is_read": true,
+        "type": true
+      },
+      "courses": {
+        "id": true,
+        "title": true,
+        "description": true,
+        "language": true,
+        "difficulty_level": true,
+        "is_active": true
+      },
+      "lessons": {
+        "id": true,
+        "course_id": true,
+        "title": true,
+        "content": true,
+        "order_index": true
+      }
+    },
+    "criticalIssues": [],
+    "recommendations": []
+  },
+  "scenarioTests": [
+    {
+      "name": "User Progress Query with lessons_completed",
+      "success": true
+    },
+    {
+      "name": "Insert into user_progress with all columns",
+      "success": false,
+      "error": "new row violates row-level security policy for table \"user_progress\""
+    },
+    {
+      "name": "Notifications table full functionality",
+      "success": true
+    },
+    {
+      "name": "Course management queries",
+      "success": true
+    }
+  ],
+  "overallStatus": "NEEDS_FIXES",
+  "criticalIssues": [],
+  "recommendations": [
+    "Fix database access and query issues"
+  ],
+  "readyForTesting": false
+}

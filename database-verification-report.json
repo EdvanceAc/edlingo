@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-08-02T22:59:57.661Z",
+  "connectivity": true,
+  "criticalColumns": false,
+  "notificationsTable": false,
+  "failingQueries": true,
+  "recommendations": [
+    "Run database migrations to add missing columns",
+    "Execute: node run-migrations.js",
+    "Or manually run SQL from supabase-schema-fix.sql",
+    "Create notifications table with proper structure"
+  ]
+}

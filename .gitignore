@@ -48,6 +48,9 @@ web_modules/
 .eslintcache
 
 # Optional stylelint cache
+
+# Playwright browsers (large binary files)
+playwright-browsers/
 .stylelintcache
 
 # Microbundle cache

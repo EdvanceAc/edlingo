@@ -70,8 +70,10 @@ class ModernGeminiLiveService extends EventEmitter {
     // TTS audio context
     this.audioElement = null;
     
-    // Cleanup flags
+    // Cleanup flags to prevent recursive calls
+    this._settingUpAudio = false;
     this._stoppingAudio = false;
+    this._processingStop = false;
     this._endingSession = false;
     
     // Set up user interaction detection
@@ -208,7 +210,24 @@ class ModernGeminiLiveService extends EventEmitter {
 
   async setupAudioRecording() {
     try {
+      // Prevent multiple simultaneous setups
+      if (this._settingUpAudio) {
+        console.log('Audio setup already in progress, waiting...');
+        return;
+      }
+      
+      // If already set up and working, don't set up again
+      if (this.mediaRecorder && this.audioStream) {
+        console.log('Audio recording already set up');
+        return;
+      }
+      
+      this._settingUpAudio = true;
+      
       console.log('Requesting microphone access...');
+      
+      // Clean up any existing setup first
+      await this.cleanupAudioResources();
       
       // Check if getUserMedia is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -246,13 +265,37 @@ class ModernGeminiLiveService extends EventEmitter {
       };
 
       this.mediaRecorder.onstop = async () => {
-        if (audioChunks.length > 0) {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
-          const arrayBuffer = await audioBlob.arrayBuffer();
-          const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-          
-          // Send audio to session
-          try {
+        // Prevent recursive calls with multiple checks
+        if (this._processingStop) {
+          console.log('Already processing stop event, skipping...');
+          return;
+        }
+        
+        // Additional check: ensure we have a valid mediaRecorder reference
+        if (!this.mediaRecorder) {
+          console.log('MediaRecorder already cleaned up, skipping onstop...');
+          return;
+        }
+        
+        this._processingStop = true;
+        
+        // Set a timeout to automatically reset the flag in case of issues
+        const resetTimeout = setTimeout(() => {
+          if (this._processingStop) {
+            console.warn('Force resetting _processingStop flag due to timeout');
+            this._processingStop = false;
+          }
+        }, 5000); // 5 second timeout
+        
+        try {
+          if (audioChunks.length > 0) {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            
+            // Convert to base64 in chunks to prevent stack overflow
+            const base64Audio = await this.arrayBufferToBase64(arrayBuffer);
+            
+            // Send audio to session
             if (this.session && this.sessionActive) {
               this.session.sendClientContent({
                 turns: [{
@@ -268,14 +311,17 @@ class ModernGeminiLiveService extends EventEmitter {
             } else {
               throw new Error('Session not active');
             }
-          } catch (error) {
-            console.error('Failed to send audio:', error);
-            this.emit('stt-error', { error: error.message });
           }
+          audioChunks = [];
+          this.isRecording = false;
+          this.emit('stt-end');
+        } catch (error) {
+          console.error('Error in onstop handler:', error);
+          this.emit('stt-error', { error: error.message });
+        } finally {
+          clearTimeout(resetTimeout);
+          this._processingStop = false;
         }
-        audioChunks = [];
-        this.isRecording = false;
-        this.emit('stt-end');
       };
 
       this.mediaRecorder.onstart = () => {
@@ -306,6 +352,63 @@ class ModernGeminiLiveService extends EventEmitter {
       
       this.emit('stt-error', { error: errorMessage });
       throw new Error(errorMessage);
+    } finally {
+      this._settingUpAudio = false;
+    }
+  }
+  
+  async cleanupAudioResources() {
+    try {
+      // Clear any existing media recorder
+      if (this.mediaRecorder) {
+        // Remove event listeners BEFORE stopping to prevent recursive calls
+        const wasRecording = this.mediaRecorder.state === 'recording';
+        
+        // Remove event listeners first to prevent any callbacks
+        this.mediaRecorder.ondataavailable = null;
+        this.mediaRecorder.onstop = null;
+        this.mediaRecorder.onstart = null;
+        this.mediaRecorder.onerror = null;
+        
+        // Now safely stop if it was recording
+        if (wasRecording) {
+          try {
+            this.mediaRecorder.stop();
+          } catch (stopError) {
+            console.warn('Error stopping media recorder:', stopError);
+          }
+        }
+        
+        this.mediaRecorder = null;
+      }
+      
+      // Stop audio stream
+      if (this.audioStream) {
+        this.audioStream.getTracks().forEach(track => {
+          try {
+            track.stop();
+          } catch (trackError) {
+            console.warn('Error stopping audio track:', trackError);
+          }
+        });
+        this.audioStream = null;
+      }
+      
+      // Close audio context
+      if (this.audioContext && this.audioContext.state !== 'closed') {
+        try {
+          await this.audioContext.close();
+        } catch (contextError) {
+          console.warn('Error closing audio context:', contextError);
+        }
+        this.audioContext = null;
+      }
+      
+      // Reset flags
+      this.isRecording = false;
+      this._processingStop = false;
+    } catch (error) {
+      console.error('Error cleaning up audio resources:', error);
     }
   }
 
@@ -375,28 +478,8 @@ class ModernGeminiLiveService extends EventEmitter {
       }
       this._stoppingAudio = true;
 
-      // Stop recording if active
-      if (this.isRecording && this.mediaRecorder) {
-        if (this.mediaRecorder.state === 'recording') {
-          this.mediaRecorder.stop();
-        }
-        this.isRecording = false;
-      }
-
-      // Stop audio stream
-      if (this.audioStream) {
-        this.audioStream.getTracks().forEach(track => track.stop());
-        this.audioStream = null;
-      }
-
-      // Close audio context
-      if (this.audioContext && this.audioContext.state !== 'closed') {
-        await this.audioContext.close();
-        this.audioContext = null;
-      }
-
-      // Clear media recorder
-      this.mediaRecorder = null;
+      // Use the centralized cleanup method
+      await this.cleanupAudioResources();
       
       this._stoppingAudio = false;
       return { success: true };
@@ -463,6 +546,36 @@ class ModernGeminiLiveService extends EventEmitter {
       console.error('Failed to handle audio response:', error);
       this.emit('error', { error: error.message });
     }
+  }
+
+  // Helper method to convert ArrayBuffer to base64 in chunks to prevent stack overflow
+  async arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 1024; // Use smaller chunks to prevent stack overflow
+    let binaryString = '';
+    
+    // Convert to binary string in small chunks to avoid stack overflow
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const end = Math.min(i + chunkSize, bytes.length);
+      const chunk = bytes.slice(i, end);
+      
+      // Process even smaller sub-chunks to be extra safe
+      let chunkString = '';
+      for (let j = 0; j < chunk.length; j += 512) {
+        const subChunk = chunk.slice(j, Math.min(j + 512, chunk.length));
+        chunkString += String.fromCharCode.apply(null, subChunk);
+      }
+      
+      binaryString += chunkString;
+      
+      // Yield control to prevent blocking the main thread
+      if (i % (chunkSize * 10) === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+    
+    // Convert the entire binary string to base64
+    return btoa(binaryString);
   }
 
   // Audio conversion methods
@@ -647,26 +760,25 @@ class ModernGeminiLiveService extends EventEmitter {
       }
       this._endingSession = true;
 
-      // Stop recording if active
-      if (this.isRecording) {
-        await this.stopRecording();
-      }
-
-      // Clean up audio recording
-      await this.stopAudioRecording();
-
-      // Close session
+      // Close session first to prevent new messages
       if (this.session && this.sessionActive) {
         this.session.close();
         this.session = null;
       }
-
       this.sessionActive = false;
+
+      // Use centralized cleanup for audio resources
+      await this.cleanupAudioResources();
+
+      // Clear other resources
       this.audioElement = null;
-      
-      // Clear audio parts and response queue
       this.audioParts = [];
       this.responseQueue = [];
+      
+      // Reset all cleanup flags
+      this._settingUpAudio = false;
+      this._stoppingAudio = false;
+      this._processingStop = false;
       
       this._endingSession = false;
       return { success: true };

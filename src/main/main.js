@@ -43,6 +43,16 @@ if (process.env.DISABLE_GPU === 'true') {
   // Improve cache performance
   app.commandLine.appendSwitch('--disk-cache-size', '50000000'); // 50MB cache
   app.commandLine.appendSwitch('--media-cache-size', '25000000'); // 25MB media cache
+  
+  // Fix resource loading issues
+  app.commandLine.appendSwitch('--disable-web-security'); // Allow cross-origin requests in dev
+  app.commandLine.appendSwitch('--allow-running-insecure-content'); // Allow mixed content
+  app.commandLine.appendSwitch('--disable-features', 'VizDisplayCompositor'); // Fix rendering issues
+  app.commandLine.appendSwitch('--ignore-certificate-errors'); // Ignore SSL errors in dev
+  app.commandLine.appendSwitch('--ignore-ssl-errors'); // Additional SSL error handling
+  app.commandLine.appendSwitch('--ignore-certificate-errors-spki-list');
+  app.commandLine.appendSwitch('--ignore-certificate-errors-skip-list');
+  app.commandLine.appendSwitch('--disable-site-isolation-trials'); // Improve resource loading
 }
 
 // Handle GPU process crashes and cache issues
@@ -78,7 +88,10 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, '../preload/preload.js'),
-      spellcheck: true
+      spellcheck: true,
+      webSecurity: isDev ? false : true, // Disable web security in development for resource loading
+      allowRunningInsecureContent: isDev, // Allow mixed content in development
+      experimentalFeatures: true // Enable experimental web features
     },
     // Modern, minimal design with subtle frame
     frame: true,
@@ -88,7 +101,7 @@ function createWindow() {
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3002');
+    mainWindow.loadURL('http://127.0.0.1:3002');
     // Open DevTools in development mode
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {

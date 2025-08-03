@@ -36,6 +36,7 @@ const INITIAL_PROGRESS = {
   pronunciationAccuracy: 0,
   chat_messages: 0,
   achievements: [],
+  language: 'en', // Default language to prevent NOT NULL constraint violation
   weeklyStats: {
     monday: 0,
     tuesday: 0,
@@ -84,18 +85,64 @@ export function ProgressProvider({ children }) {
         
         if (error && error.code !== 'PGRST116') throw error;
         if (data) {
-          setUserProgress(prev => ({ ...prev, ...data }));
+          setUserProgress(prev => ({ ...prev, ...mapToJS(data) }));
         } else {
+          // Get user's preferred language from profile
+          let userLanguage = 'en'; // Default fallback
+          try {
+            const { data: profileData } = await supabase
+              .from('user_profiles')
+              .select('preferred_language')
+              .eq('user_id', user.id)
+              .single();
+            if (profileData?.preferred_language) {
+              userLanguage = profileData.preferred_language;
+            }
+          } catch (profileError) {
+            console.warn('Could not fetch user language preference, using default:', profileError);
+          }
+          
           // Create initial progress if not exists
-          const initialData = { ...INITIAL_PROGRESS, user_id: user.id };
+          const initialData = { 
+            ...INITIAL_PROGRESS, 
+            user_id: user.id,
+            language: userLanguage
+          };
+          const dbData = mapToDB(initialData);
           const { error: upsertError } = await supabase
             .from('user_progress')
-            .upsert(initialData);
+            .upsert(dbData);
           if (upsertError) throw upsertError;
           setUserProgress(initialData);
         }
       } catch (error) {
         console.error('Failed to fetch progress:', error);
+        // Handle RLS policy violations and other database errors gracefully
+        if (error.code === '42501' || error.code === 'PGRST204') {
+          console.warn('Database access restricted, using local fallback progress data');
+          setUserProgress(INITIAL_PROGRESS);
+        } else if (error.code === '23502' && error.message?.includes('language')) {
+          console.error('Language field is required but missing. This indicates a database schema issue.');
+          // Try to create progress with explicit language field
+          try {
+            const fallbackData = { 
+              ...INITIAL_PROGRESS, 
+              user_id: user.id,
+              language: 'en' // Explicit fallback
+            };
+            const dbData = mapToDB(fallbackData);
+            const { error: retryError } = await supabase
+              .from('user_progress')
+              .upsert(dbData);
+            if (!retryError) {
+              setUserProgress(fallbackData);
+              return;
+            }
+          } catch (retryError) {
+            console.error('Retry with explicit language also failed:', retryError);
+          }
+          setUserProgress(INITIAL_PROGRESS);
+        }
       }
     };
 
@@ -115,7 +162,7 @@ export function ProgressProvider({ children }) {
         filter: `user_id=eq.${user.id}`
       }, (payload) => {
         if (payload.new) {
-          setUserProgress(prev => ({ ...prev, ...payload.new }));
+          setUserProgress(prev => ({ ...prev, ...mapToJS(payload.new) }));
         }
       })
       .subscribe();
@@ -275,6 +322,22 @@ export function ProgressProvider({ children }) {
   const addXP = useCallback(async (amount, subject = null) => {
     if (!user?.id) return;
     
+    const updateProgressData = async (newProgress) => {
+      // Save to Supabase with error handling
+      try {
+        await supabase.from('user_progress').upsert({
+          user_id: user.id,
+          ...mapToDB(newProgress)
+        });
+      } catch (error) {
+        if (error.code === '42501' || error.code === 'PGRST204') {
+          console.warn('Database access restricted, progress saved locally only');
+        } else {
+          console.error('Failed to save progress to database:', error);
+        }
+      }
+    };
+    
     setUserProgress(prev => {
       const newTotalXP = prev.totalXP + amount;
       const newLevel = calculateLevel(newTotalXP);
@@ -312,11 +375,8 @@ export function ProgressProvider({ children }) {
         });
       }
       
-      // Save to Supabase
-      supabase.from('user_progress').upsert({
-        user_id: user.id,
-        ...newProgress
-      });
+      // Save to database asynchronously
+      updateProgressData(newProgress);
       
       return newProgress;
     });
@@ -324,6 +384,22 @@ export function ProgressProvider({ children }) {
 
   const completeLesson = useCallback(async (lessonData) => {
     if (!user?.id) return;
+    
+    const updateProgressData = async (newProgress) => {
+      // Save to Supabase with error handling
+      try {
+        await supabase.from('user_progress').upsert({
+          user_id: user.id,
+          ...mapToDB(newProgress)
+        });
+      } catch (error) {
+        if (error.code === '42501' || error.code === 'PGRST204') {
+          console.warn('Database access restricted, progress saved locally only');
+        } else {
+          console.error('Failed to save progress to database:', error);
+        }
+      }
+    };
     
     setUserProgress(prev => {
       const xpGained = lessonData.xp || 50;
@@ -339,11 +415,8 @@ export function ProgressProvider({ children }) {
         newProgress.weeklyStats[today] += lessonData.duration || 5;
       }
       
-      // Save to Supabase
-      supabase.from('user_progress').upsert({
-        user_id: user.id,
-        ...newProgress
-      });
+      // Save to database asynchronously
+      updateProgressData(newProgress);
       
       return newProgress;
     });
@@ -356,10 +429,21 @@ export function ProgressProvider({ children }) {
     
     setUserProgress(prev => {
       const newProgress = { ...prev, ...updates };
-      supabase.from('user_progress').upsert({
-        user_id: user.id,
-        ...newProgress
-      });
+      // Save to Supabase with error handling
+      (async () => {
+        try {
+          await supabase.from('user_progress').upsert({
+            user_id: user.id,
+            ...mapToDB(newProgress)
+          });
+        } catch (error) {
+          if (error.code === '42501' || error.code === 'PGRST204') {
+            console.warn('Database access restricted, progress saved locally only');
+          } else {
+            console.error('Failed to save progress to database:', error);
+          }
+        }
+      })();
       return newProgress;
     });
   }, [user?.id]);
@@ -369,10 +453,21 @@ export function ProgressProvider({ children }) {
     
     setUserProgress(prev => {
       const newProgress = { ...prev, daily_goal: minutes };
-      supabase.from('user_progress').upsert({
-        user_id: user.id,
-        ...newProgress
-      });
+      // Save to Supabase with error handling
+      (async () => {
+        try {
+          await supabase.from('user_progress').upsert({
+            user_id: user.id,
+            ...mapToDB(newProgress)
+          });
+        } catch (error) {
+          if (error.code === '42501' || error.code === 'PGRST204') {
+            console.warn('Database access restricted, progress saved locally only');
+          } else {
+            console.error('Failed to save progress to database:', error);
+          }
+        }
+      })();
       return newProgress;
     });
   }, [user?.id]);
@@ -420,4 +515,72 @@ export function ProgressProvider({ children }) {
       {children}
     </ProgressContext.Provider>
   );
+}
+
+// Mapping functions
+const COLUMN_MAPPING = {
+  // JS key: DB column
+  totalXP: 'total_xp',
+  level: 'current_level',
+  streak: 'daily_streak',
+  daily_goal: 'daily_goal',
+  daily_progress: 'daily_progress',
+  lastStudyDate: 'last_study_date',
+  total_lessons_completed: 'lessons_completed',
+  pronunciationAccuracy: 'pronunciation_accuracy',
+  chat_messages: 'chat_messages',
+  achievements: 'achievements',
+  language: 'language' // Add language mapping to prevent NOT NULL constraint violation
+  // Note: 'wordsLearned', 'weeklyStats' and 'subjects' columns removed as they don't exist in database
+};
+
+function mapToJS(data) {
+  const mapped = {};
+  Object.entries(COLUMN_MAPPING).forEach(([jsKey, dbKey]) => {
+    if (data.hasOwnProperty(dbKey)) {
+      mapped[jsKey] = data[dbKey];
+    }
+  });
+  // Handle fields locally (not stored in database)
+  // This prevents PGRST204 errors for missing columns
+  
+  // Handle wordsLearned locally
+  mapped.wordsLearned = 0;
+  
+  // Handle weeklyStats locally
+  mapped.weeklyStats = {
+    monday: 0,
+    tuesday: 0,
+    wednesday: 0,
+    thursday: 0,
+    friday: 0,
+    saturday: 0,
+    sunday: 0
+  };
+  
+  // Handle subjects locally
+  mapped.subjects = {
+    vocabulary: { xp: 0, level: 1, progress: 0 },
+    grammar: { xp: 0, level: 1, progress: 0 },
+    pronunciation: { xp: 0, level: 1, progress: 0 },
+    listening: { xp: 0, level: 1, progress: 0 },
+    speaking: { xp: 0, level: 1, progress: 0 },
+    reading: { xp: 0, level: 1, progress: 0 },
+    writing: { xp: 0, level: 1, progress: 0 }
+  };
+  
+  return mapped;
+}
+
+function mapToDB(progress) {
+  const mapped = {};
+  Object.entries(COLUMN_MAPPING).forEach(([jsKey, dbKey]) => {
+    if (progress.hasOwnProperty(jsKey)) {
+      mapped[dbKey] = progress[jsKey];
+    }
+  });
+  // Note: wordsLearned, weeklyStats and subjects fields are handled locally and not stored in database
+  // This prevents PGRST204 errors for missing 'words_learned', 'weekly_stats' and 'subjects' columns
+  
+  return mapped;
 }

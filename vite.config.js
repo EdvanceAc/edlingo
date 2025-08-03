@@ -101,8 +101,28 @@ export default defineConfig({
   },
   server: {
     port: 3002,
-    strictPort: false,
-    host: true
+    strictPort: true,
+    host: '127.0.0.1',
+    hmr: {
+      host: 'localhost',
+      port: 3002
+    },
+    cors: {
+      origin: ['http://localhost:3002', 'http://127.0.0.1:3002', 'file://', 'app://'],
+      credentials: true
+    },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    },
+    fs: {
+      strict: false, // Allow serving files outside of root
+      allow: ['..'] // Allow access to parent directories
+    }
   },
   resolve: {
     alias: {

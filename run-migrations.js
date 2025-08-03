@@ -23,7 +23,8 @@ async function runMigrations() {
     '006_add_assessment_columns.sql',
     '008_add_assessment_system.sql',
     '013_fix_user_profile_creation.sql',
-    '018_add_chat_messages_to_user_progress.sql'
+    '018_add_chat_messages_to_user_progress.sql',
+    '026_add_last_study_date_and_notifications.sql'
 ];
   
   for (const migrationFile of migrationFiles) {

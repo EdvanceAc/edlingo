@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
           // Fallback for development - create a mock user
           console.warn('Supabase not connected, using fallback authentication');
           const mockUser = {
-            id: '00000000-0000-0000-0000-000000000001',
+            id: '8bd24835-6cb5-4f76-ac99-83a50fabb6ae',
             email: 'dev@edlingo.com',
             user_metadata: { name: 'Development User' }
           };
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
         // Fallback for development - create a mock user
         console.warn('Authentication error, using fallback user');
         const mockUser = {
-          id: '00000000-0000-0000-0000-000000000001',
+          id: '8bd24835-6cb5-4f76-ac99-83a50fabb6ae',
           email: 'dev@edlingo.com',
           user_metadata: { name: 'Development User' }
         };

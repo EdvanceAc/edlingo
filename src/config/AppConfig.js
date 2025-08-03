@@ -1,8 +1,8 @@
 export class AppConfig {
   static validate() {
     const requiredEnvVars = {
-      VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-      VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY
+      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY
     };
 
     const missing = Object.entries(requiredEnvVars)
@@ -20,13 +20,13 @@ export class AppConfig {
   static get() {
     return {
       app: {
-        environment: process.env.NODE_ENV || 'development',
-        debug: process.env.NODE_ENV === 'development'
+        environment: import.meta.env.NODE_ENV || 'development',
+        debug: import.meta.env.NODE_ENV === 'development'
       },
       supabase: {
-        url: process.env.VITE_SUPABASE_URL || 'https://ecglfwqylqchdyuhmtuv.supabase.co',
-        anonKey: process.env.VITE_SUPABASE_ANON_KEY,
-        enabled: !!(process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY)
+        url: import.meta.env.VITE_SUPABASE_URL || 'https://ecglfwqylqchdyuhmtuv.supabase.co',
+        anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        enabled: !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
       },
       database: {
         syncInterval: 30000, // 30 seconds
