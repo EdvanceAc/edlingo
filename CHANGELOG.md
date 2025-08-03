@@ -5,6 +5,30 @@ All notable changes to the EdLingo project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2024-12-27
+
+### 🐛 Fixed
+- **Live Conversation Stack Overflow**: Resolved critical `RangeError: Maximum call stack size exceeded` in live conversation feature
+  - Fixed recursive call issue in `modernGeminiLiveService.js` `onstop` handler that prevented long audio recordings
+  - Replaced direct `btoa` conversion with chunked `arrayBufferToBase64` method to handle large audio data safely
+  - Implemented 1KB chunk processing with 512-byte sub-chunks to prevent memory overflow
+  - Added asynchronous processing with `setTimeout` to yield control and prevent blocking the main thread
+  - Enhanced session management with unique `recordingSessionId` to prevent cross-session interference
+  - Improved audio resource cleanup to invalidate old recording sessions
+  - Optimized `MediaRecorder` configuration for 0.5-second chunks for better real-time processing
+
+### 🛠️ Technical Improvements
+- **Audio Processing**: Restructured audio handling to support unlimited recording duration
+- **Memory Management**: Enhanced memory efficiency for large audio data processing
+- **Session Management**: Improved recording session isolation and cleanup
+- **Error Handling**: Better error recovery for audio processing failures
+
+### ✨ Enhanced
+- Live conversation feature now supports long recordings (5+ minutes) without crashes
+- Improved real-time audio processing with chunked transmission
+- Better user experience with stable audio recording functionality
+- Enhanced debugging capabilities for audio processing issues
+
 ## [1.0.5] - 2024-12-27
 
 ### 🐛 Fixed
