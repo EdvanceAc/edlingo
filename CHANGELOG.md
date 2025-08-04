@@ -5,6 +5,25 @@ All notable changes to the EdLingo project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2025-01-02
+
+### 🐛 Fixed
+- **Database Schema**: Added missing `cefr_level` column to courses table
+  - Fixed PGRST204 error "Could not find the 'cefr_level' column of 'courses' in the schema cache"
+  - Applied migration to add `cefr_level` TEXT column with default value 'A1'
+  - Updated existing courses with appropriate CEFR levels based on difficulty mapping
+
+- **Course Management**: Fixed course creation and update validation errors
+  - Corrected CEFR level validation to check `formData.cefr_level` instead of `formData.level`
+  - Added missing `updateCourse` method to Supabase courseService implementation
+  - Fixed "TypeError: courseService.updateCourse is not a function" error
+  - Enhanced course form data collection to properly map CEFR level field
+
+### 🛠️ Technical Improvements
+- **Admin Dashboard**: Improved course management functionality with proper CEFR level handling
+- **Database Consistency**: Ensured all courseService implementations have consistent method signatures
+- **Form Validation**: Enhanced validation logic to properly handle CEFR level requirements
+
 ## [1.0.7] - 2024-12-27
 
 ### ⚡ Ultra-Fast Streaming Optimizations

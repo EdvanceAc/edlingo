@@ -1,38 +1,38 @@
 {
   "mcpServers": {
-    "supabase": {
+    "supabase-edlingo": {
       "command": "npx",
       "args": [
         "-y",
         "@supabase/mcp-server-supabase@latest",
         "--project-ref=${env:SUPABASE_PROJECT_REF}",
-        "--features=database,project,debug",
         "--access-token",
         "${env:SUPABASE_ACCESS_TOKEN}"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${env:SUPABASE_ACCESS_TOKEN}",
-        "SUPABASE_PROJECT_REF": "${env:SUPABASE_PROJECT_REF}"
+        "SUPABASE_PROJECT_REF": "${env:SUPABASE_PROJECT_REF}",
+        "SUPABASE_URL": "${env:SUPABASE_URL}",
+        "SUPABASE_ANON_KEY": "${env:SUPABASE_ANON_KEY}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${env:SUPABASE_SERVICE_ROLE_KEY}"
       }
     },
     "browser-tools": {
       "command": "npx",
       "args": [
         "-y",
-        "@agentdeskai/browser-tools-mcp@latest",
-        "--port",
-        "${env:CHROME_DEBUG_PORT:-9223}"
+        "@modelcontextprotocol/server-browser-automation@latest"
       ],
       "env": {
-        "CHROME_DEBUG_PORT": "${env:CHROME_DEBUG_PORT:-9223}",
-        "BROWSER_MCP_ENABLED": "${env:BROWSER_MCP_ENABLED:-true}"
+        "BROWSER_HEADLESS": "true",
+        "BROWSER_TIMEOUT": "30000"
       }
     },
-    "sequentialthinking": {
+    "sequential-thinking": {
       "command": "npx",
       "args": [
         "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
+        "@modelcontextprotocol/server-sequential-thinking@latest"
       ]
     }
   }

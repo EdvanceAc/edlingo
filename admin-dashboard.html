@@ -2376,7 +2376,8 @@
                     loadTableCount('user_profiles', 'total-users'),
                     loadTableCount('grammar_lessons', 'total-lessons'),
                     loadTableCount('user_vocabulary', 'total-vocabulary'),
-                    loadTableCount('user_achievements', 'total-achievements')
+                    loadTableCount('user_achievements', 'total-achievements'),
+                    loadTableCount('courses', 'total-courses-stat')
                 ];
 
                 await Promise.allSettled(statsPromises);
@@ -2440,7 +2441,8 @@
                 'user_profiles': 5,
                 'grammar_lessons': 12,
                 'user_vocabulary': 248,
-                'user_achievements': 18
+                'user_achievements': 18,
+                'courses': 3
             };
             return demoCounts[tableName] || 0;
         }

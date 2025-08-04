@@ -98,6 +98,30 @@ function initializeCourseService() {
                     }
                 },
                 
+                async updateCourse(courseId, courseData) {
+                    try {
+                        // Use admin client to bypass RLS policies for course updates
+                        const client = window.supabaseAdminClient || window.supabaseClient;
+                        
+                        // Update course in Supabase
+                        const { data, error } = await client
+                            .from('courses')
+                            .update(courseData)
+                            .eq('id', courseId)
+                            .select()
+                            .single();
+                        
+                        if (error) {
+                            throw new Error(error.message);
+                        }
+                        
+                        return data;
+                    } catch (error) {
+                        console.error('❌ Error updating course:', error);
+                        throw error;
+                    }
+                },
+                
                 validateCourseData(courseData) {
                     const errors = [];
                     
@@ -122,6 +146,9 @@ function initializeCourseService() {
             courseService = {
                 async createCourse() {
                     throw new Error('Course creation service not available');
+                },
+                async updateCourse() {
+                    throw new Error('Course update service not available');
                 },
                 validateCourseData() {
                     return ['Course creation service not available'];
@@ -213,7 +240,7 @@ function validateCourseData(formData) {
         
         // Required fields validation
         if (!formData.category?.trim()) errors.push('Course category is required');
-        if (!formData.level) errors.push('CEFR level is required');
+        if (!formData.cefr_level) errors.push('CEFR level is required');
         if (!formData.instructor_name?.trim()) errors.push('Instructor name is required');
         if (!formData.instructor_email?.trim()) errors.push('Instructor email is required');
         
