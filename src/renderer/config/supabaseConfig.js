@@ -8,8 +8,19 @@ if (!supabaseAnonKey) {
   console.warn('VITE_SUPABASE_ANON_KEY is not set. Some features may not work properly.');
 }
 
-// Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey || '');
+// Create Supabase client with realtime disabled to avoid Cloudflare websocket issues
+export const supabase = createClient(supabaseUrl, supabaseAnonKey || '', {
+  realtime: {
+    params: {
+      eventsPerSecond: 0 // Disable realtime events
+    }
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'edlingo-web'
+    }
+  }
+});
 
 // Database configuration
 export const supabaseConfig = {

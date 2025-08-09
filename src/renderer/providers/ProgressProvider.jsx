@@ -149,26 +149,29 @@ export function ProgressProvider({ children }) {
     fetchProgress();
   }, [user?.id]);
 
-  // Real-time subscription
+  // Polling-based progress updates (replaces realtime to avoid Cloudflare websocket issues)
   useEffect(() => {
     if (!user?.id) return;
     
-    const subscription = supabase
-      .channel('user_progress_changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'user_progress',
-        filter: `user_id=eq.${user.id}`
-      }, (payload) => {
-        if (payload.new) {
-          setUserProgress(prev => ({ ...prev, ...mapToJS(payload.new) }));
+    // Poll for progress updates every 30 seconds instead of using realtime
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data && !error) {
+          setUserProgress(prev => ({ ...prev, ...mapToJS(data) }));
         }
-      })
-      .subscribe();
+      } catch (error) {
+        console.warn('Progress polling error:', error);
+      }
+    }, 30000); // Poll every 30 seconds
 
     return () => {
-      subscription.unsubscribe();
+      clearInterval(pollInterval);
     };
   }, [user?.id]);
 
