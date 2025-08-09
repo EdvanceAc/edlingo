@@ -135,28 +135,41 @@
     </div>
 
     <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
-
-        // Password toggle functionality
-        document.getElementById('togglePassword').addEventListener('click', function() {
-            const passwordInput = document.getElementById('password');
-            const eyeIcon = this.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                eyeIcon.setAttribute('data-lucide', 'eye-off');
-            } else {
-                passwordInput.type = 'password';
-                eyeIcon.setAttribute('data-lucide', 'eye');
-            }
-            
-            // Reinitialize icons
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Lucide icons
             lucide.createIcons();
-        });
 
-        // Form submission
-        document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+            // Password toggle functionality
+            const togglePasswordBtn = document.getElementById('togglePassword');
+            if (togglePasswordBtn) {
+                togglePasswordBtn.addEventListener('click', function() {
+                    const passwordInput = document.getElementById('password');
+                    const eyeIcon = this.querySelector('i');
+                    
+                    // Check if eyeIcon exists before trying to set attributes
+                    if (!eyeIcon) {
+                        console.error('Eye icon element not found');
+                        return;
+                    }
+                    
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        eyeIcon.setAttribute('data-lucide', 'eye-off');
+                    } else {
+                        passwordInput.type = 'password';
+                        eyeIcon.setAttribute('data-lucide', 'eye');
+                    }
+                    
+                    // Reinitialize icons
+                    lucide.createIcons();
+                });
+            }
+
+            // Form submission
+            const adminLoginForm = document.getElementById('adminLoginForm');
+            if (adminLoginForm) {
+                adminLoginForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
             const username = document.getElementById('username').value;
@@ -192,19 +205,21 @@
                     }
                 } else {
                     // Show error message
-                    errorMessage.classList.remove('hidden');
-                }
-            }, 1500);
-        });
-
-        // Check if already authenticated
-        if (localStorage.getItem('adminAuthenticated') === 'true') {
-            if (window.electronAPI) {
-                window.location.href = '#/admin';
-            } else {
-                window.location.href = 'admin-dashboard.html';
+                        errorMessage.classList.remove('hidden');
+                    }
+                }, 1500);
+            });
             }
-        }
+
+            // Check if already authenticated
+            if (localStorage.getItem('adminAuthenticated') === 'true') {
+                if (window.electronAPI) {
+                    window.location.href = '#/admin';
+                } else {
+                    window.location.href = 'admin-dashboard.html';
+                }
+            }
+        });
     </script>
 </body>
 </html>

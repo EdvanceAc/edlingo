@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Admin Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-result { margin: 10px 0; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .loading { border-left-color: #ffc107; background: #fff3cd; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EdLingo Admin Dashboard - Simple Connection Test</h1>
+        <p>This test will help identify the exact cause of "Failed to fetch" errors.</p>
+        
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="results"></div>
+    </div>
+    
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg';
+        
+        let supabase, supabaseAdmin;
+        
+        function addResult(title, content, type = 'loading') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<h3>${title}</h3><div>${content}</div>`;
+            results.appendChild(div);
+            console.log(`${title}: ${content}`);
+            return div;
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            console.clear();
+        }
+        
+        async function initializeSupabase() {
+            const resultDiv = addResult('🔧 Initializing Supabase', 'Creating Supabase clients...');
+            
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = '<h3>✅ Supabase Initialized</h3><div>Both regular and admin clients created successfully</div>';
+                return true;
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `<h3>❌ Supabase Initialization Failed</h3><div>Error: ${error.message}</div>`;
+                return false;
+            }
+        }
+        
+        async function testBasicConnection() {
+            const resultDiv = addResult('🌐 Basic Connection Test', 'Testing basic Supabase connection...');
+            
+            try {
+                const { data, error } = await supabase.from('user_profiles').select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    resultDiv.className = 'test-result error';
+                    resultDiv.innerHTML = `<h3>❌ Basic Connection Failed</h3><div><strong>Error:</strong> ${error.message}<br><strong>Code:</strong> ${error.code}</div>`;
+                    return false;
+                } else {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `<h3>✅ Basic Connection Success</h3><div>Found ${data} user profiles</div>`;
+                    return true;
+                }
+            } catch (networkError) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `<h3>❌ Network Error</h3><div>This indicates a CORS or connectivity issue: ${networkError.message}</div>`;
+                return false;
+            }
+        }
+        
+        async function testUserProfiles() {
+            const resultDiv = addResult('👥 User Profiles Test', 'Fetching user profiles...');
+            
+            try {
+                const { data: profiles, error } = await supabase
+                    .from('user_profiles')
+                    .select('id, email, full_name, created_at')
+                    .limit(5);
+                
+                if (error) {
+                    resultDiv.className = 'test-result error';
+                    resultDiv.innerHTML = `<h3>❌ User Profiles Failed</h3><div><strong>Error:</strong> ${error.message}<br><strong>Code:</strong> ${error.code}</div>`;
+                    return false;
+                } else {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `<h3>✅ User Profiles Success</h3><div>Found ${profiles.length} profiles<pre>${JSON.stringify(profiles, null, 2)}</pre></div>`;
+                    return true;
+                }
+            } catch (networkError) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `<h3>❌ Network Error - User Profiles</h3><div>${networkError.message}</div>`;
+                return false;
+            }
+        }
+        
+        async function testCourses() {
+            const resultDiv = addResult('📚 Courses Test', 'Fetching courses...');
+            
+            try {
+                const { data: courses, error } = await supabase
+                    .from('courses')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) {
+                    resultDiv.className = 'test-result error';
+                    resultDiv.innerHTML = `<h3>❌ Courses Failed</h3><div><strong>Error:</strong> ${error.message}<br><strong>Code:</strong> ${error.code}</div>`;
+                    return false;
+                } else {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `<h3>✅ Courses Success</h3><div>Found ${courses.length} courses<pre>${JSON.stringify(courses, null, 2)}</pre></div>`;
+                    return true;
+                }
+            } catch (networkError) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `<h3>❌ Network Error - Courses</h3><div>${networkError.message}</div>`;
+                return false;
+            }
+        }
+        
+        async function testLearningSessions() {
+            const resultDiv = addResult('📖 Learning Sessions Test', 'Fetching learning sessions with user profiles...');
+            
+            try {
+                const { data: sessions, error } = await supabase
+                    .from('learning_sessions')
+                    .select(`
+                        *,
+                        user_profiles(email, full_name)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                if (error) {
+                    resultDiv.className = 'test-result error';
+                    resultDiv.innerHTML = `<h3>❌ Learning Sessions Failed</h3><div><strong>Error:</strong> ${error.message}<br><strong>Code:</strong> ${error.code}<br><strong>Details:</strong> ${JSON.stringify(error.details)}</div>`;
+                    return false;
+                } else {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `<h3>✅ Learning Sessions Success</h3><div>Found ${sessions.length} sessions<pre>${JSON.stringify(sessions, null, 2)}</pre></div>`;
+                    return true;
+                }
+            } catch (networkError) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `<h3>❌ Network Error - Learning Sessions</h3><div>${networkError.message}</div>`;
+                return false;
+            }
+        }
+        
+        async function testUserAchievements() {
+            const resultDiv = addResult('🏆 User Achievements Test', 'Fetching user achievements...');
+            
+            try {
+                const { data: achievements, error } = await supabase
+                    .from('user_achievements')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) {
+                    resultDiv.className = 'test-result error';
+                    resultDiv.innerHTML = `<h3>❌ User Achievements Failed</h3><div><strong>Error:</strong> ${error.message}<br><strong>Code:</strong> ${error.code}</div>`;
+                    return false;
+                } else {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `<h3>✅ User Achievements Success</h3><div>Found ${achievements.length} achievements<pre>${JSON.stringify(achievements, null, 2)}</pre></div>`;
+                    return true;
+                }
+            } catch (networkError) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `<h3>❌ Network Error - User Achievements</h3><div>${networkError.message}</div>`;
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            
+            console.log('Starting comprehensive admin dashboard tests...');
+            
+            const initSuccess = await initializeSupabase();
+            if (!initSuccess) {
+                addResult('🛑 Test Stopped', 'Cannot proceed without Supabase initialization', 'error');
+                return;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const tests = [
+                testBasicConnection,
+                testUserProfiles,
+                testCourses,
+                testLearningSessions,
+                testUserAchievements
+            ];
+            
+            let passedTests = 0;
+            
+            for (const test of tests) {
+                const success = await test();
+                if (success) passedTests++;
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            const finalResult = addResult(
+                '📊 Test Summary',
+                `Passed: ${passedTests}/${tests.length} tests`,
+                passedTests === tests.length ? 'success' : 'error'
+            );
+            
+            if (passedTests < tests.length) {
+                finalResult.innerHTML += '<div><strong>Next Steps:</strong> Check the specific errors above to identify the root cause of "Failed to fetch" issues.</div>';
+            } else {
+                finalResult.innerHTML += '<div><strong>Result:</strong> All tests passed! The Supabase connection is working correctly.</div>';
+            }
+        }
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runAllTests, 1000);
+        });
+    </script>
+</body>
+</html>

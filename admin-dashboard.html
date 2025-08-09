@@ -2852,6 +2852,7 @@
 
         async function loadRecentActivity() {
             try {
+                console.log('Loading recent activity...');
                 const { data: activities, error } = await supabase
                     .from('learning_sessions')
                     .select(`
@@ -2861,12 +2862,28 @@
                     .order('created_at', { ascending: false })
                     .limit(10);
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase error in loadRecentActivity:', error);
+                    throw error;
+                }
 
+                console.log('Recent activity data:', activities);
                 const activityList = document.getElementById('activity-list');
                 
                 if (!activities || activities.length === 0) {
-                    activityList.innerHTML = '<div class="text-center text-gray-500">No recent activity found</div>';
+                    activityList.innerHTML = `
+                        <div class="text-center p-6">
+                            <div class="text-gray-400 mb-4">
+                                <i data-lucide="activity" class="w-12 h-12 mx-auto mb-2"></i>
+                                <h3 class="text-lg font-semibold text-gray-600">No Recent Activity</h3>
+                            </div>
+                            <p class="text-gray-500 mb-4">Learning sessions will appear here once users start using the application.</p>
+                            <div class="text-sm text-gray-400">
+                                <p>💡 Tip: Users need to complete lessons or assessments to generate activity data.</p>
+                            </div>
+                        </div>
+                    `;
+                    lucide.createIcons();
                     return;
                 }
 
@@ -3250,7 +3267,7 @@
             const lessonCount = document.querySelectorAll('.lesson-item').length + 1;
             
             const lessonHTML = `
-                <div class="lesson-item bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                <div id="lesson-${lessonCount}" class="lesson-item bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-medium text-gray-900">Lesson ${lessonCount}</h4>
                         <button type="button" onclick="removeLesson(this)" class="text-red-600 hover:text-red-800">
@@ -5074,10 +5091,48 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             // Load lesson content
                             if (lesson.content && Array.isArray(lesson.content)) {
                                 lesson.content.forEach(contentItem => {
-                                    addLessonContent(index + 1);
+                                    // Create content item manually instead of calling addLessonContent with wrong parameter
+                                    const contentContainer = lessonItem.querySelector('.lesson-content-container');
+                                    const contentCount = contentContainer.querySelectorAll('.content-item').length + 1;
+                                    
+                                    const contentHTML = `
+                                        <div class="content-item bg-white p-3 rounded border border-gray-200">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <h6 class="font-medium text-gray-700">Content Item ${contentCount}</h6>
+                                                <button type="button" onclick="removeLessonContent(this)" class="text-red-600 hover:text-red-800">
+                                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                                </button>
+                                            </div>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-600 mb-1">Content Type</label>
+                                                    <select class="content-type w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="updateContentFields(this)">
+                                                        <option value="text">Text Content</option>
+                                                        <option value="image">Image</option>
+                                                        <option value="audio">Audio</option>
+                                                        <option value="video">Video</option>
+                                                        <option value="pdf">PDF Document</option>
+                                                        <option value="quiz">Interactive Quiz</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-600 mb-1">Content Title</label>
+                                                    <input type="text" class="content-title w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="Enter content title">
+                                                </div>
+                                            </div>
+                                            <div class="content-fields">
+                                                <div class="text-content-fields">
+                                                    <label class="block text-sm font-medium text-gray-600 mb-1">Text Content</label>
+                                                    <textarea class="content-text w-full px-2 py-1 border border-gray-300 rounded text-sm" rows="3" placeholder="Enter your text content here..."></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                    
+                                    contentContainer.insertAdjacentHTML('beforeend', contentHTML);
+                                    lucide.createIcons();
                                     
                                     // Find the last added content item
-                                    const contentContainer = lessonItem.querySelector('.lesson-content-container');
                                     const contentItems = contentContainer.querySelectorAll('.content-item');
                                     const lastContentItem = contentItems[contentItems.length - 1];
                                     

@@ -176,3 +176,5 @@ electron-packager/
 # Auto-generated files
 package-lock.json
 yarn.lock
+# Local Netlify folder
+.netlify

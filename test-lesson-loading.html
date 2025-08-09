@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Lesson Loading</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background: #2563eb;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+        #testResults {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Lesson Loading Test</h1>
+        <p>This page tests the lesson loading functionality for the course edit modal.</p>
+        
+        <div>
+            <button class="test-button" onclick="testLessonLoading()">Test Lesson Loading</button>
+            <button class="test-button" onclick="openAdminDashboard()">Open Admin Dashboard</button>
+            <button class="test-button" onclick="clearResults()">Clear Results</button>
+        </div>
+        
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        function logResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            resultsDiv.appendChild(resultDiv);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+        }
+
+        function testLessonLoading() {
+            logResult('Starting lesson loading test...', 'info');
+            
+            // Test data structure
+            const testCourse = {
+                learning_objectives: 'Learn basic Spanish conversation skills',
+                prerequisites: 'No prior Spanish knowledge required',
+                skills_focus: ['speaking', 'listening'],
+                lessons: [
+                    {
+                        title: 'Introduction to Spanish',
+                        level: 'A1',
+                        duration: '45 minutes',
+                        objectives: 'Learn basic greetings and introductions',
+                        content: [
+                            {
+                                type: 'text',
+                                content: 'Welcome to Spanish! In this lesson, we will learn basic greetings.'
+                            },
+                            {
+                                type: 'audio',
+                                description: 'Listen to basic greetings',
+                                duration: '2 minutes'
+                            },
+                            {
+                                type: 'quiz',
+                                title: 'Greetings Quiz',
+                                questions: '5'
+                            }
+                        ]
+                    },
+                    {
+                        title: 'Numbers and Colors',
+                        level: 'A1',
+                        duration: '30 minutes',
+                        objectives: 'Learn numbers 1-20 and basic colors',
+                        content: [
+                            {
+                                type: 'text',
+                                content: 'In this lesson, we will learn numbers and colors in Spanish.'
+                            },
+                            {
+                                type: 'image',
+                                description: 'Color chart in Spanish'
+                            },
+                            {
+                                type: 'video',
+                                description: 'Numbers pronunciation guide',
+                                duration: '3 minutes'
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            logResult(`Test course has ${testCourse.lessons.length} lessons`, 'info');
+            logResult(`Lesson 1: "${testCourse.lessons[0].title}" with ${testCourse.lessons[0].content.length} content items`, 'info');
+            logResult(`Lesson 2: "${testCourse.lessons[1].title}" with ${testCourse.lessons[1].content.length} content items`, 'info');
+            
+            // Test lesson structure
+            testCourse.lessons.forEach((lesson, index) => {
+                logResult(`Lesson ${index + 1} structure:`, 'info');
+                logResult(`  - Title: ${lesson.title}`, 'info');
+                logResult(`  - Level: ${lesson.level}`, 'info');
+                logResult(`  - Duration: ${lesson.duration}`, 'info');
+                logResult(`  - Objectives: ${lesson.objectives}`, 'info');
+                logResult(`  - Content items: ${lesson.content.length}`, 'info');
+                
+                lesson.content.forEach((content, contentIndex) => {
+                    logResult(`    Content ${contentIndex + 1}: ${content.type} - ${content.content || content.description || content.title || 'No description'}`, 'info');
+                });
+            });
+            
+            logResult('✅ Test course data structure is valid', 'success');
+            logResult('To test the actual loading, open the Admin Dashboard and click "Edit" on the test course', 'info');
+        }
+
+        function openAdminDashboard() {
+            logResult('Opening Admin Dashboard...', 'info');
+            window.open('/admin-dashboard.html', '_blank');
+        }
+
+        // Auto-run test on page load
+        window.addEventListener('load', () => {
+            logResult('Page loaded. Ready to test lesson loading functionality.', 'info');
+        });
+    </script>
+</body>
+</html>

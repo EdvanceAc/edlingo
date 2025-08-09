@@ -15,9 +15,57 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../renderer/compone
 import { Progress } from '../../renderer/components/ui/Progress';
 import { Badge } from '../../renderer/components/ui/Badge';
 import Button from '../../renderer/components/ui/Button';
+import { supabase } from '../../renderer/config/supabaseConfig';
 
 const CourseSection = () => {
-  const [units, setUnits] = useState([
+  const [units, setUnits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentStreak, setCurrentStreak] = useState(7);
+  const [totalXP, setTotalXP] = useState(270);
+  const [nextLevelXP, setNextLevelXP] = useState(500);
+
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      
+      // Try to fetch from Supabase first
+      const { data: supabaseCourses, error } = await supabase
+        .from('courses')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.warn('Supabase courses not available, using mock data:', error.message);
+        // Use mock data if Supabase is not available
+        setUnits(getMockCourses());
+      } else {
+        // Transform Supabase data to match our component structure
+        const transformedCourses = supabaseCourses.map(course => ({
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          icon: course.icon || "📚",
+          progress: course.progress || 0,
+          isUnlocked: course.is_active !== false, // Use is_active field from database
+          isCompleted: course.is_completed || false,
+          lessons: course.lesson_count || 0,
+          xp: course.xp_reward || 0
+        }));
+        setUnits(transformedCourses.length > 0 ? transformedCourses : getMockCourses());
+      }
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      setUnits(getMockCourses());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getMockCourses = () => [
     {
       id: 1,
       title: "Basic Greetings",
@@ -58,11 +106,7 @@ const CourseSection = () => {
       lessons: 7,
       xp: 0
     }
-  ]);
-
-  const [currentStreak, setCurrentStreak] = useState(7);
-  const [totalXP, setTotalXP] = useState(270);
-  const [nextLevelXP, setNextLevelXP] = useState(500);
+  ];
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -198,6 +242,16 @@ const CourseSection = () => {
       </motion.div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div

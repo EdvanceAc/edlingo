@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const supabaseUrl = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const resultsDiv = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const p = document.createElement('p');
+            p.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(p);
+            console.log(message);
+        }
+        
+        async function testConnection() {
+            try {
+                log('Testing Supabase connection...');
+                
+                // Test 1: Basic connection
+                log('Test 1: Basic REST API connection');
+                const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    }
+                });
+                
+                if (response.ok) {
+                    log('✅ Basic REST API connection successful', 'success');
+                } else {
+                    log(`❌ Basic REST API connection failed: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+                
+                // Test 2: List tables
+                log('Test 2: Listing available tables');
+                const tablesResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${supabaseAnonKey}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (tablesResponse.ok) {
+                    const tables = await tablesResponse.json();
+                    log(`✅ Found ${Object.keys(tables.definitions || {}).length} tables`, 'success');
+                    log(`Available tables: ${Object.keys(tables.definitions || {}).join(', ')}`);
+                } else {
+                    log(`❌ Failed to list tables: ${tablesResponse.status}`, 'error');
+                }
+                
+                // Test 3: Try to query a specific table
+                log('Test 3: Querying user_profiles table');
+                const { data, error } = await supabase
+                    .from('user_profiles')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    log(`❌ Error querying user_profiles: ${error.message}`, 'error');
+                } else {
+                    log(`✅ user_profiles table accessible`, 'success');
+                }
+                
+                // Test 4: Try other tables
+                const tables = ['courses', 'user_achievements', 'lessons'];
+                for (const table of tables) {
+                    log(`Test 4.${tables.indexOf(table) + 1}: Querying ${table} table`);
+                    const { data, error } = await supabase
+                        .from(table)
+                        .select('count', { count: 'exact', head: true });
+                    
+                    if (error) {
+                        log(`❌ Error querying ${table}: ${error.message}`, 'error');
+                    } else {
+                        log(`✅ ${table} table accessible`, 'success');
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Connection test failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Run test when page loads
+        window.addEventListener('load', testConnection);
+    </script>
+</body>
+</html>

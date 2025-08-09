@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Debug - EdLingo</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .debug-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        .warning {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px;
+            border-left: 3px solid #007bff;
+            background: #f8f9fa;
+        }
+        .log-error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .log-success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔧 EdLingo Admin Dashboard Debug Tool</h1>
+        <p>This tool will help identify the exact cause of "Failed to fetch" errors in the admin dashboard.</p>
+        
+        <div class="debug-section info">
+            <h3>🎯 Debug Status</h3>
+            <div id="debug-status">Initializing...</div>
+        </div>
+        
+        <div class="debug-section">
+            <h3>📋 Debug Log</h3>
+            <button onclick="clearLog()">Clear Log</button>
+            <button onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+            <div id="debug-log"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h3>📊 Test Results</h3>
+            <div id="test-results"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Supabase configuration (same as admin dashboard)
+        const SUPABASE_URL = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg';
+        
+        let supabase, supabaseAdmin;
+        let testResults = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('debug-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            // Also log to console
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        function clearLog() {
+            document.getElementById('debug-log').innerHTML = '';
+            document.getElementById('test-results').innerHTML = '';
+            testResults = [];
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('debug-status');
+            statusDiv.className = `debug-section ${type}`;
+            statusDiv.innerHTML = `<h3>🎯 Debug Status</h3><div>${message}</div>`;
+        }
+        
+        function addTestResult(testName, success, details) {
+            testResults.push({ testName, success, details });
+            
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `debug-section ${success ? 'success' : 'error'}`;
+            resultDiv.innerHTML = `
+                <h4>${success ? '✅' : '❌'} ${testName}</h4>
+                <pre>${details}</pre>
+            `;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        async function initializeSupabase() {
+            log('Initializing Supabase clients...');
+            updateStatus('Initializing Supabase...', 'warning');
+            
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+                
+                log('Supabase clients created successfully', 'success');
+                updateStatus('Supabase initialized successfully', 'success');
+                return true;
+            } catch (error) {
+                log(`Failed to initialize Supabase: ${error.message}`, 'error');
+                updateStatus(`Initialization failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testExactAdminQueries() {
+            log('Testing exact queries from admin dashboard...');
+            
+            // Test 1: Recent Activity (exact same query as admin dashboard)
+            try {
+                log('Testing learning_sessions with user_profiles relationship...');
+                
+                const { data: activities, error } = await supabase
+                    .from('learning_sessions')
+                    .select(`
+                        *,
+                        user_profiles(email, full_name)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) {
+                    log(`❌ Recent Activity Query Failed: ${error.message}`, 'error');
+                    addTestResult('Recent Activity Query', false, `Error: ${error.message}\nCode: ${error.code}\nDetails: ${JSON.stringify(error.details, null, 2)}`);
+                } else {
+                    log(`✅ Recent Activity Query Success: Found ${activities.length} sessions`, 'success');
+                    addTestResult('Recent Activity Query', true, `Found ${activities.length} learning sessions\n${JSON.stringify(activities.slice(0, 1), null, 2)}`);
+                }
+            } catch (networkError) {
+                log(`❌ Network Error in Recent Activity: ${networkError.message}`, 'error');
+                addTestResult('Recent Activity Query', false, `Network Error: ${networkError.message}\nThis indicates a CORS or connectivity issue`);
+            }
+            
+            // Test 2: User Profiles (exact same query as admin dashboard)
+            try {
+                log('Testing user_profiles query...');
+                
+                const { data: profiles, error } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .limit(10);
+                
+                if (error) {
+                    log(`❌ User Profiles Query Failed: ${error.message}`, 'error');
+                    addTestResult('User Profiles Query', false, `Error: ${error.message}\nCode: ${error.code}`);
+                } else {
+                    log(`✅ User Profiles Query Success: Found ${profiles.length} profiles`, 'success');
+                    addTestResult('User Profiles Query', true, `Found ${profiles.length} user profiles\n${JSON.stringify(profiles.slice(0, 1), null, 2)}`);
+                }
+            } catch (networkError) {
+                log(`❌ Network Error in User Profiles: ${networkError.message}`, 'error');
+                addTestResult('User Profiles Query', false, `Network Error: ${networkError.message}`);
+            }
+            
+            // Test 3: User Achievements
+            try {
+                log('Testing user_achievements query...');
+                
+                const { data: achievements, error } = await supabase
+                    .from('user_achievements')
+                    .select('*')
+                    .limit(10);
+                
+                if (error) {
+                    log(`❌ User Achievements Query Failed: ${error.message}`, 'error');
+                    addTestResult('User Achievements Query', false, `Error: ${error.message}\nCode: ${error.code}`);
+                } else {
+                    log(`✅ User Achievements Query Success: Found ${achievements.length} achievements`, 'success');
+                    addTestResult('User Achievements Query', true, `Found ${achievements.length} achievements\n${JSON.stringify(achievements.slice(0, 1), null, 2)}`);
+                }
+            } catch (networkError) {
+                log(`❌ Network Error in User Achievements: ${networkError.message}`, 'error');
+                addTestResult('User Achievements Query', false, `Network Error: ${networkError.message}`);
+            }
+            
+            // Test 4: Courses
+            try {
+                log('Testing courses query...');
+                
+                const { data: courses, error } = await supabase
+                    .from('courses')
+                    .select('*')
+                    .limit(10);
+                
+                if (error) {
+                    log(`❌ Courses Query Failed: ${error.message}`, 'error');
+                    addTestResult('Courses Query', false, `Error: ${error.message}\nCode: ${error.code}`);
+                } else {
+                    log(`✅ Courses Query Success: Found ${courses.length} courses`, 'success');
+                    addTestResult('Courses Query', true, `Found ${courses.length} courses\n${JSON.stringify(courses.slice(0, 1), null, 2)}`);
+                }
+            } catch (networkError) {
+                log(`❌ Network Error in Courses: ${networkError.message}`, 'error');
+                addTestResult('Courses Query', false, `Network Error: ${networkError.message}`);
+            }
+        }
+        
+        async function runFullDiagnostic() {
+            clearLog();
+            log('🚀 Starting full diagnostic...', 'info');
+            
+            const initSuccess = await initializeSupabase();
+            if (!initSuccess) {
+                log('❌ Cannot proceed without Supabase initialization', 'error');
+                updateStatus('Diagnostic failed - Supabase initialization error', 'error');
+                return;
+            }
+            
+            await testExactAdminQueries();
+            
+            const successCount = testResults.filter(r => r.success).length;
+            const totalTests = testResults.length;
+            
+            log(`🏁 Diagnostic complete: ${successCount}/${totalTests} tests passed`, successCount === totalTests ? 'success' : 'error');
+            updateStatus(`Diagnostic complete: ${successCount}/${totalTests} tests passed`, successCount === totalTests ? 'success' : 'error');
+            
+            if (successCount < totalTests) {
+                log('❗ Some tests failed. Check the Test Results section for details.', 'error');
+            } else {
+                log('🎉 All tests passed! The Supabase connection is working correctly.', 'success');
+            }
+        }
+        
+        // Auto-run diagnostic when page loads
+        window.addEventListener('load', () => {
+            log('🔧 Admin Debug Tool loaded');
+            setTimeout(runFullDiagnostic, 1000);
+        });
+        
+        // Override console.error to capture any JavaScript errors
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+            log(`🚨 JavaScript Error: ${args.join(' ')}`, 'error');
+            originalConsoleError.apply(console, args);
+        };
+        
+        // Capture unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            log(`🚨 Unhandled Promise Rejection: ${event.reason}`, 'error');
+        });
+    </script>
+</body>
+</html>

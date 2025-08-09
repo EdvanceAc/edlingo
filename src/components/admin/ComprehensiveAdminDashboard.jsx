@@ -81,6 +81,15 @@ const ComprehensiveAdminDashboard = () => {
   const [termLessons, setTermLessons] = useState([]);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [lessonMaterials, setLessonMaterials] = useState([]);
+  
+  // Lesson editing state
+  const [editingLesson, setEditingLesson] = useState(null);
+  const [showLessonEditForm, setShowLessonEditForm] = useState(false);
+  const [lessonEditData, setLessonEditData] = useState({
+    name: '',
+    level: 'beginner',
+    content: ''
+  });
 
   // Student Analytics State
   const [students, setStudents] = useState([]);
@@ -477,6 +486,31 @@ const ComprehensiveAdminDashboard = () => {
       setNewTermName('');
       setNewTermDescription('');
     };
+    
+    const handleEditLesson = (lesson) => {
+      setEditingLesson(lesson);
+      setLessonEditData({
+        name: lesson.name || '',
+        level: lesson.level || 'beginner',
+        content: lesson.content || ''
+      });
+      setShowLessonEditForm(true);
+    };
+    
+    const handleUpdateLesson = async () => {
+      if (!editingLesson || !lessonEditData.name.trim()) return;
+      
+      await updateLesson(editingLesson.id, lessonEditData);
+      setShowLessonEditForm(false);
+      setEditingLesson(null);
+      setLessonEditData({ name: '', level: 'beginner', content: '' });
+    };
+    
+    const handleCancelLessonEdit = () => {
+      setShowLessonEditForm(false);
+      setEditingLesson(null);
+      setLessonEditData({ name: '', level: 'beginner', content: '' });
+    };
 
     const handleCreateLesson = async () => {
       if (!newLessonName.trim() || !selectedTerm) return;
@@ -623,17 +657,34 @@ const ComprehensiveAdminDashboard = () => {
                 {termLessons.map((lesson) => (
                   <Card 
                     key={lesson.id} 
-                    className={`cursor-pointer transition-colors ${
+                    className={`transition-colors ${
                       selectedLesson?.id === lesson.id ? 'bg-green-50 border-green-200' : 'hover:bg-gray-50'
                     }`}
-                    onClick={() => {
-                      setSelectedLesson(lesson);
-                      loadLessonMaterials(lesson.id);
-                    }}
                   >
                     <CardContent className="p-3">
-                      <h4 className="font-medium">{lesson.name}</h4>
-                      <Badge variant="outline">{lesson.level}</Badge>
+                      <div className="flex justify-between items-start">
+                        <div 
+                          className="cursor-pointer flex-1"
+                          onClick={() => {
+                            setSelectedLesson(lesson);
+                            loadLessonMaterials(lesson.id);
+                          }}
+                        >
+                          <h4 className="font-medium">{lesson.name}</h4>
+                          <Badge variant="outline">{lesson.level}</Badge>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditLesson(lesson);
+                          }}
+                          className="ml-2"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -724,6 +775,66 @@ const ComprehensiveAdminDashboard = () => {
       </div>
     );
   };
+
+  // Lesson Edit Form Modal
+  const LessonEditForm = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Edit Lesson</h3>
+          <Button variant="outline" size="sm" onClick={handleCancelLessonEdit}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Lesson Name</label>
+            <input
+              type="text"
+              value={lessonEditData.name}
+              onChange={(e) => setLessonEditData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter lesson name"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2">Level</label>
+            <select
+              value={lessonEditData.level}
+              onChange={(e) => setLessonEditData(prev => ({ ...prev, level: e.target.value }))}
+              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2">Content (Optional)</label>
+            <textarea
+              value={lessonEditData.content}
+              onChange={(e) => setLessonEditData(prev => ({ ...prev, content: e.target.value }))}
+              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
+              placeholder="Enter lesson content or description"
+            />
+          </div>
+          
+          <div className="flex gap-2 pt-4">
+            <Button onClick={handleUpdateLesson} disabled={!lessonEditData.name.trim()}>
+              <Save className="w-4 h-4 mr-2" />
+              Update Lesson
+            </Button>
+            <Button variant="outline" onClick={handleCancelLessonEdit}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // Student Analytics Component
   const StudentAnalytics = () => (
@@ -1177,6 +1288,34 @@ const ComprehensiveAdminDashboard = () => {
     }
   };
 
+  const updateLesson = async (lessonId, lessonData) => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons')
+        .update({
+          ...lessonData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', lessonId)
+        .select();
+      
+      if (error) throw error;
+      
+      // Update the lesson in the state
+      setTermLessons(prev => prev.map(lesson => 
+        lesson.id === lessonId ? data[0] : lesson
+      ));
+      
+      // If this is the currently selected lesson, refresh its materials
+      if (selectedLesson && selectedLesson.id === lessonId) {
+        setSelectedLesson(data[0]);
+        await loadLessonMaterials(lessonId);
+      }
+    } catch (error) {
+      console.error('Error updating lesson:', error);
+    }
+  };
+
   const createMaterial = async (lessonId, materialData) => {
     try {
       const { data, error } = await supabase
@@ -1304,6 +1443,9 @@ const ComprehensiveAdminDashboard = () => {
           <CourseEditor />
         </div>
       )}
+      
+      {/* Lesson Edit Form Modal */}
+      {showLessonEditForm && <LessonEditForm />}
     </div>
   );
 };
