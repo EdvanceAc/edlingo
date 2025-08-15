@@ -30,7 +30,7 @@ import {
   Timer,
   Brain
 } from 'lucide-react';
-import { useProgression } from '../../hooks/useProgression';
+import useProgression from '../../hooks/useProgression';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import textSimplificationService from '../../services/textSimplification';

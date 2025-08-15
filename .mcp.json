@@ -1,13 +1,16 @@
 {
   "mcpServers": {
-    "supabase-edlingo": {
+    "supabase": {
       "command": "npx",
       "args": [
         "-y",
         "@supabase/mcp-server-supabase@latest",
-        "--project-ref=${env:SUPABASE_PROJECT_REF}",
+        "--project-ref",
+        "${env:SUPABASE_PROJECT_REF}",
         "--access-token",
-        "${env:SUPABASE_ACCESS_TOKEN}"
+        "${env:SUPABASE_ACCESS_TOKEN}",
+        "--features",
+        "database,project,debug"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${env:SUPABASE_ACCESS_TOKEN}",

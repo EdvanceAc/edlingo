@@ -26,6 +26,9 @@ import AssessmentTest from './pages/AssessmentTest';
 import Courses from './pages/Courses';
 import SupabaseGeminiTest from './components/SupabaseGeminiTest';
 
+// Course Components
+import LessonsSection from '../components/Course/LessonsSection';
+
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import DatabaseHealthCheck from './components/DatabaseHealthCheck';
@@ -333,6 +336,23 @@ function App() {
                           </ProtectedRoute>
                         } 
                       />
+                      <Route 
+                        path="/courses/:courseId" 
+                        element={
+                          <ProtectedRoute>
+                            <motion.div
+                              key="course-lessons"
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -20 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <LessonsSection />
+                            </motion.div>
+                          </ProtectedRoute>
+                        } 
+                      />
+
                       <Route 
                         path="/settings" 
                         element={

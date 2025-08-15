@@ -269,7 +269,7 @@ const SkillMap = () => {
                   ))}
                   {unit.lessons.length > 2 && (
                     <div className="text-center text-white/60 text-xs">
-                      +{unit.lessons.length - 2} more lessons
+                      {`+${unit.lessons.length - 2} more lessons` }
                     </div>
                   )}
                 </div>

@@ -540,7 +540,7 @@ class AdminDatabaseService {
           'postgrestRequest',
           {
             method: 'GET',
-            path: '/user_profiles?select=*,user_progress(*)&order=created_at.desc'
+            path: '/user_profiles?select=id,email,full_name,created_at,avatar_url,last_active_at,user_progress(current_level,total_xp,daily_streak)&order=created_at.desc'
           }
         );
         
@@ -550,9 +550,19 @@ class AdminDatabaseService {
         const { data, error } = await this.supabase
           .from('user_profiles')
           .select(`
-            *,
-            user_progress(*)
-          `);
+            id,
+            email,
+            full_name,
+            created_at,
+            avatar_url,
+            last_active_at,
+            user_progress(
+              current_level,
+              total_xp,
+              daily_streak
+            )
+          `)
+          .order('created_at', { ascending: false });
 
         if (error) {
           console.error('Error fetching users:', error);

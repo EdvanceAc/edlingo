@@ -1,7 +1,7 @@
 // Readability analysis utilities for EdLingo
 // Implements Flesch Reading Ease and Flesch-Kincaid Grade Level composite scoring
 
-import syllable from 'syllable';
+import { syllable } from 'syllable';
 
 /**
  * Compute readability metrics for a given text
@@ -40,14 +40,15 @@ export function computeReadability(text) {
   }
 
   // Flesch Reading Ease (0-100 scale, higher = easier)
+  // Flesch Reading Ease (0-100 scale, higher = easier)
   const fre = 206.835
     - 1.015 * (words / sentences)
     - 84.6 * (syllables / words);
 
   // Flesch-Kincaid Grade Level
-  const fkgl = 0.39 * (words / sentences)
+  const fkgl = Math.max(0, 0.39 * (words / sentences)
              + 11.8 * (syllables / words)
-             - 15.59;
+             - 15.59);
 
   // Map FRE to grade equivalent
   let gFre;

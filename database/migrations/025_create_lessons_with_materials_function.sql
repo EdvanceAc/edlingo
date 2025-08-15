@@ -33,10 +33,13 @@ BEGIN
     FOR lesson_record IN 
         SELECT * FROM jsonb_array_elements(p_lessons)
     LOOP
-        -- Insert lesson
+        -- Insert lesson with all required fields
         INSERT INTO public.lessons (
             term_id,
             name,
+            title,
+            description,
+            order_number,
             level,
             required_xp,
             prerequisites,
@@ -45,6 +48,9 @@ BEGIN
         VALUES (
             term_id,
             (lesson_record.value->>'title')::TEXT,
+            (lesson_record.value->>'title')::TEXT,
+            COALESCE((lesson_record.value->>'description')::TEXT, ''),
+            COALESCE((lesson_record.value->>'order_number')::INTEGER, 0),
             'A1', -- Default level, can be enhanced later
             0,
             '[]'::JSONB,

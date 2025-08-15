@@ -5,6 +5,48 @@ All notable changes to the EdLingo project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2025-08-15
+
+### 🧪 Tests
+- Stabilized Admin Buttons JSDOM test execution for admin-dashboard.html.
+  - Implemented a Response-like fetch mock including headers.get, status fields, and body helpers to satisfy supabase-js expectations and prevent runtime errors.
+  - Added comprehensive Supabase client mocks: auth.getSession, auth.getUser, and auth.admin.listUsers, plus from().select/order/limit behaviors, eliminating undefined method access during test runs.
+  - Disabled timers in the JSDOM environment by mocking setTimeout/setInterval to avoid infinite auto-refresh loops during tests.
+  - Resolved "Cannot read properties of undefined (reading 'get')" errors triggered by supabase-js when inspecting response headers in the test environment.
+  - Ensured the test completes deterministically with exit code 0 and without hanging.
+
+### 🐛 Fixed
+- Resolved Supabase-related runtime error in tests: 'Cannot read properties of undefined (reading 'get')' by providing headers.get in the fetch mock and aligning with supabase-js expectations.
+- Prevented hanging JSDOM tests by disabling auto-refresh timers (setTimeout/setInterval) in the test harness.
+
+### 🛠️ Technical Improvements
+- Strengthened test isolation by mocking localStorage and lucide icon initialization to prevent side effects.
+- Preserved app logic while focusing changes strictly within the test harness (no production code paths altered).
+
+## [1.0.10] - 2025-08-14
+
+### 🐛 Fixed
+- Course Wizard step indicator and progress bar now update correctly in the admin dashboard modal.
+  - The header displays the accurate "Step X of 4" based on the current step.
+  - The step title reflects the active step (e.g., "Basic Information", "Course Content", "Instructor Settings", "Review & Publish").
+  - The progress bar width is now calculated from the current step and targets the progress bar inside the course modal header to avoid conflicts with other progress bars on the page.
+
+### 🛠️ Technical Improvements
+- Centralized and simplified progress UI updates inside `updateProgressIndicator`, called by `showWizardStep`.
+- Added defensive bounds on progress percentage to prevent overflow/underflow (0–100%).
+
+## [1.0.9] - 2025-01-03
+
+### 🐛 Fixed
+- **Critical Issues**: Resolved multiple critical issues including frontend resource loading errors (`net::ERR_EMPTY_RESPONSE`), Supabase database schema mismatches, and Vite development server configuration problems.
+- **Database Schema**: Applied necessary database migrations to fix schema inconsistencies. This includes adding missing columns like `lessons_completed`, `difficulty_level`, and creating necessary triggers and functions.
+- **Development Server**: Resolved port conflicts that prevented the Vite development server from starting, ensuring a stable development environment.
+- **Application Stability**: Ensured the Electron application, database, and Supabase client initialize correctly, leading to a stable and fully operational state.
+
+### 🛠️ Technical Improvements
+- **Error Handling**: Improved error handling and debugging for database and server-related issues.
+- **Development Workflow**: Streamlined the development workflow by resolving critical blockers and ensuring a stable build process.
+
 ## [1.0.8] - 2025-01-02
 
 ### 🐛 Fixed

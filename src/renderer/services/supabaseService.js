@@ -173,11 +173,35 @@ class SupabaseService {
   // User Progress Management
   async saveUserProgress(userId, progressData) {
     try {
+      // Map JS keys to DB column names to avoid PGRST204 for non-existent columns
+      const COLUMN_MAP = {
+        totalXP: 'total_xp',
+        level: 'current_level',
+        streak: 'daily_streak',
+        daily_goal: 'daily_goal',
+        daily_progress: 'daily_progress',
+        lastStudyDate: 'last_study_date',
+        total_lessons_completed: 'lessons_completed',
+        pronunciationAccuracy: 'pronunciation_accuracy',
+        chat_messages: 'chat_messages',
+        achievements: 'achievements',
+        language: 'language'
+      };
+
+      const mappedProgress = {};
+      if (progressData && typeof progressData === 'object') {
+        Object.entries(COLUMN_MAP).forEach(([jsKey, dbKey]) => {
+          if (Object.prototype.hasOwnProperty.call(progressData, jsKey)) {
+            mappedProgress[dbKey] = progressData[jsKey];
+          }
+        });
+      }
+
       const { data, error } = await this.client
         .from('user_progress')
         .upsert({
           user_id: userId,
-          ...progressData,
+          ...mappedProgress,
           updated_at: new Date().toISOString()
         });
       
@@ -197,7 +221,7 @@ class SupabaseService {
         .eq('user_id', userId)
         .single();
       
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error && error.code !== 'PGRST116' && error.code !== 'PGRST204') throw error;
       return { success: true, data: data || null };
     } catch (error) {
       console.error('Get progress error:', error);

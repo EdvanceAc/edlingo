@@ -6,81 +6,85 @@ import { Progress } from '../../renderer/components/ui/Progress';
 import { Badge } from '../../renderer/components/ui/Badge';
 import Button from '../../renderer/components/ui/Button';
 import { supabase } from '../../renderer/config/supabaseConfig';
-import { AuthContext } from '../../renderer/contexts/AuthContext';
-import { simplifyText, adjustTTSSpeed, analyzePronunciation } from '../../services/textSimplification';
+import AuthContext from '../../renderer/contexts/AuthContext';
+import unifiedLevelService from '../../services/unifiedLevelService';
+import pronunciationService from '../../renderer/services/pronunciationService';
 import useProgression from '../../hooks/useProgression';
-import { useHistory } from 'react-router-dom'; // For navigation to conversation
-// Assume ImageLibraryService exists or create if needed
-// import { getWordImage } from '../../services/imageLibrary'; // Placeholder, implement if needed
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+import { useNavigate, useParams } from 'react-router-dom';
 
-const LessonsSection = ({ courseId }) => {
+const LessonsSection = ({ courseId: propCourseId }) => {
+  const params = useParams();
+  const courseId = propCourseId || params.courseId;
   const { user } = useContext(AuthContext);
   const [terms, setTerms] = useState([]);
   const [selectedTerm, setSelectedTerm] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [userLevel, setUserLevel] = useState(user?.placement_level || 'A1');
-  const { progress, updateProgress } = useProgression();
-
+  // Add missing state
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [highlights, setHighlights] = useState([]);
+  const [writingFeedback, setWritingFeedback] = useState(null);
+  const [pronunciationFeedback, setPronunciationFeedback] = useState(null);
+  const { userProgress } = useProgression();
+  
   useEffect(() => {
+    if (!courseId) return;
     fetchTerms();
   }, [courseId]);
 
   const fetchTerms = async () => {
-    const { data, error } = await supabase.from('terms').select('*').eq('course_id', courseId).order('order_number');
+    const { data, error } = await supabase.from('terms')
+      .select('id,name,course_id,order_number')
+      .eq('course_id', courseId)
+      .order('order_number');
     if (error) console.error('Error fetching terms:', error);
     else setTerms(data);
   };
 
   const fetchLessons = async (termId) => {
-    const { data, error } = await supabase.from('lessons').select('*').eq('term_id', termId);
+    const { data, error } = await supabase.from('lessons')
+      .select('id,name,level,term_id,content')
+      .eq('term_id', termId);
     if (error) console.error('Error fetching lessons:', error);
     else {
       const personalizedLessons = await Promise.all(data.map(async (lesson) => ({
         ...lesson,
-        content: await simplifyText(lesson.content, userLevel),
-        isUnlocked: checkUnlock(lesson, progress)
+        content: await unifiedLevelService.simplifyText(lesson.content, userLevel),
+        isUnlocked: checkUnlock(lesson)
       })));
       setLessons(personalizedLessons);
     }
   };
 
-  const checkUnlock = (lesson, progress) => {
-    // Implement dripping system logic
-    return progress.total_xp >= lesson.required_xp && /* check prerequisites */ true;
+  const checkUnlock = (lesson) => {
+    // TODO: Implement real progression/XP checking
+    return true;
   };
 
   const fetchLessonDetails = async (lessonId) => {
-    const { data: materials } = await supabase.from('lesson_materials').select('*').eq('lesson_id', lessonId);
-    const { data: book } = await supabase.from('books').select('*').eq('lesson_id', lessonId).single();
-    if (book) setPdfUrl(book.pdf_url);
-    const { data: hl } = await supabase.from('word_highlights').select('*').eq('book_id', book.id);
-    setHighlights(hl);
+    const { data: materials } = await supabase.from('lesson_materials')
+      .select('id,lesson_id,type,url')
+      .eq('lesson_id', lessonId);
+    const { data: book } = await supabase.from('books')
+      .select('id,lesson_id,pdf_url')
+      .eq('lesson_id', lessonId)
+      .single();
+    if (book) {
+      setPdfUrl(book.pdf_url);
+      const { data: fetchedHl } = await supabase.from('word_highlights')
+        .select('id,book_id,word,page,x,y,width,height,color')
+        .eq('book_id', book.id);
+      setHighlights(fetchedHl || []);
+    } else {
+      setPdfUrl(null);
+      setHighlights([]);
+    }
   };
 
-  const fetchImagesForLesson = async (lesson) => {
-    // Extract words from content, fetch images
-    const words = lesson.content.split(' '); // Simplified
-    const imgs = {};
-    for (let word of words) {
-      imgs[word] = await getWordImage(word);
-    }
-    setImages(imgs);
-  };
-  const loadConversationHistory = async () => {
-    const { data } = await supabase.from('learning_sessions').select('session_data').eq('user_id', user.id).eq('session_type', 'conversation');
-    setConversationHistory(data.map(d => d.session_data));
-  };
   const handleLessonStart = async (lesson) => {
     if (!lesson.isUnlocked) return;
-    setSelectedLesson(lesson);
     await fetchLessonDetails(lesson.id);
-    // Adjust TTS speed
-    const speed = await adjustTTSSpeed(userLevel);
-    // Start lesson logic
+    // TODO: integrate TTS later if needed
   };
 
   const handleAssessment = async (lessonId) => {
@@ -96,9 +100,9 @@ const LessonsSection = ({ courseId }) => {
     // Send to AI for feedback
     setWritingFeedback('AI feedback here');
   };
-  const handlePronunciationSubmit = async (audio) => {
-    const feedback = await analyzePronunciation(audio);
-    setPronunciationFeedback(feedback);
+  const handlePronunciationSubmit = async (transcript) => {
+    const result = await pronunciationService.analyzePronunciation(transcript);
+    setPronunciationFeedback(result);
   };
 
   return (

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../config/supabaseConfig.js';
+import { supabase, checkSupabaseConnection } from '../config/supabaseConfig.js';
 
 const ProgressContext = createContext({
   userProgress: {},
@@ -77,11 +77,16 @@ export function ProgressProvider({ children }) {
     const fetchProgress = async () => {
       if (!user?.id) return;
       try {
-        const { data, error } = await supabase
-          .from('user_progress')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+         const { connected } = await checkSupabaseConnection();
+         if (!connected) {
+         console.warn('Supabase not connected. Skipping remote progress fetch.');
+         return;
+         }
+         const { data, error } = await supabase
+           .from('user_progress')
+           .select('user_id,total_xp,current_level,daily_streak,daily_goal,daily_progress,last_study_date,lessons_completed,pronunciation_accuracy,chat_messages,achievements,language,created_at,updated_at')
+           .eq('user_id', user.id)
+           .single();
         
         if (error && error.code !== 'PGRST116') throw error;
         if (data) {
@@ -154,24 +159,30 @@ export function ProgressProvider({ children }) {
     if (!user?.id) return;
     
     // Poll for progress updates every 30 seconds instead of using realtime
-    const pollInterval = setInterval(async () => {
-      try {
-        const { data, error } = await supabase
-          .from('user_progress')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (data && !error) {
-          setUserProgress(prev => ({ ...prev, ...mapToJS(data) }));
+    let pollInterval;
+    (async () => {
+      const { connected } = await checkSupabaseConnection();
+      if (!connected) return;
+      
+      pollInterval = setInterval(async () => {
+        try {
+          const { data, error } = await supabase
+            .from('user_progress')
+            .select('user_id,total_xp,current_level,daily_streak,daily_goal,daily_progress,last_study_date,lessons_completed,pronunciation_accuracy,chat_messages,achievements,language,created_at,updated_at')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (data && !error) {
+            setUserProgress(prev => ({ ...prev, ...mapToJS(data) }));
+          }
+        } catch (error) {
+          console.warn('Progress polling error:', error);
         }
-      } catch (error) {
-        console.warn('Progress polling error:', error);
-      }
-    }, 30000); // Poll every 30 seconds
+      }, 30000); // Poll every 30 seconds
+    })();
 
     return () => {
-      clearInterval(pollInterval);
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [user?.id]);
 
@@ -262,11 +273,11 @@ export function ProgressProvider({ children }) {
       return newAchievements;
     }
     
-    // Ensure achievements is an array
+    // Ensure achievements is an array and handle null values
     const currentAchievements = Array.isArray(newProgress.achievements) ? newProgress.achievements : [];
     
     ACHIEVEMENTS.forEach(achievement => {
-      if (currentAchievements.includes(achievement.id)) return;
+      if (currentAchievements && currentAchievements.includes && currentAchievements.includes(achievement.id)) return;
       
       let earned = false;
       

@@ -23,8 +23,10 @@ import { Progress } from '../components/ui/Progress';
 import { Badge } from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { supabase } from '../config/supabaseConfig';
+import { useNavigate } from 'react-router-dom';
 
 const Courses = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,7 @@ const Courses = () => {
       // Try to fetch from Supabase first
       const { data: supabaseCourses, error } = await supabase
         .from('courses')
-        .select('*')
+        .select('id,title,description,cefr_level,is_active,created_at')
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -95,7 +97,7 @@ const Courses = () => {
       // Try to fetch from Supabase
       const { data, error } = await supabase
         .from('notifications')
-        .select('*')
+        .select('id,type,title,message,icon,created_at,is_read')
         .eq('user_id', 'current_user') // Replace with actual user ID
         .order('created_at', { ascending: false })
         .limit(5);
@@ -104,7 +106,16 @@ const Courses = () => {
         console.warn('Notifications not available, using mock data:', error.message);
         setNotifications(getMockNotifications());
       } else {
-        setNotifications(data.length > 0 ? data : getMockNotifications());
+        const transformed = (data || []).map(n => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          icon: n.icon || '🔔',
+          timestamp: n.created_at ? new Date(n.created_at) : new Date(),
+          isRead: n.is_read === true
+        }));
+        setNotifications(transformed.length > 0 ? transformed : getMockNotifications());
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -232,6 +243,13 @@ const Courses = () => {
         className={`relative ${
           isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
         }`}
+        onClick={() => {
+          if (!isLocked) {
+            navigate(`/courses/${course.id}`);
+          }
+        }}
+        role={isLocked ? undefined : 'button'}
+        aria-disabled={isLocked}
       >
         <Card className={`h-full transition-all duration-300 ${
           isLocked 

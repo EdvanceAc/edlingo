@@ -22,11 +22,43 @@ const AssessmentPage = () => {
     }
 
     const fetchUserProfile = async () => {
+      // Guard: if Supabase is not connected (e.g., missing anon key), avoid making network calls
+      try {
+        if (!supabaseService.getConnectionStatus || !supabaseService.getConnectionStatus()) {
+          const fallbackProfile = {
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+            target_language: 'English',
+            native_language: 'Unknown',
+            learning_level: 'beginner',
+            assessment_completed: false
+          };
+          setUserProfile(fallbackProfile);
+          setIsLoading(false);
+          return;
+        }
+      } catch (statusErr) {
+        // In case of unexpected error when checking status, still proceed with fallback
+        const fallbackProfile = {
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+          target_language: 'English',
+          native_language: 'Unknown',
+          learning_level: 'beginner',
+          assessment_completed: false
+        };
+        setUserProfile(fallbackProfile);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         console.log('Fetching profile for user:', user.id, 'Email:', user.email);
         const { data, error } = await supabaseService.client
           .from('user_profiles')
-          .select('*')
+          .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
           .eq('id', user.id)
           .single();
 
@@ -68,7 +100,7 @@ const AssessmentPage = () => {
                 const { data: createdProfile, error: createError } = await supabaseService.client
                   .from('user_profiles')
                   .upsert([newProfile], { onConflict: 'id' })
-                  .select()
+                  .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
                   .single();
                   
                 if (createError) {
@@ -92,7 +124,7 @@ const AssessmentPage = () => {
                 // Function succeeded, now fetch the created profile
                 const { data: fetchedProfile, error: fetchError } = await supabaseService.client
                   .from('user_profiles')
-                  .select('*')
+                  .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
                   .eq('id', user.id)
                   .single();
                   

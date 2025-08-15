@@ -53,7 +53,7 @@ const AdminSettings: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('system_settings')
-        .select('*')
+        .select('id,key,value,description,updated_at')
         .order('key');
 
       if (error) throw error;

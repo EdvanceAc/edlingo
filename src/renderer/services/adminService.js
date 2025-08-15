@@ -558,7 +558,7 @@ class AdminService {
     try {
       const { data: settings, error } = await supabase
         .from('system_settings')
-        .select('*');
+        .select('key,value,updated_at');
 
       if (error) throw error;
 

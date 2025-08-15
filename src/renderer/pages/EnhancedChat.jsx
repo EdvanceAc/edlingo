@@ -141,12 +141,20 @@ const EnhancedChat = () => {
     let response = responses[chatMode][Math.floor(Math.random() * responses[chatMode].length)];
 
     // Add specific feedback based on analysis
-    if (analysis.corrections.length > 0) {
-      response += ` I noticed: ${analysis.corrections[0].explanation}`;
+    if (analysis?.corrections && Array.isArray(analysis.corrections) && analysis.corrections.length > 0) {
+      response += ` I noticed: ${analysis.corrections[0]?.explanation || ''}`;
     }
 
-    if (analysis.suggestions.length > 0 && chatMode === 'vocabulary') {
-      response += ` Instead of "${analysis.suggestions[0].word}", you could try: ${analysis.suggestions[0].alternatives.slice(0, 2).join(', ')}.`;
+    if (chatMode === 'vocabulary') {
+      const firstSuggestion = Array.isArray(analysis?.suggestions) && analysis.suggestions.length > 0
+        ? analysis.suggestions[0]
+        : null;
+      const altList = Array.isArray(firstSuggestion?.alternatives)
+        ? firstSuggestion.alternatives.slice(0, 2).join(', ')
+        : null;
+      if (firstSuggestion && altList) {
+        response += ` Instead of "${firstSuggestion.word}", you could try: ${altList}.`;
+      }
     }
 
     return response;
@@ -390,7 +398,13 @@ const EnhancedChat = () => {
                           <h4 className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Vocabulary Suggestions</h4>
                           {message.analysis.suggestions.map((suggestion, index) => (
                             <div key={index} className="text-xs text-blue-600 dark:text-blue-400">
-                              <span className="font-medium">{suggestion?.word || 'Unknown word'}</span> → {suggestion?.alternatives?.length > 0 ? suggestion.alternatives.join(', ') : 'No alternatives available'}
+                              <span className="font-medium">{suggestion?.word || 'Unknown word'}</span> → {
+                                Array.isArray(suggestion?.alternatives)
+                                  ? suggestion.alternatives.join(', ')
+                                  : (typeof suggestion?.alternatives === 'string' && suggestion.alternatives.trim().length > 0)
+                                    ? suggestion.alternatives
+                                    : 'No alternatives available'
+                              }
                             </div>
                           ))}
                         </div>

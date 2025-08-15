@@ -35,7 +35,7 @@ const CourseSection = () => {
       // Try to fetch from Supabase first
       const { data: supabaseCourses, error } = await supabase
         .from('courses')
-        .select('*')
+        .select('id,title,description,is_active,lesson_count,xp_reward,created_at')
         .order('created_at', { ascending: true });
 
       if (error) {

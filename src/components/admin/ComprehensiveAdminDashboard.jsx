@@ -813,23 +813,41 @@ const ComprehensiveAdminDashboard = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2">Content (Optional)</label>
-            <textarea
-              value={lessonEditData.content}
-              onChange={(e) => setLessonEditData(prev => ({ ...prev, content: e.target.value }))}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
-              placeholder="Enter lesson content or description"
+            <label className="block text-sm font-medium mb-2">Required XP</label>
+            <input
+              type="number"
+              value={lessonEditData.required_xp || 0}
+              onChange={(e) => setLessonEditData(prev => ({ ...prev, required_xp: parseInt(e.target.value) || 0 }))}
+              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter required XP"
+              min="0"
             />
           </div>
           
-          <div className="flex gap-2 pt-4">
-            <Button onClick={handleUpdateLesson} disabled={!lessonEditData.name.trim()}>
-              <Save className="w-4 h-4 mr-2" />
-              Update Lesson
-            </Button>
-            <Button variant="outline" onClick={handleCancelLessonEdit}>
-              Cancel
-            </Button>
+          <div>
+            <label className="block text-sm font-medium mb-2">Prerequisites (comma-separated lesson IDs)</label>
+            <input
+              type="text"
+              value={lessonEditData.prerequisites ? lessonEditData.prerequisites.join(', ') : ''}
+              onChange={(e) => setLessonEditData(prev => ({ ...prev, prerequisites: e.target.value.split(',').map(id => id.trim()).filter(id => id) }))}
+              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., lesson1, lesson2"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <Button variant="outline" onClick={handleCancelLessonEdit}>Cancel</Button>
+            <Button onClick={() => {
+              if (lessonEditData.required_xp < 0) {
+                setNotifications(prev => [{ id: Date.now(), type: 'error', message: 'Required XP cannot be negative.', timestamp: new Date().toISOString() }, ...prev]);
+                return;
+              }
+              if (!Array.isArray(lessonEditData.prerequisites)) {
+                setNotifications(prev => [{ id: Date.now(), type: 'error', message: 'Prerequisites must be a list of lesson IDs.', timestamp: new Date().toISOString() }, ...prev]);
+                return;
+              }
+              handleSaveLessonEdit();
+            }}>Save</Button>
           </div>
         </div>
       </div>
@@ -1201,12 +1219,32 @@ const ComprehensiveAdminDashboard = () => {
       
       if (error) {
         console.error('Error loading course terms:', error);
+        setNotifications(prev => [{
+          id: Date.now(),
+          type: 'error',
+          message: 'Failed to load course terms. Please try again.',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
         return;
       }
       
       setCourseTerms(data || []);
+      if (!data || data.length === 0) {
+        setNotifications(prev => [{
+          id: Date.now(),
+          type: 'info',
+          message: 'No terms found for this course.',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
+      }
     } catch (error) {
       console.error('Error loading course terms:', error);
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: 'An unexpected error occurred while loading course terms.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
     }
   };
 
@@ -1220,12 +1258,32 @@ const ComprehensiveAdminDashboard = () => {
       
       if (error) {
         console.error('Error loading term lessons:', error);
+        setNotifications(prev => [{
+          id: Date.now(),
+          type: 'error',
+          message: 'Failed to load term lessons. Please try again.',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
         return;
       }
       
       setTermLessons(data || []);
+      if (!data || data.length === 0) {
+        setNotifications(prev => [{
+          id: Date.now(),
+          type: 'info',
+          message: 'No lessons found for this term.',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
+      }
     } catch (error) {
       console.error('Error loading term lessons:', error);
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: 'An unexpected error occurred while loading term lessons.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
     }
   };
 
@@ -1239,12 +1297,32 @@ const ComprehensiveAdminDashboard = () => {
       
       if (error) {
         console.error('Error loading lesson materials:', error);
+        setNotifications(prev => [{
+          id: Date.now(),
+          type: 'error',
+          message: 'Failed to load lesson materials. Please try again.',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
         return;
       }
       
       setLessonMaterials(data || []);
+      if (!data || data.length === 0) {
+        setNotifications(prev => [{
+          id: Date.now(),
+          type: 'info',
+          message: 'No materials found for this lesson.',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
+      }
     } catch (error) {
       console.error('Error loading lesson materials:', error);
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: 'An unexpected error occurred while loading lesson materials.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
     }
   };
 

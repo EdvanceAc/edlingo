@@ -215,6 +215,30 @@ async function testAdminDashboard() {
                 window._testErrors = errors;
                 window._testWarnings = warnings;
                 
+                // Mock setTimeout and setInterval to prevent auto-refresh loops
+                const timeouts = [];
+                const intervals = [];
+                
+                window.setTimeout = (fn, delay) => {
+                    const id = Math.random();
+                    console.log(`[MOCK] setTimeout disabled - would have run after ${delay}ms`);
+                    return id;
+                };
+                
+                window.setInterval = (fn, delay) => {
+                    const id = Math.random();
+                    console.log(`[MOCK] setInterval disabled - would repeat every ${delay}ms`);
+                    return id;
+                };
+                
+                window.clearTimeout = (id) => {
+                    console.log(`[MOCK] clearTimeout called for ${id}`);
+                };
+                
+                window.clearInterval = (id) => {
+                    console.log(`[MOCK] clearInterval called for ${id}`);
+                };
+                
                 // Additional mocking for window.location methods
                 window.location.assign = (url) => {
                     console.log(`[MOCK] window.location.assign called with: ${url}`);
@@ -231,13 +255,39 @@ async function testAdminDashboard() {
                     createClient: () => ({
                         auth: {
                             getSession: () => Promise.resolve({ data: { session: { access_token: 'mock-token' } }, error: null }),
-                            getUser: () => Promise.resolve({ data: { user: { id: 'mock-user-id' } }, error: null })
+                            getUser: () => Promise.resolve({ data: { user: { id: 'mock-user-id' } }, error: null }),
+                            admin: {
+                                listUsers: () => Promise.resolve({ 
+                                    data: { 
+                                        users: [
+                                            {
+                                                id: 'mock-user-1',
+                                                email: 'test@example.com',
+                                                created_at: '2024-01-01T00:00:00Z',
+                                                user_metadata: { full_name: 'Test User' }
+                                            }
+                                        ]
+                                    }, 
+                                    error: null 
+                                })
+                            }
                         },
-                        from: () => ({
-                            select: () => Promise.resolve({ data: [], error: null }),
+                        from: (table) => ({
+                            select: (columns, options) => {
+                                // Mock table query responses
+                                if (options && options.count) {
+                                    return Promise.resolve({ count: 0, error: null });
+                                }
+                                return Promise.resolve({ data: [], error: null });
+                            },
                             insert: () => Promise.resolve({ data: [], error: null }),
                             update: () => Promise.resolve({ data: [], error: null }),
-                            delete: () => Promise.resolve({ data: [], error: null })
+                            delete: () => Promise.resolve({ data: [], error: null }),
+                            order: () => ({
+                                limit: () => Promise.resolve({ data: [], error: null }),
+                                select: () => Promise.resolve({ data: [], error: null })
+                            }),
+                            limit: () => Promise.resolve({ data: [], error: null })
                         })
                     })
                 };
@@ -248,10 +298,24 @@ async function testAdminDashboard() {
                 };
                 
                 // Mock fetch to prevent external requests
-                window.fetch = () => Promise.resolve({
+                window.fetch = (input, init) => Promise.resolve({
                     ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    url: typeof input === 'string' ? input : (input && input.url) || 'http://localhost/mock',
+                    headers: {
+                        get: (name) => {
+                            if (!name) return null;
+                            const n = ('' + name).toLowerCase();
+                            if (n === 'content-type') return 'application/json; charset=utf-8';
+                            if (n === 'cache-control') return 'no-cache';
+                            return null;
+                        }
+                    },
                     json: () => Promise.resolve({}),
-                    text: () => Promise.resolve('')
+                    text: () => Promise.resolve(''),
+                    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+                    clone: function() { return this; }
                 });
             }
         });

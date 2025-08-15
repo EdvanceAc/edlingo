@@ -138,7 +138,13 @@ class MCPSQLHelper {
       if (this.isSelectOperation(sql)) {
         const tableName = this.extractTableName(sql);
         if (tableName && !sql.toLowerCase().includes('information_schema')) {
-          const { data, error } = await client.from(tableName).select('*');
+          // Special case for user_profiles to prevent select=* causing ERR_ABORTED
+          let data, error;
+          if (tableName === 'user_profiles') {
+            ({ data, error } = await client.from(tableName).select('id'));
+          } else {
+            ({ data, error } = await client.from(tableName).select('*'));
+          }
           
           if (error) {
             log(`Direct query failed, trying RPC: ${error.message}`, 'warning');
@@ -225,7 +231,7 @@ class MCPSQLHelper {
     if (this.serviceClient) {
       tests.push({
         name: 'Service Role - Admin Access',
-        test: () => this.serviceClient.from('user_profiles').select('*').limit(1)
+        test: () => this.serviceClient.from('user_profiles').select('id').limit(1)
       });
     }
     

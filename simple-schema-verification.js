@@ -168,7 +168,7 @@ async function testFailingScenarios(supabase) {
       name: 'Insert into user_progress with all columns',
       test: async () => {
         // Test insert capability (will rollback)
-        const testUserId = '00000000-0000-0000-0000-000000000001';
+        const testUserId = 'aa0a509c-c48c-4f6b-9c0c-dd3e75b89aea';  // Use existing user ID
         const { data, error } = await supabase
           .from('user_progress')
           .insert({
@@ -177,7 +177,8 @@ async function testFailingScenarios(supabase) {
             total_xp: 0,
             daily_streak: 0,
             last_study_date: new Date().toISOString().split('T')[0],
-            lessons_completed: 0
+            lessons_completed: 0,
+            language: 'en'  // Added required language field
           })
           .select()
           .limit(1);

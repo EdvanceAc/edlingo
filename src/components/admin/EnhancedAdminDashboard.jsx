@@ -36,7 +36,10 @@ import {
   AlertTriangle,
   CheckCircle,
   Info,
-  Send
+  Send,
+  ChevronDown,
+  ChevronRight,
+  Layers
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../renderer/components/ui/Card';
 import { Progress } from '../../renderer/components/ui/Progress';
@@ -60,7 +63,7 @@ const EnhancedAdminDashboard = () => {
     language: '',
     level: '',
     instructor: '',
-    is_active: false, // Use is_active instead of status
+    is_active: false,
     price: 0,
     duration: '',
     difficulty: 'beginner'
@@ -74,13 +77,21 @@ const EnhancedAdminDashboard = () => {
     targetUsers: 'all'
   });
 
+  // Hierarchical Search State
+  const [hierarchicalData, setHierarchicalData] = useState({});
+  const [expandedCourses, setExpandedCourses] = useState(new Set());
+  const [expandedTerms, setExpandedTerms] = useState(new Set());
+  const [searchMode, setSearchMode] = useState('courses');
+  const [hierarchicalResults, setHierarchicalResults] = useState([]);
+  const [showHierarchicalView, setShowHierarchicalView] = useState(false);
+ 
   // Course Management Functions
   const loadCourses = async () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('courses')
-        .select('*')
+        .select('id,title,description,language,level,instructor,is_active,price,duration,updated_at,created_at,status,students,completion')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -123,12 +134,12 @@ const EnhancedAdminDashboard = () => {
           language: "German",
           level: "B1",
           students: 156,
-          completion: 82,
-          is_active: false, // Use is_active instead of status
-          lastUpdated: "3 days ago",
-          instructor: "Hans Mueller",
-          description: "Practice German conversation",
-          price: 119,
+          completion: 72,
+          status: "inactive",
+          lastUpdated: "5 days ago",
+          instructor: "Hans Müller",
+          description: "Enhance your speaking skills",
+          price: 129,
           duration: "10 weeks"
         }
       ]);
@@ -225,7 +236,56 @@ const EnhancedAdminDashboard = () => {
       type,
       message,
       timestamp: new Date()
-    }, ...prev.slice(0, 4)]); // Keep only 5 notifications
+    }, ...prev.slice(0, 4)]);
+  };
+
+  // Helper functions for hierarchical search
+  const loadCourseTerms = async (courseId) => {
+    try {
+      const { data, error } = await supabase
+        .from('terms')
+        .select('id, name, description, course_id')
+        .eq('course_id', courseId);
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error loading course terms:', error);
+      addNotification('error', 'Failed to load course terms');
+      return [];
+    }
+  };
+
+  const loadTermLessons = async (termId) => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('id, name, content, level, term_id')
+        .eq('term_id', termId);
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error loading term lessons:', error);
+      addNotification('error', 'Failed to load term lessons');
+      return [];
+    }
+  };
+
+  const loadLessonMaterials = async (lessonId) => {
+    try {
+      const { data, error } = await supabase
+        .from('lesson_materials')
+        .select('id, type, url, title, content, lesson_id')
+        .eq('lesson_id', lessonId);
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error loading lesson materials:', error);
+      addNotification('error', 'Failed to load lesson materials');
+      return [];
+    }
   };
 
   const resetCourseForm = () => {
@@ -235,7 +295,7 @@ const EnhancedAdminDashboard = () => {
       language: '',
       level: '',
       instructor: '',
-      is_active: false, // Use is_active instead of status
+      is_active: false,
       price: 0,
       duration: '',
       difficulty: 'beginner'
@@ -250,7 +310,7 @@ const EnhancedAdminDashboard = () => {
       language: course.language || '',
       level: course.level || '',
       instructor: course.instructor || '',
-      is_active: course.is_active || false, // Use is_active instead of status
+      is_active: course.is_active || false,
       price: course.price || 0,
       duration: course.duration || '',
       difficulty: course.difficulty || 'beginner'
@@ -270,8 +330,6 @@ const EnhancedAdminDashboard = () => {
   const sendNotification = async () => {
     try {
       setIsLoading(true);
-      // In a real implementation, this would send notifications to users
-      // For now, we'll simulate it
       addNotification('info', `Notification sent: ${notificationData.title}`);
       setShowNotificationForm(false);
       setNotificationData({
@@ -563,7 +621,7 @@ const EnhancedAdminDashboard = () => {
                 <p className="text-sm text-muted-foreground">Active Courses</p>
                 <p className="text-2xl font-bold">{courses.filter(c => c.status === 'active').length}</p>
               </div>
-              <PlayCircle className="w-8 h-8 text-green-500" />
+              <Target className="w-8 h-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -582,57 +640,157 @@ const EnhancedAdminDashboard = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Avg. Completion</p>
-                <p className="text-2xl font-bold">
-                  {courses.length > 0 ? Math.round(courses.reduce((sum, c) => sum + (c.completion || 0), 0) / courses.length) : 0}%
-                </p>
+                <p className="text-sm text-muted-foreground">Avg Completion</p>
+                <p className="text-2xl font-bold">{Math.round(courses.reduce((sum, c) => sum + (c.completion || 0), 0) / Math.max(courses.length, 1))}%</p>
               </div>
-              <Target className="w-8 h-8 text-orange-500" />
+              <TrendingUp className="w-8 h-8 text-orange-500" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Search and Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search courses..."
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              Filters
-            </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex gap-4">
+        <div className="flex-1 relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search courses..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <select
+          value={searchMode}
+          onChange={(e) => setSearchMode(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-sm"
+        >
+          <option value="courses">Courses</option>
+          <option value="lessons">Lessons</option>
+          <option value="materials">Materials</option>
+          <option value="all">All</option>
+        </select>
+        <Button variant="outline" size="sm" onClick={() => setShowHierarchicalView(!showHierarchicalView)}>
+          <Layers className="w-4 h-4 mr-2" />
+          {showHierarchicalView ? 'Hierarchical On' : 'Hierarchical Off'}
+        </Button>
+        <Button variant="outline" size="sm">
+          <Filter className="w-4 h-4 mr-2" />
+          Filters
+        </Button>
+      </div>
+
+      {/* Hierarchical Search Results */}
+      {showHierarchicalView && searchTerm && (searchMode === 'lessons' || searchMode === 'materials' || searchMode === 'all') && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Search results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Searching...</p>
+            ) : hierarchicalResults.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No results</p>
+            ) : (
+              <div className="space-y-2">
+                {hierarchicalResults.map(({ course, terms }) => (
+                  <div key={course.id} className="border rounded">
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/30"
+                      onClick={() => {
+                        const newExpanded = new Set(expandedCourses);
+                        if (newExpanded.has(course.id)) newExpanded.delete(course.id);
+                        else newExpanded.add(course.id);
+                        setExpandedCourses(newExpanded);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        {expandedCourses.has(course.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        <span className="font-medium">{course.title}</span>
+                        <Badge variant="outline">{terms.length} terms</Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{course.language} • {course.instructor || 'Unknown'}</span>
+                    </button>
+                    <AnimatePresence>
+                      {expandedCourses.has(course.id) && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="pl-6 pr-3">
+                          {terms.length === 0 ? (
+                            <div className="text-sm text-muted-foreground py-2">No terms</div>
+                          ) : terms.map(({ term, lessons }) => (
+                            <div key={term.id} className="border-l pl-3 py-2">
+                              <button
+                                className="flex items-center gap-2"
+                                onClick={() => {
+                                  const termKey = `${course.id}:${term.id}`;
+                                  const newExpanded = new Set(expandedTerms);
+                                  if (newExpanded.has(termKey)) newExpanded.delete(termKey);
+                                  else newExpanded.add(termKey);
+                                  setExpandedTerms(newExpanded);
+                                }}
+                              >
+                                {expandedTerms.has(`${course.id}:${term.id}`) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                <span>{term.name}</span>
+                                <Badge variant="secondary">{lessons.length} lessons</Badge>
+                              </button>
+                              <AnimatePresence>
+                                {expandedTerms.has(`${course.id}:${term.id}`) && (
+                                  <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="pl-6">
+                                    {lessons.length === 0 ? (
+                                      <div className="text-sm text-muted-foreground py-2">No lessons</div>
+                                    ) : lessons.map(lesson => (
+                                      <div key={lesson.id} className="flex items-center justify-between py-1">
+                                        <span className="text-sm">{lesson.title}</span>
+                                        <div className="flex gap-1">
+                                          <Badge variant="outline" className="text-xs">{lesson.lesson_materials?.length || 0} materials</Badge>  
+                                          <Badge variant="outline" className="text-xs">{lesson.order}</Badge>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Course Grid */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <RefreshCw className="w-8 h-8 animate-spin" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-200 rounded"></div>
+                  <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses
-            .filter(course => 
-              course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              course.language.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-            .map((course) => (
+          {
+            courses
+              .filter(course => 
+                course.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                course.language?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                course.instructor?.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map((course) => (
               <motion.div
                 key={course.id}
                 initial={{ opacity: 0, y: 20 }}

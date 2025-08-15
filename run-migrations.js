@@ -13,19 +13,18 @@ async function runMigrations() {
   console.log('🚀 Starting database migrations...');
   
   const migrationsDir = path.join(__dirname, 'database', 'migrations');
-  const migrationFiles = [
-    '001_initial_schema.sql',
-    '002_add_grammar_lessons.sql',
-    '003_fix_user_progress_columns.sql',
-    '004_fix_learning_sessions_relationship.sql', 
-    '005_add_sample_vocabulary.sql',
-    '006_add_admin_policies.sql',
-    '006_add_assessment_columns.sql',
-    '008_add_assessment_system.sql',
-    '013_fix_user_profile_creation.sql',
-    '018_add_chat_messages_to_user_progress.sql',
-    '026_add_last_study_date_and_notifications.sql'
-];
+  
+  // Dynamically discover all .sql migration files and sort them by numeric prefix
+  const migrationFiles = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort((a, b) => {
+      const aNum = parseInt(a.split('_')[0], 10);
+      const bNum = parseInt(b.split('_')[0], 10);
+      return (isNaN(aNum) ? 0 : aNum) - (isNaN(bNum) ? 0 : bNum);
+    });
+
+  console.log(`📚 Found ${migrationFiles.length} migration files`);
   
   for (const migrationFile of migrationFiles) {
     const migrationPath = path.join(migrationsDir, migrationFile);
@@ -106,17 +105,17 @@ async function testConnection() {
     
     if (error) {
       console.log('⚠️  Connection test failed:', error.message);
-      console.log('\n📋 Manual migration required. Here are the SQL files to run:\n');
+      console.log('\n📋 Manual migration required. Here are some SQL files to run:\n');
       
-      // Show manual instructions
+      // Show manual instructions for a subset to get started
       const migrationsDir = path.join(__dirname, 'database', 'migrations');
-      const migrationFiles = [
-        '003_fix_user_progress_columns.sql',
-        '004_fix_learning_sessions_relationship.sql',
-        '005_add_sample_vocabulary.sql'
-      ];
+      const sampleFiles = fs
+        .readdirSync(migrationsDir)
+        .filter((f) => f.endsWith('.sql'))
+        .sort()
+        .slice(0, 3);
       
-      for (const migrationFile of migrationFiles) {
+      for (const migrationFile of sampleFiles) {
         const migrationPath = path.join(migrationsDir, migrationFile);
         if (fs.existsSync(migrationPath)) {
           const sqlContent = fs.readFileSync(migrationPath, 'utf8');

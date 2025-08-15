@@ -4,8 +4,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import progressionService from '../services/progressionService';
 import conversationEngagementService from '../services/conversationEngagementService';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from './use-toast';
+import { useAuth } from '../renderer/contexts/AuthContext';
+import { useToast } from '../renderer/hooks/use-toast';
 
 /**
  * Custom hook for managing user progression and content delivery

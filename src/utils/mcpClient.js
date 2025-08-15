@@ -40,6 +40,26 @@ export async function run_mcp(serverName, toolName, args) {
  * @param {Object} args - Request arguments
  * @returns {Promise<any>} API response
  */
+
+/**
+ * Fetch with retry logic for more reliable API calls
+ * @param {string} url - URL to fetch
+ * @param {Object} options - Fetch options
+ * @param {number} retries - Number of retries
+ * @param {number} delay - Delay between retries in ms
+ * @returns {Promise<Response>} Fetch response
+ */
+async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+  try {
+    const response = await fetchWithRetry(url, options);
+    return response;
+  } catch (error) {
+    if (retries <= 1) throw error;
+    
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return fetchWithRetry(url, options, retries - 1, delay * 1.5);
+  }
+}
 async function handlePostgrestRequest(toolName, args) {
   const baseUrl = process.env.REACT_APP_SUPABASE_URL || 'http://localhost:3000';
   const apiKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
@@ -68,7 +88,7 @@ async function handlePostgrestRequest(toolName, args) {
       requestOptions.body = JSON.stringify(body);
     }
     
-    const response = await fetch(url, requestOptions);
+    const response = await fetchWithRetry(url, requestOptions);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -213,7 +233,7 @@ async function executeSupabaseSQL(sql, supabaseUrl, headers) {
   if (sql.toLowerCase().trim().startsWith('select')) {
     try {
       const restCall = convertSqlToRest(sql);
-      const response = await fetch(`${supabaseUrl}/rest/v1${restCall.path}`, {
+      const response = await fetchWithRetry(`${supabaseUrl}/rest/v1${restCall.path}`, {
         method: restCall.method,
         headers
       });
@@ -229,7 +249,7 @@ async function executeSupabaseSQL(sql, supabaseUrl, headers) {
   }
   
   // For other queries, use RPC function (if available)
-  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/execute_sql`, {
+  const response = await fetchWithRetry(`${supabaseUrl}/rest/v1/rpc/execute_sql`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ query: sql })
@@ -249,7 +269,7 @@ async function executeSupabaseSQL(sql, supabaseUrl, headers) {
  * @returns {Promise<any>} List of tables
  */
 async function listSupabaseTables(supabaseUrl, headers) {
-  const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+  const response = await fetchWithRetry(`${supabaseUrl}/rest/v1/`, {
     method: 'GET',
     headers
   });
@@ -310,7 +330,7 @@ async function listSupabaseProjects() {
     throw new Error('SUPABASE_ACCESS_TOKEN environment variable is required for project management');
   }
   
-  const response = await fetch('https://api.supabase.com/v1/projects', {
+  const response = await fetchWithRetry('https://api.supabase.com/v1/projects', {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
@@ -677,7 +697,7 @@ export function clearAuthToken() {
  * @returns {Promise<Object>} Active tab info
  */
 async function getActiveTab(baseUrl) {
-  const response = await fetch(`${baseUrl}/json`);
+  const response = await fetchWithRetry(`${baseUrl}/json`);
   const tabs = await response.json();
   
   // Find the first active tab or create a new one

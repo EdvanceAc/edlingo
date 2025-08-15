@@ -7,6 +7,29 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <!-- MCP Client for enhanced database operations (supports both browser and Electron environments) -->
+    <script type="module">
+        // Utility function to detect if we're in Electron environment
+        window.isElectron = typeof window.electronAPI !== 'undefined';
+        
+        // Mock MCP client for browser environments
+        if (!window.isElectron) {
+            // For browser environments, provide simplified MCP functionality
+            window.mcpSQL = {
+                execute: async (query, options = {}) => {
+                    console.log('Browser MCP client: executing SQL', query);
+                    // Return mock data for demonstration
+                    return {
+                        success: false,
+                        error: { message: 'MCP client requires Electron environment' },
+                        data: null
+                    };
+                },
+                test: async () => ({ success: false, error: 'MCP not available in browser' })
+            };
+        }
+    </script>
 
     <style>
         .admin-gradient {
@@ -975,19 +998,19 @@
                                         <label class="block text-sm font-medium text-gray-700 mb-2">Skills Focus</label>
                                         <div class="grid grid-cols-4 gap-4">
                                             <label class="flex items-center">
-                                                <input type="checkbox" id="listeningSkill" name="skills" value="listening" class="mr-2 text-blue-600">
+                                                <input type="checkbox" id="listeningSkill" name="skillsFocus" value="listening" class="mr-2 text-blue-600">
                                                 <span class="text-sm">Listening</span>
                                             </label>
                                             <label class="flex items-center">
-                                                <input type="checkbox" id="speakingSkill" name="skills" value="speaking" class="mr-2 text-blue-600">
+                                                <input type="checkbox" id="speakingSkill" name="skillsFocus" value="speaking" class="mr-2 text-blue-600">
                                                 <span class="text-sm">Speaking</span>
                                             </label>
                                             <label class="flex items-center">
-                                                <input type="checkbox" id="readingSkill" name="skills" value="reading" class="mr-2 text-blue-600">
+                                                <input type="checkbox" id="readingSkill" name="skillsFocus" value="reading" class="mr-2 text-blue-600">
                                                 <span class="text-sm">Reading</span>
                                             </label>
                                             <label class="flex items-center">
-                                                <input type="checkbox" id="writingSkill" name="skills" value="writing" class="mr-2 text-blue-600">
+                                                <input type="checkbox" id="writingSkill" name="skillsFocus" value="writing" class="mr-2 text-blue-600">
                                                 <span class="text-sm">Writing</span>
                                             </label>
                                         </div>
@@ -1118,6 +1141,15 @@
                                         <!-- Course summary will be populated here -->
                                     </div>
                                 </div>
+                                
+                                <!-- Lessons and Materials Review Section -->
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <h5 class="font-medium text-green-900 mb-3">Lessons & Materials</h5>
+                                    <div id="lessonsReview" class="space-y-4">
+                                        <!-- Lessons and materials will be populated here -->
+                                    </div>
+                                </div>
+                                
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="bg-gray-50 p-4 rounded-lg">
                                         <h6 class="font-medium text-gray-900 mb-2">Course Details</h6>
@@ -1861,6 +1893,42 @@
             }
         }
 
+        // Auto-refresh dashboard data every 30 seconds
+        let refreshInterval = null;
+
+        function startAutoRefresh() {
+            // Clear any existing interval
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            // Set up auto-refresh every 30 seconds
+            refreshInterval = setInterval(async () => {
+                try {
+                    console.log('🔄 Auto-refreshing dashboard data...');
+                    const isConnected = await checkConnection();
+                    if (isConnected) {
+                        await loadDashboardData();
+                        console.log('✅ Auto-refresh completed');
+                    } else {
+                        console.warn('⚠️ Auto-refresh skipped - database connection unavailable');
+                    }
+                } catch (error) {
+                    console.error('❌ Auto-refresh failed:', error);
+                }
+            }, 30000); // 30 seconds
+            
+            console.log('✅ Auto-refresh started (30 second intervals)');
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+                console.log('🛑 Auto-refresh stopped');
+            }
+        }
+
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async function() {
             lucide.createIcons();
@@ -1877,13 +1945,31 @@
             // Check connection first
             const isConnected = await checkConnection();
             if (isConnected) {
-                loadDashboardData();
+                await loadDashboardData();
+                // Start auto-refresh only after initial load succeeds
+                startAutoRefresh();
             } else {
                 showConnectionError();
             }
             
             // Initialize course management
             initializeCourseManagement();
+        });
+
+        // Stop auto-refresh when page is about to unload
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+
+        // Pause auto-refresh when page is hidden, resume when visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopAutoRefresh();
+                console.log('📱 Page hidden - pausing auto-refresh');
+            } else {
+                startAutoRefresh();
+                console.log('👁️ Page visible - resuming auto-refresh');
+            }
         });
 
         // Question form submission
@@ -2157,7 +2243,7 @@
             try {
                 const { data: courses, error } = await supabase
                     .from('courses')
-                    .select('*')
+                    .select('id,title,description,level,language,duration,duration_weeks,hours_per_week,is_active,created_at')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -2302,7 +2388,7 @@
             try {
                 const { data: assignments, error } = await supabase
                     .from('assignments')
-                    .select('*')
+                    .select('id,title,description,due_date,created_at')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -2339,7 +2425,7 @@
                                     ${dueDate}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    ${assignment.max_score || 0} points
+                                    ${assignment.max_score !== undefined ? assignment.max_score : 0} points
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="editAssignment('${assignment.id}')">
@@ -2390,7 +2476,46 @@
         async function loadTableCount(tableName, elementId) {
             try {
                 console.log(`🔍 Loading count for ${tableName}...`);
-                // Use supabaseAdmin for tables with RLS policies that require admin access
+                
+                // Try MCP first if in Electron environment
+                if (window.isElectron && window.electronAPI?.runMcp) {
+                    try {
+                        console.log(`🚀 Using MCP for ${tableName} count...`);
+                        const mcpResult = await window.electronAPI.runMcp(
+                            'mcp.config.usrlocalmcp.Postgrest',
+                            'postgrestRequest',
+                            {
+                                method: 'GET',
+                                path: `/${tableName}?select=count()&head=true`
+                            }
+                        );
+                        
+                        if (mcpResult && !mcpResult.error) {
+                            // PostgREST returns count in response headers or as a single value
+                            let count = 0;
+                            if (mcpResult.data && Array.isArray(mcpResult.data)) {
+                                count = mcpResult.data.length;
+                            } else if (mcpResult.count !== undefined) {
+                                count = mcpResult.count;
+                            } else if (typeof mcpResult.data === 'number') {
+                                count = mcpResult.data;
+                            }
+                            
+                            console.log(`✅ MCP ${tableName} count: ${count}`);
+                            document.getElementById(elementId).textContent = count;
+                            return;
+                        } else {
+                            console.warn(`⚠️ MCP failed for ${tableName}:`, mcpResult?.error);
+                            // Fall through to Supabase client
+                        }
+                    } catch (mcpError) {
+                        console.warn(`⚠️ MCP error for ${tableName}:`, mcpError);
+                        // Fall through to Supabase client
+                    }
+                }
+                
+                // Fallback to direct Supabase client
+                console.log(`📊 Using Supabase client for ${tableName} count...`);
                 const adminTables = ['user_profiles', 'user_achievements', 'user_vocabulary'];
                 const client = adminTables.includes(tableName) ? supabaseAdmin : supabase;
                 const { count, error } = await client
@@ -2461,7 +2586,12 @@
                     let { data: users, error } = await supabaseAdmin
                         .from('user_profiles')
                         .select(`
-                            *,
+                            id,
+                            email,
+                            full_name,
+                            created_at,
+                            avatar_url,
+                            last_active_at,
                             user_progress(
                                 current_level,
                                 total_xp,
@@ -2476,7 +2606,7 @@
                         
                         const { data: simpleUsers, error: simpleError } = await supabaseAdmin
                             .from('user_profiles')
-                            .select('*')
+                            .select('id,email,full_name,created_at,avatar_url,last_active_at')
                             .order('created_at', { ascending: false });
                         
                         if (simpleError) {
@@ -2693,7 +2823,7 @@
             try {
                 const { data: vocabulary, error } = await supabase
                     .from('user_vocabulary')
-                    .select('*')
+                    .select('id,word,translation,difficulty_level,created_at')
                     .order('created_at', { ascending: false })
                     .limit(5);
 
@@ -2712,7 +2842,7 @@
                             <h3 class="font-medium text-gray-900">${word.word}</h3>
                             <p class="text-sm text-gray-500">${word.translation}</p>
                             <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                ${word.level || 'beginner'}
+                                ${word.difficulty_level || 'beginner'}
                             </span>
                         </div>
                         <div class="flex items-center space-x-2">
@@ -2740,7 +2870,7 @@
                 // Check if grammar_lessons table exists first
                 const { data: lessons, error } = await supabase
                     .from('grammar_lessons')
-                    .select('*')
+                    .select('id,title,description,language,level,created_at,is_active')
                     .order('created_at', { ascending: false })
                     .limit(5);
 
@@ -2853,24 +2983,44 @@
         async function loadRecentActivity() {
             try {
                 console.log('Loading recent activity...');
-                const { data: activities, error } = await supabase
+
+                // Connection guard to fail fast with better error handling
+                if (typeof checkConnection === 'function') {
+                    const ok = await checkConnection();
+                    if (!ok) {
+                        const activityList = document.getElementById('activity-list');
+                        if (activityList) {
+                            activityList.innerHTML = `
+                                <div class="text-center p-6">
+                                    <div class="text-yellow-600 mb-4">
+                                        <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
+                                        <h3 class="text-lg font-semibold">Database connection unavailable</h3>
+                                    </div>
+                                    <p class="text-gray-600">Please ensure the database is reachable and try again.</p>
+                                </div>
+                            `;
+                            lucide.createIcons();
+                        }
+                        return;
+                    }
+                }
+
+                // Step 1: fetch recent sessions with minimal columns (avoid select(*))
+                const { data: sessions, error: sessionsError } = await supabase
                     .from('learning_sessions')
-                    .select(`
-                        *,
-                        user_profiles(email, full_name)
-                    `)
+                    .select('id,user_id,created_at,lesson_type,completed')
                     .order('created_at', { ascending: false })
                     .limit(10);
 
-                if (error) {
-                    console.error('Supabase error in loadRecentActivity:', error);
-                    throw error;
+                if (sessionsError) {
+                    console.error('Supabase error in loadRecentActivity (sessions):', sessionsError);
+                    throw sessionsError;
                 }
 
-                console.log('Recent activity data:', activities);
+                console.log('Recent activity sessions:', sessions);
                 const activityList = document.getElementById('activity-list');
                 
-                if (!activities || activities.length === 0) {
+                if (!sessions || sessions.length === 0) {
                     activityList.innerHTML = `
                         <div class="text-center p-6">
                             <div class="text-gray-400 mb-4">
@@ -2887,8 +3037,29 @@
                     return;
                 }
 
-                activityList.innerHTML = activities.map(activity => {
-                    const userName = activity.user_profiles?.full_name || activity.user_profiles?.email || 'Unknown User';
+                // Step 2: fetch user profiles in separate call (avoid relational select)
+                const userIds = Array.from(new Set(sessions.map(s => s.user_id).filter(Boolean)));
+                let profilesById = {};
+                if (userIds.length > 0) {
+                    const { data: profiles, error: profilesError } = await supabase
+                        .from('user_profiles')
+                        .select('id,full_name,email')
+                        .in('id', userIds);
+
+                    if (profilesError) {
+                        console.warn('Non-fatal: failed to fetch user profiles for recent activity:', profilesError);
+                    } else if (profiles && profiles.length) {
+                        profilesById = profiles.reduce((acc, p) => {
+                            acc[p.id] = p;
+                            return acc;
+                        }, {});
+                    }
+                }
+
+                // Render list
+                activityList.innerHTML = sessions.map(activity => {
+                    const profile = profilesById[activity.user_id] || null;
+                    const userName = profile?.full_name || profile?.email || 'Unknown User';
                     const timeAgo = getTimeAgo(new Date(activity.created_at));
                     const action = activity.completed ? 'Completed session' : 'Started session';
                     const target = activity.lesson_type || 'Learning session';
@@ -2916,25 +3087,17 @@
                 console.error('Error loading recent activity:', error);
                 const activityList = document.getElementById('activity-list');
                 if (activityList) {
-                    // Check if it's a relationship error
-                    if (error.message && (error.message.includes('relationship') || error.message.includes('schema cache'))) {
-                        activityList.innerHTML = `
-                            <div class="text-center p-6">
-                                <div class="text-yellow-600 mb-4">
-                                    <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                    <h3 class="text-lg font-semibold">Database Schema Issue</h3>
-                                </div>
-                                <p class="text-gray-600 mb-4">The learning sessions table needs to be updated to work with the admin dashboard.</p>
-                                <button onclick="showUserManagementSetup()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                    Show Setup Instructions
-                                </button>
+                    const msg = (error && error.message) ? error.message : 'Unknown error';
+                    activityList.innerHTML = `
+                        <div class="text-center p-6">
+                            <div class="text-red-600 mb-4">
+                                <i data-lucide="wifi-off" class="w-12 h-12 mx-auto mb-2"></i>
+                                <h3 class="text-lg font-semibold">Unable to load recent activity</h3>
                             </div>
-                        `;
-                    } else {
-                        activityList.innerHTML = `
-                            <div class="text-center text-red-500">Error loading activity: ${error.message}</div>
-                        `;
-                    }
+                            <p class="text-gray-600 mb-2">${msg}</p>
+                            <p class="text-gray-500">Please check your internet connection or try again shortly.</p>
+                        </div>
+                    `;
                     lucide.createIcons();
                 }
             }
@@ -3035,6 +3198,52 @@
                 currentStep.classList.remove('hidden');
             }
             
+            // Ensure a default lesson with one material exists when entering Course Content (Step 2)
+            if (stepNumber === 2) {
+                try {
+                    const lessonsContainer = document.getElementById('lessonsContainer');
+                    if (lessonsContainer) {
+                        const existingLessons = lessonsContainer.querySelectorAll('.lesson-item');
+                        if (existingLessons.length === 0 && typeof addLesson === 'function') {
+                            // Add the first lesson
+                            addLesson();
+                            
+                            // Add a default content item and basic defaults
+                            const firstLesson = lessonsContainer.querySelector('.lesson-item');
+                            if (firstLesson) {
+                                const titleInput = firstLesson.querySelector('.lesson-title');
+                                if (titleInput && !titleInput.value) {
+                                    titleInput.value = 'Lesson 1';
+                                }
+                                const objectivesInput = firstLesson.querySelector('.lesson-objectives');
+                                if (objectivesInput && !objectivesInput.value) {
+                                    objectivesInput.value = 'Introduce the lesson and outline goals.';
+                                }
+                                
+                                const addContentBtn = firstLesson.querySelector('button[onclick*="addLessonContent"]');
+                                if (addContentBtn) {
+                                    addContentBtn.click();
+                                    
+                                    const contentItem = firstLesson.querySelector('.content-item');
+                                    if (contentItem) {
+                                        const contentTitle = contentItem.querySelector('.content-title');
+                                        if (contentTitle && !contentTitle.value) {
+                                            contentTitle.value = 'Welcome Text';
+                                        }
+                                        const contentText = contentItem.querySelector('.content-text');
+                                        if (contentText && !contentText.value) {
+                                            contentText.value = 'This is a starter material. Replace or add more as needed.';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to inject default lesson/material:', e);
+                }
+            }
+            
             // Update navigation highlighting
             updateNavigationHighlighting(stepNumber);
             
@@ -3068,26 +3277,30 @@
         }
 
         function updateProgressIndicator(currentStep) {
-            for (let i = 1; i <= totalWizardSteps; i++) {
-                const stepElement = document.querySelector(`[data-step="${i}"]`);
-                if (stepElement) {
-                    const circle = stepElement.querySelector('.step-circle');
-                    const text = stepElement.querySelector('.step-text');
-                    
-                    if (i < currentStep) {
-                        // Completed step
-                        circle.className = 'step-circle w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium';
-                        text.className = 'step-text text-sm font-medium text-green-600';
-                    } else if (i === currentStep) {
-                        // Current step
-                        circle.className = 'step-circle w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-medium';
-                        text.className = 'step-text text-sm font-medium text-blue-600';
-                    } else {
-                        // Future step
-                        circle.className = 'step-circle w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-medium';
-                        text.className = 'step-text text-sm font-medium text-gray-500';
-                    }
-                }
+            // Update textual step indicator (e.g., "Step 2 of 4")
+            const stepIndicator = document.getElementById('stepIndicator');
+            if (stepIndicator) {
+                stepIndicator.textContent = `Step ${currentStep} of ${totalWizardSteps}`;
+            }
+
+            // Update the step title based on the current step
+            const stepTitle = document.getElementById('stepTitle');
+            if (stepTitle) {
+                const titles = {
+                    1: 'Basic Information',
+                    2: 'Course Content',
+                    3: 'Instructor Settings',
+                    4: 'Review & Publish'
+                };
+                stepTitle.textContent = titles[currentStep] || '';
+            }
+
+            // Update the progress bar width. Prefer the header progress bar inside the course modal.
+            const courseModal = document.getElementById('courseModal');
+            const progressBar = courseModal ? courseModal.querySelector('#progressBar') : document.getElementById('progressBar');
+            if (progressBar) {
+                const percent = Math.max(0, Math.min(100, (currentStep / totalWizardSteps) * 100));
+                progressBar.style.width = `${percent}%`;
             }
         }
 
@@ -3175,8 +3388,10 @@
                     break;
                 case 2: // Course Content
                     courseWizardData.learningObjectives = document.getElementById('learningObjectives')?.value;
-                    courseWizardData.prerequisites = document.getElementById('prerequisites')?.value;
-                    courseWizardData.materials = document.getElementById('requiredMaterials')?.value;
+            courseWizardData.prerequisites = document.getElementById('prerequisites')?.value;
+            // Collect skills focus selections
+            courseWizardData.skillsFocus = Array.from(document.querySelectorAll('input[name="skillsFocus"]:checked')).map(cb => cb.value);
+            courseWizardData.materials = document.getElementById('requiredMaterials')?.value;
                     courseWizardData.syllabus = document.getElementById('courseSyllabus')?.value;
                     
                     // Collect lesson data
@@ -3207,6 +3422,84 @@
             const courseSummary = document.getElementById('courseSummary');
             const courseDetailsReview = document.getElementById('courseDetailsReview');
             const instructorReview = document.getElementById('instructorReview');
+
+            // Render lessons & materials into the review step
+            const lessonsReview = document.getElementById('lessonsReview');
+            if (lessonsReview) {
+                const renderLessons = (lessonsArr) => {
+                    lessonsReview.innerHTML = '';
+                    const lessonsData = Array.isArray(lessonsArr) ? lessonsArr : [];
+                    if (lessonsData.length === 0) {
+                        lessonsReview.innerHTML = '<div class="text-sm text-gray-600">No lessons added yet. Go back to Step 2 to add lessons and materials.</div>';
+                        return;
+                    }
+                    lessonsData.forEach((lesson, idx) => {
+                        const safe = v => (v === null || v === undefined) ? '' : v;
+                        const materials = Array.isArray(lesson.materials) ? lesson.materials : [];
+                        const materialsHtml = materials.map((m, mi) => {
+                            const type = (m.type || '').toUpperCase();
+                            let detail = '';
+                            if (m.type === 'text') {
+                                const text = String(safe(m.content));
+                                const preview = text.length > 140 ? text.slice(0, 140) + '…' : text;
+                                detail = `<div class=\"text-gray-700\">${preview}</div>`;
+                            } else if (m.file_url || m.url) {
+                                 const linkUrl = m.file_url || m.url;
+                                 detail = `<a class=\"text-blue-700 underline break-all\" href=\"${linkUrl}\" target=\"_blank\" rel=\"noopener\">${linkUrl}</a>`;
+                            } else if (m.content) {
+                                detail = `<div class=\"text-gray-700\">${m.content}</div>`;
+                            }
+                            const meta = m.metadata ? `<div class=\"text-xs text-gray-500\">${Object.entries(m.metadata).map(([k,v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' • ')}</div>` : '';
+                            return `
+                                <li class=\"pl-2\">
+                                    <div class=\"text-sm\"><span class=\"inline-block px-2 py-0.5 rounded bg-gray-200 text-gray-800 mr-2\">${type}</span> ${m.metadata?.title || m.content || `Material ${mi+1}`}</div>
+                                    ${detail}
+                                    ${meta}
+                                </li>
+                            `;
+                        }).join('');
+
+                        const block = `
+                            <div class=\"bg-white rounded border border-gray-200 p-3\">
+                                <div class=\"font-medium text-gray-900\">Lesson ${lesson.order_number || idx + 1}: ${lesson.title || 'Untitled'}</div>
+                                ${lesson.description ? `<div class=\"text-sm text-gray-600 mt-1\">${lesson.description}</div>` : ''}
+                                <ul class=\"list-disc ml-5 mt-2 space-y-1\">${materialsHtml || '<li class=\"text-sm text-gray-500\">No materials added</li>'}</ul>
+                            </div>
+                        `;
+                        lessonsReview.insertAdjacentHTML('beforeend', block);
+                    });
+                };
+
+                // Resolve lessons if it's a Promise
+                let candidate = (typeof courseWizardData !== 'undefined') ? courseWizardData.lessons : undefined;
+
+                // Fallback: if no cached lessons yet but DOM has lessons, collect directly from DOM
+                try {
+                    const hasDomLessons = document.querySelectorAll('.lesson-item').length > 0;
+                    if ((!candidate || (Array.isArray(candidate) && candidate.length === 0)) && hasDomLessons) {
+                        const collected = collectLessonsData(); // async, returns a Promise
+                        if (collected && typeof collected.then === 'function') {
+                            courseWizardData.lessons = collected;
+                            candidate = collected; // will be handled by the Promise branch below
+                        } else if (Array.isArray(collected)) {
+                            courseWizardData.lessons = collected;
+                            candidate = collected;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Could not collect lessons on review step:', err);
+                }
+
+                if (candidate && typeof candidate.then === 'function') {
+                    lessonsReview.innerHTML = '<div class="text-sm text-gray-600">Collecting lesson data…</div>';
+                    candidate.then(ls => renderLessons(ls)).catch(err => {
+                        console.error('Failed to resolve lessons for review:', err);
+                        lessonsReview.innerHTML = '<div class="text-sm text-red-700">Failed to load lessons. Please go back to Step 2 and try again.</div>';
+                    });
+                } else {
+                    renderLessons(candidate);
+                }
+            }
             
             if (courseSummary) {
                 const title = document.getElementById('courseTitle')?.value || 'Untitled Course';
@@ -3485,8 +3778,15 @@
                         <div class="image-content-fields">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-600 mb-1">Image File</label>
-                                    <input type="file" class="content-file w-full px-2 py-1 border border-gray-300 rounded text-sm" accept="image/*">
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">Image Source</label>
+                                    <select class="image-source-type w-full px-2 py-1 border border-gray-300 rounded text-sm mb-2" onchange="toggleImageSourceFields(this)">
+                                        <option value="upload">Upload New Image</option>
+                                        <option value="existing">Select Existing Image</option>
+                                    </select>
+                                    <input type="file" class="content-file w-full px-2 py-1 border border-gray-300 rounded text-sm" accept="image/*" onchange="handleImageUpload(this)">
+                                    <select class="existing-image-select w-full px-2 py-1 border border-gray-300 rounded text-sm" style="display: none;" onchange="handleExistingImageSelect(this)">
+                                        <option value="">Loading existing images...</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-600 mb-1">Alt Text</label>
@@ -3497,6 +3797,29 @@
                                 <label class="block text-sm font-medium text-gray-600 mb-1">Caption (optional)</label>
                                 <input type="text" class="content-caption w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="Image caption">
                             </div>
+                            <!-- Image preview and management section -->
+                            <div class="image-loaded-preview mt-3" style="display: none;">
+                                <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <label class="block text-sm font-medium text-gray-600">Current Image</label>
+                                        <div class="flex gap-2">
+                                            <button type="button" onclick="replaceImage(this)" class="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                                <i data-lucide="refresh-cw" class="w-3 h-3 inline mr-1"></i>
+                                                Replace
+                                            </button>
+                                            <button type="button" onclick="deleteImage(this)" class="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">
+                                                <i data-lucide="trash-2" class="w-3 h-3 inline mr-1"></i>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                                    <input type="hidden" class="current-image-url" value="">
+                                    <input type="hidden" class="material-id" value="">
+                                </div>
+                            </div>
+                            <!-- File replacement input (hidden) -->
+                            <input type="file" class="replace-file-input" accept="image/*" style="display: none;" onchange="handleImageReplace(this)">
                         </div>
                     `;
                     break;
@@ -3860,6 +4183,14 @@
                 // Check if publishing immediately
                 const publishImmediately = document.getElementById('publishImmediately')?.checked || false;
                 
+                // Capture the review HTML from the lesson review section
+                let reviewHtml = '';
+                const lessonsReviewElement = document.getElementById('lessonsReview');
+                if (lessonsReviewElement) {
+                    reviewHtml = lessonsReviewElement.innerHTML;
+                    console.log('📝 Captured review HTML:', reviewHtml);
+                }
+
                 // Create course in database
                 const courseData = {
                     title: courseWizardData.title,
@@ -3874,6 +4205,7 @@
                     currency: courseWizardData.currency || 'USD',
                     learning_objectives: courseWizardData.learningObjectives,
                     prerequisites: courseWizardData.prerequisites,
+                    skills_focus: courseWizardData.skillsFocus || [],
                     required_materials: courseWizardData.materials,
                     syllabus: courseWizardData.syllabus,
                     instructor_name: courseWizardData.instructorName,
@@ -3883,6 +4215,7 @@
                     enrollment_deadline: courseWizardData.enrollmentDeadline,
                     cancellation_policy: courseWizardData.cancellationPolicy,
                     is_active: publishImmediately,
+                    review_html: reviewHtml, // Save the captured review HTML
                     created_at: new Date().toISOString()
                 };
                 
@@ -4041,7 +4374,7 @@
             try {
                 const { data: questions, error } = await supabase
                     .from('questions')
-                    .select('*')
+                    .select('id,assignment_id,question_text,question_type,points,difficulty,options,created_at')
                     .eq('assignment_id', selectedAssignmentId)
                     .order('created_at', { ascending: false });
                 
@@ -4218,14 +4551,15 @@ After running this SQL, refresh the admin dashboard to see the user management w
                  const filePath = `${folder}/${fileName}`;
                  
                  try {
-                     const { data, error } = await supabase.storage
+                     const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                     const { data, error } = await client.storage
                          .from('course-materials')
-                         .upload(filePath, file);
+                         .upload(filePath, file, { contentType: file.type });
                      
                      if (error) throw error;
                      
                      // Get public URL
-                     const { data: { publicUrl } } = supabase.storage
+                     const { data: { publicUrl } } = client.storage
                          .from('course-materials')
                          .getPublicUrl(filePath);
                      
@@ -4298,7 +4632,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 
                 const learningObjectives = learningObjectivesElement.value;
                 const prerequisites = prerequisitesElement.value;
-                const skillsFocus = Array.from(document.querySelectorAll('input[name="skills"]:checked')).map(cb => cb.value);
+                const skillsFocus = Array.from(document.querySelectorAll('input[name="skillsFocus"]:checked')).map(cb => cb.value);
                 
                 // Get additional form fields
                 const categoryElement = document.getElementById('courseCategory');
@@ -4306,6 +4640,13 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 const durationElement = document.getElementById('courseDuration');
                 const hoursElement = document.getElementById('courseHours');
                 
+                // Capture review HTML from review tab if present
+                let reviewHtml = '';
+                const reviewEl = document.getElementById('lessonsReview');
+                if (reviewEl) {
+                    reviewHtml = reviewEl.innerHTML;
+                }
+
                 const courseData = {
                     title: title,
                     description: description,
@@ -4317,13 +4658,16 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     is_active: publishStatus === 'publish', // Set active only if publish is selected
                     learning_objectives: learningObjectives,
                     prerequisites: prerequisites,
+                    skills_focus: skillsFocus,
                     required_materials: '', // Default empty materials
                     syllabus: '', // Default empty syllabus
                     instructor_name: 'Default Instructor',
-                    instructor_email: 'instructor@edlingo.com'
+                    instructor_email: 'instructor@edlingo.com',
+                    review_html: reviewHtml
                 };
                 
                 let result;
+                let createdCourse;
                 if (isEdit) {
                     // Update existing course
                     result = await supabase
@@ -4331,15 +4675,45 @@ After running this SQL, refresh the admin dashboard to see the user management w
                         .update(courseData)
                         .eq('id', courseId)
                         .select();
+                    createdCourse = result.data && result.data.length ? result.data[0] : null;
                 } else {
                     // Create new course
                     result = await supabase
                         .from('courses')
                         .insert(courseData)
                         .select();
+                    createdCourse = result.data && result.data.length ? result.data[0] : null;
                 }
                 
                 if (result.error) throw result.error;
+
+                // Create lessons if any
+                if (lessonsData && lessonsData.length > 0 && createdCourse) {
+                    console.log('📚 Creating lessons for course:', createdCourse.id);
+                    try {
+                        if (window.electronAPI) {
+                            const lessonResult = await window.electronAPI.invoke('db:createLessons', createdCourse.id, lessonsData);
+                            if (lessonResult && lessonResult.error) {
+                                console.error('❌ Failed to create lessons via IPC:', lessonResult.error);
+                                showError('Course saved but lessons failed: ' + lessonResult.error);
+                            } else {
+                                console.log('✅ Lessons created via IPC:', lessonResult);
+                            }
+                        } else {
+                            const { data: lessonData, error: lessonError } = await supabase
+                                .rpc('create_lessons_with_materials', { p_course_id: createdCourse.id, p_lessons: lessonsData });
+                            if (lessonError) {
+                                console.error('❌ Failed to create lessons via Supabase:', lessonError);
+                                showError('Course saved but lessons failed: ' + lessonError.message);
+                            } else {
+                                console.log('✅ Lessons created via Supabase:', lessonData);
+                            }
+                        }
+                    } catch (lessonError) {
+                        console.error('❌ Error creating lessons:', lessonError);
+                        showError('Course saved but lessons failed: ' + lessonError.message);
+                    }
+                }
                 
                 // Reset form and close modal
                 e.target.reset();
@@ -4352,7 +4726,8 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 updateLastUpdated();
                 
                 // Show success message
-                alert(isEdit ? 'Course updated successfully!' : 'Course created successfully!');
+                const successMessage = isEdit ? 'Course updated successfully!' : (lessonsData && lessonsData.length > 0 ? `Course created successfully with ${lessonsData.length} lessons!` : 'Course created successfully!');
+                alert(successMessage);
                 
             } catch (error) {
                 console.error(isEdit ? 'Error updating course:' : 'Error creating course:', error);
@@ -4408,6 +4783,10 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     continue;
                 }
                 
+                // Determine folder names for organized uploads
+                const lessonNameForPath = (titleElement.value || `lesson_${i + 1}`).trim();
+                const sectionNameForPath = 'Course Content';
+                
                 const materials = [];
                 
                 // Collect materials for this lesson
@@ -4453,7 +4832,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             const imageFile = contentItem.querySelector('.content-file')?.files[0];
                             if (imageFile) {
                                 try {
-                                    materialData.file_url = await uploadSingleFile(imageFile, 'lesson-content');
+                                    materialData.file_url = await uploadSingleFile(imageFile, 'lessons', sectionNameForPath, lessonNameForPath, i);
                                     materialData.file_size = imageFile.size;
                                     materialData.file_type = imageFile.type;
                                     materialData.metadata = {
@@ -4471,7 +4850,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             const audioFile = contentItem.querySelector('.content-file')?.files[0];
                             if (audioFile) {
                                 try {
-                                    materialData.file_url = await uploadSingleFile(audioFile, 'lesson-content');
+                                    materialData.file_url = await uploadSingleFile(audioFile, 'lessons', sectionNameForPath, lessonNameForPath, i);
                                     materialData.file_size = audioFile.size;
                                     materialData.file_type = audioFile.type;
                                     const durationValue = contentItem.querySelector('.content-duration')?.value;
@@ -4491,7 +4870,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             const videoFile = contentItem.querySelector('.content-file')?.files[0];
                             if (videoFile) {
                                 try {
-                                    materialData.file_url = await uploadSingleFile(videoFile, 'lesson-content');
+                                    materialData.file_url = await uploadSingleFile(videoFile, 'lessons', sectionNameForPath, lessonNameForPath, i);
                                     materialData.file_size = videoFile.size;
                                     materialData.file_type = videoFile.type;
                                     const durationValue = contentItem.querySelector('.content-duration')?.value;
@@ -4512,7 +4891,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             const pdfFile = contentItem.querySelector('.content-file')?.files[0];
                             if (pdfFile) {
                                 try {
-                                    materialData.file_url = await uploadSingleFile(pdfFile, 'lesson-content');
+                                    materialData.file_url = await uploadSingleFile(pdfFile, 'lessons', sectionNameForPath, lessonNameForPath, i);
                                     materialData.file_size = pdfFile.size;
                                     materialData.file_type = pdfFile.type;
                                     materialData.metadata = {
@@ -4569,11 +4948,32 @@ After running this SQL, refresh the admin dashboard to see the user management w
          // Make collectLessonsData available globally
          window.collectLessonsData = collectLessonsData;
 
-         // Helper function to upload a single file
-         async function uploadSingleFile(file, folder) {
+         // Helper function to upload a single file with organized folder structure
+         async function uploadSingleFile(file, folder, sectionName = '', lessonName = '', lessonIndex = 0) {
             try {
                 const fileName = `${Date.now()}_${file.name}`;
-                const filePath = `${folder}/${fileName}`;
+                
+                // Get course name from DOM
+                let courseName = '';
+                const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+                if (courseTitleInput && courseTitleInput.value) {
+                    courseName = courseTitleInput.value.trim();
+                }
+                
+                // Create organized path structure: courseName/lesson_number/fileName
+                let filePath = '';
+                if (courseName) {
+                    const sanitizedCourse = courseName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
+                    filePath = sanitizedCourse;
+                } else {
+                    filePath = 'course_content'; // fallback if no course name
+                }
+                
+                // Add lesson number (1-based index)
+                const lessonNumber = lessonIndex + 1;
+                filePath += `/lesson_${lessonNumber}`;
+                
+                filePath += `/${fileName}`;
                 
                 // Use IPC for file upload if in Electron environment
                 if (window.electronAPI) {
@@ -4585,21 +4985,22 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     
                     if (result.success) {
                         console.log('✅ File uploaded successfully via Electron IPC:', result.result);
-                        return result.result;
+                        return result.result.publicUrl || result.result;
                     } else {
                         console.error('❌ Failed to upload file via IPC:', result.error);
                         throw new Error(result.error);
                     }
                 } else {
-                    // Fallback to direct Supabase upload for web environment
-                    const { data, error } = await supabase.storage
+                    // Fallback to direct Supabase upload for web environment (prefer admin client if available)
+                    const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                    const { data, error } = await client.storage
                         .from('course-materials')
-                        .upload(filePath, file);
+                        .upload(filePath, file, { contentType: file.type });
                     
                     if (error) throw error;
                     
                     // Get public URL
-                    const { data: { publicUrl } } = supabase.storage
+                    const { data: { publicUrl } } = client.storage
                         .from('course-materials')
                         .getPublicUrl(filePath);
                     
@@ -4663,7 +5064,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                          description: description,
                          assignment_type: 'exercise',
                          difficulty_level: 'beginner',
-                         max_score: parseInt(points) || 100, // Default to 100 points if not specified
+                         // points field omitted; max_score column not present in current DB schema
                          due_date: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 7 days from now
                          is_active: true
                      })
@@ -4835,8 +5236,8 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     submitBtnElement.style.display = 'inline-flex'; // Show the button for editing
                 }
                 
-                // Navigate to the final step to show the Update Course button
-                showWizardStep(4);
+                // Start from step 1 for editing to show all form steps
+                showWizardStep(1);
                 
                 // Load test lesson content
                 const testCourse = {
@@ -4922,7 +5323,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 // Fetch course data
                 const { data: course, error } = await supabase
                     .from('courses')
-                    .select('*')
+                    .select('id,title,description,level,cefr_level,language,category,duration,duration_weeks,hours_per_week,is_active,created_at,instructor_name,instructor_email,instructor_bio,learning_objectives,prerequisites,skills_focus')
                     .eq('id', courseId)
                     .single();
 
@@ -4971,6 +5372,13 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 if (instructorNameElement) instructorNameElement.value = course.instructor_name || '';
                 if (instructorEmailElement) instructorEmailElement.value = course.instructor_email || '';
                 if (instructorBioElement) instructorBioElement.value = course.instructor_bio || '';
+                
+                // Populate step 2 fields (learning objectives, prerequisites, skills focus)
+                const objectivesElement = document.getElementById('learningObjectives');
+                const prerequisitesElement = document.getElementById('prerequisites');
+                
+                if (objectivesElement) objectivesElement.value = course.learning_objectives || '';
+                if (prerequisitesElement) prerequisitesElement.value = course.prerequisites || '';
 
                 // Update modal title and button
                 const modalTitleElement = document.getElementById('courseModalTitle');
@@ -4982,11 +5390,11 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     submitBtnElement.style.display = 'inline-flex'; // Show the button for editing
                 }
                 
-                // Navigate to the final step to show the Update Course button
-                showWizardStep(4);
+                // Start from step 1 for editing to show all form steps
+                showWizardStep(1);
 
-                // Load lesson content if available
-                await loadLessonContent(course);
+                // Load lesson content from database
+                await loadLessonContentFromDatabase(courseId);
 
                 // Store course ID for update
                 document.getElementById('courseForm').dataset.courseId = courseId;
@@ -5060,6 +5468,10 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 }
 
                 // Handle skills focus checkboxes
+                // First clear all checkboxes to avoid stale selections
+                const allSkillCheckboxes = document.querySelectorAll('input[name="skillsFocus"]');
+                allSkillCheckboxes.forEach(cb => { cb.checked = false; });
+                // Then set based on course data
                 if (course.skills_focus) {
                     const skills = Array.isArray(course.skills_focus) ? course.skills_focus : course.skills_focus.split(',');
                     skills.forEach(skill => {
@@ -5195,6 +5607,468 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 }
             } catch (error) {
                 console.error('Error loading lesson content:', error);
+            }
+        }
+
+        // Function to load lesson data from database for editing using RPC
+        async function loadLessonContentFromDatabase(courseId) {
+            try {
+                if (!supabase) {
+                    console.error('Supabase not initialized');
+                    return;
+                }
+                
+                console.log('🔍 Loading lessons with materials using RPC for course:', courseId);
+                
+                // Fetch lessons with materials using the RPC function
+                const { data: lessonsWithMaterials, error } = await supabase
+                    .rpc('get_course_lessons_with_materials', { p_course_id: courseId });
+                
+                if (error) {
+                    console.error('❌ Error fetching lessons with materials:', error);
+                    // Fallback to the original method if RPC fails
+                    console.log('🔄 Falling back to separate queries...');
+                    return await loadLessonContentFromDatabaseFallback(courseId);
+                }
+                
+                if (!lessonsWithMaterials || lessonsWithMaterials.length === 0) {
+                    console.log('📭 No lessons found for course:', courseId);
+                    return;
+                }
+                
+                console.log('📚 Found lessons with materials:', lessonsWithMaterials.length, 'rows');
+                
+                // Clear existing lessons
+                const lessonsContainer = document.getElementById('lessonsContainer');
+                if (lessonsContainer) {
+                    lessonsContainer.innerHTML = '';
+                }
+                
+                // Group materials by lesson_id to organize the data
+                const lessonsMap = new Map();
+                
+                lessonsWithMaterials.forEach(row => {
+                    const lessonId = row.lesson_id;
+                    
+                    if (!lessonsMap.has(lessonId)) {
+                        lessonsMap.set(lessonId, {
+                            id: lessonId,
+                            title: row.lesson_title,
+                            description: row.lesson_description,
+                            order_index: row.lesson_order,
+                            materials: []
+                        });
+                    }
+                    
+                    // Add material if it exists (some lessons might not have materials)
+                    if (row.material_id) {
+                        lessonsMap.get(lessonId).materials.push({
+                            id: row.material_id,
+                            type: row.material_type,
+                            content: row.material_content,
+                            url: row.file_url,
+                            metadata: row.metadata
+                        });
+                    }
+                });
+                
+                // Convert map to array and sort by lesson order
+                const lessons = Array.from(lessonsMap.values()).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+                
+                console.log('🗂️ Organized into', lessons.length, 'lessons');
+                
+                // Populate each lesson in the form
+                for (const lesson of lessons) {
+                    addLesson();
+                    
+                    // Get the last added lesson container
+                    const lessonContainers = document.querySelectorAll('.lesson-item');
+                    const currentLesson = lessonContainers[lessonContainers.length - 1];
+                    
+                    if (currentLesson) {
+                        // Populate lesson fields
+                        const titleInput = currentLesson.querySelector('.lesson-title');
+                        const levelSelect = currentLesson.querySelector('.lesson-cefr');
+                        const durationInput = currentLesson.querySelector('.lesson-duration');
+                        const objectivesTextarea = currentLesson.querySelector('.lesson-objectives');
+                        
+                        if (titleInput) titleInput.value = lesson.title || '';
+                        if (levelSelect) levelSelect.value = 'A1'; // Default CEFR level
+                        if (durationInput) durationInput.value = '30'; // Default duration
+                        if (objectivesTextarea) objectivesTextarea.value = lesson.description || '';
+                        
+                        // Populate materials for this lesson
+                        await populateLessonMaterials(lesson.materials, currentLesson);
+                    }
+                }
+
+                // After populating all lessons/materials, sync data for Review step
+                try {
+                    courseWizardData.lessons = collectLessonsData();
+                    if (typeof updateReviewStep === 'function') {
+                        setTimeout(() => { 
+                            try { 
+                                updateReviewStep(); 
+                            } catch (e) { 
+                                console.warn('updateReviewStep failed:', e); 
+                            } 
+                        }, 500);
+                    }
+                } catch (e) {
+                    console.warn('Failed to sync lessons to review:', e);
+                }
+                
+                console.log('✅ Successfully loaded', lessons.length, 'lessons with materials');
+                
+            } catch (error) {
+                console.error('❌ Error loading lesson content from database:', error);
+                // Try fallback method
+                return await loadLessonContentFromDatabaseFallback(courseId);
+            }
+        }
+        
+        // Fallback function for separate queries (original implementation)
+        async function loadLessonContentFromDatabaseFallback(courseId) {
+            try {
+                console.log('🔄 Using fallback method to load lessons...');
+                
+                // Fetch lessons for this course
+                const { data: lessons, error } = await supabase
+                    .from('lessons')
+                    .select('*')
+                    .eq('course_id', courseId)
+                    .order('order_index', { ascending: true });
+                
+                if (error) {
+                    console.error('Error fetching lessons:', error);
+                    return;
+                }
+                
+                if (lessons && lessons.length > 0) {
+                    // Clear existing lessons
+                    const lessonsContainer = document.getElementById('lessonsContainer');
+                    if (lessonsContainer) {
+                        lessonsContainer.innerHTML = '';
+                    }
+                    
+                    // Add each lesson
+                    for (const lesson of lessons) {
+                        addLesson();
+                        
+                        // Get the last added lesson container (matches addLesson template)
+                        const lessonContainers = document.querySelectorAll('.lesson-item');
+                        const currentLesson = lessonContainers[lessonContainers.length - 1];
+                        
+                        if (currentLesson) {
+                            // Populate lesson fields
+                            const titleInput = currentLesson.querySelector('.lesson-title');
+                            const levelSelect = currentLesson.querySelector('.lesson-cefr');
+                            const durationInput = currentLesson.querySelector('.lesson-duration');
+                            const objectivesTextarea = currentLesson.querySelector('.lesson-objectives');
+                            
+                            if (titleInput) titleInput.value = lesson.title || '';
+                            if (levelSelect) levelSelect.value = lesson.cefr_level || 'A1';
+                            if (durationInput) durationInput.value = lesson.duration || '';
+                            if (objectivesTextarea) objectivesTextarea.value = lesson.objectives || '';
+                            
+                            // Load lesson materials/content if available (await to ensure DOM is populated sequentially)
+                            await loadLessonMaterials(lesson.id, currentLesson);
+                        }
+                    }
+
+                    // After populating all lessons/materials, sync data for Review step
+                    try {
+                        courseWizardData.lessons = collectLessonsData();
+                        if (typeof updateReviewStep === 'function') {
+                            setTimeout(() => { 
+                                try { 
+                                    updateReviewStep(); 
+                                } catch (e) { 
+                                    console.warn('updateReviewStep failed:', e); 
+                                } 
+                            }, 500);
+                        }
+                    } catch (e) {
+                        console.warn('Failed to sync lessons to review:', e);
+                    }
+                } else {
+                    console.log('No lessons found for course:', courseId);
+                }
+            } catch (error) {
+                console.error('Error loading lesson content from database (fallback):', error);
+            }
+        }
+        
+        // Function to populate materials for a lesson using pre-fetched data
+        async function populateLessonMaterials(materials, lessonContainer) {
+            try {
+                if (!materials || materials.length === 0) {
+                    console.log('📝 No materials to populate for this lesson');
+                    return;
+                }
+                
+                console.log('📎 Populating', materials.length, 'materials...');
+                
+                const contentContainer = lessonContainer.querySelector('.lesson-content-container');
+                if (!contentContainer) {
+                    console.warn('Content container not found in lesson');
+                    return;
+                }
+                
+                // Add each material as content
+                materials.forEach((material, index) => {
+                    // Click the existing Add Content button in this lesson item
+                    const addMaterialBtn = lessonContainer.querySelector('button[onclick^="addLessonContent"]');
+                    if (addMaterialBtn) {
+                        addMaterialBtn.click();
+                        
+                        // Get the last added content item
+                        setTimeout(() => {
+                            const contentItems = contentContainer.querySelectorAll('.content-item');
+                            const lastContentItem = contentItems[contentItems.length - 1];
+                            
+                            if (lastContentItem) {
+                                // Populate material data
+                                const titleInput = lastContentItem.querySelector('.content-title');
+                                const typeSelect = lastContentItem.querySelector('.content-type');
+                                
+                                if (titleInput) titleInput.value = `Material ${index + 1}`;
+                                if (typeSelect) {
+                                    const materialType = (material.type || 'text').toLowerCase();
+                                    typeSelect.value = materialType;
+                                    updateContentFields(typeSelect);
+                                    
+                                    // Populate type-specific fields
+                                    setTimeout(() => {
+                                        const fieldsContainer = lastContentItem.querySelector('.content-fields');
+                                        if (fieldsContainer) {
+                                            // Parse content data
+                                            let contentData = {};
+                                            if (material.content) {
+                                                if (typeof material.content === 'string') {
+                                                    try {
+                                                        contentData = JSON.parse(material.content);
+                                                    } catch (e) {
+                                                        if (materialType === 'text') {
+                                                            contentData = { text: material.content };
+                                                        }
+                                                    }
+                                                } else {
+                                                    contentData = material.content;
+                                                }
+                                            }
+                                            if (!contentData || Object.keys(contentData).length === 0) {
+                                                contentData = material.metadata || {};
+                                            }
+                                            
+                                            // Populate based on material type
+                                            switch (materialType) {
+                                                case 'text':
+                                                    const textArea = fieldsContainer.querySelector('textarea');
+                                                    if (textArea) textArea.value = typeof material.content === 'string' ? material.content : (contentData.text || contentData.content || '');
+                                                    break;
+                                                case 'video':
+                                                    const videoDuration = fieldsContainer.querySelector('.content-duration');
+                                                    const videoDesc = fieldsContainer.querySelector('.content-description');
+                                                    if (videoDuration) videoDuration.value = contentData.duration || '';
+                                                    if (videoDesc) videoDesc.value = contentData.description || '';
+                                                    break;
+                                                case 'audio':
+                                                    const audioDuration = fieldsContainer.querySelector('.content-duration');
+                                                    const transcript = fieldsContainer.querySelector('.content-transcript');
+                                                    if (audioDuration) audioDuration.value = contentData.duration || '';
+                                                    if (transcript) transcript.value = contentData.transcript || '';
+                                                    break;
+                                                case 'pdf':
+                                                    const pages = fieldsContainer.querySelector('.content-pages');
+                                                    const synonym = fieldsContainer.querySelector('.content-synonym');
+                                                    const instructions = fieldsContainer.querySelector('.content-instructions');
+                                                    if (pages) pages.value = contentData.page_range || '';
+                                                    if (synonym) synonym.value = contentData.synonym || '';
+                                                    if (instructions) instructions.value = contentData.instructions || '';
+                                                    break;
+                                                case 'quiz':
+                                                    const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
+                                                    const questions = fieldsContainer.querySelector('input[placeholder*="questions"]');
+                                                    if (quizTitle) quizTitle.value = contentData.title || '';
+                                                    if (questions) questions.value = contentData.questions || '';
+                                                    break;
+                                                case 'image':
+                                                    const altInput = fieldsContainer.querySelector('.content-alt');
+                                                    const captionInput = fieldsContainer.querySelector('.content-caption');
+                                                    if (altInput) altInput.value = contentData.alt_text || '';
+                                                    if (captionInput) captionInput.value = contentData.caption || '';
+                                                    
+                                                    // Show preview of existing image if we have a url
+                                                    if (material.url) {
+                                                        let preview = fieldsContainer.querySelector('.image-loaded-preview');
+                                                        if (!preview) {
+                                                            preview = document.createElement('div');
+                                                            preview.className = 'image-loaded-preview mt-2';
+                                                            preview.innerHTML = `<img class="max-h-40 rounded border" alt="Image preview">`;
+                                                            fieldsContainer.appendChild(preview);
+                                                        }
+                                                        const imgEl = preview.querySelector('img');
+                                                        if (imgEl) imgEl.src = material.url;
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                    }, 200);
+                                }
+                            }
+                        }, 100 * (index + 1)); // Stagger the population to avoid DOM conflicts
+                    }
+                });
+
+                // Wait for all materials to be populated
+                await new Promise(resolve => setTimeout(resolve, 350 + (materials.length * 100)));
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Error populating lesson materials:', error);
+            }
+        }
+        
+        // Function to load lesson materials for a specific lesson
+        async function loadLessonMaterials(lessonId, lessonContainer) {
+            try {
+                if (!supabase) {
+                    console.error('Supabase not initialized');
+                    return;
+                }
+                
+                // Fetch lesson materials
+                const { data: materials, error } = await supabase
+                    .from('lesson_materials')
+                    .select('*')
+                    .eq('lesson_id', lessonId)
+                    .order('order_index', { ascending: true });
+                
+                if (error) {
+                    console.error('Error fetching lesson materials:', error);
+                    return;
+                }
+                
+                if (materials && materials.length > 0) {
+                    // Use the correct container class from the template
+                    const contentContainer = lessonContainer.querySelector('.lesson-content-container');
+                    if (contentContainer) {
+                        // Add each material as content
+                        materials.forEach(material => {
+                            // Click the existing Add Content button in this lesson item
+                            const addMaterialBtn = lessonContainer.querySelector('button[onclick^="addLessonContent"]');
+                            if (addMaterialBtn) {
+                                addMaterialBtn.click();
+                                
+                                // Get the last added content item
+                                setTimeout(() => {
+                                    const contentItems = contentContainer.querySelectorAll('.content-item');
+                                    const lastContentItem = contentItems[contentItems.length - 1];
+                                    
+                                    if (lastContentItem) {
+                                        // Populate material data
+                                        const titleInput = lastContentItem.querySelector('.content-title');
+                                        const typeSelect = lastContentItem.querySelector('.content-type');
+                                        
+                                        if (titleInput) titleInput.value = material.title || '';
+                                        if (typeSelect) {
+                                            const materialType = (material.type || 'text').toLowerCase();
+                                            typeSelect.value = materialType;
+                                            updateContentFields(typeSelect);
+                                            
+                                            // Populate type-specific fields
+                                            setTimeout(() => {
+                                                const fieldsContainer = lastContentItem.querySelector('.content-fields');
+                                                if (fieldsContainer) {
+                                                    // Safely parse content data if it's a JSON string; else fallback to metadata
+                                                    let contentData = {};
+                                                    if (material.content) {
+                                                        if (typeof material.content === 'string') {
+                                                            try {
+                                                                contentData = JSON.parse(material.content);
+                                                            } catch (e) {
+                                                                // If plain string for text type
+                                                                if (materialType === 'text') {
+                                                                    contentData = { text: material.content };
+                                                                } else {
+                                                                    contentData = {};
+                                                                }
+                                                            }
+                                                        } else {
+                                                            contentData = material.content;
+                                                        }
+                                                    }
+                                                    if (!contentData || Object.keys(contentData).length === 0) {
+                                                        contentData = material.metadata || {};
+                                                    }
+                                                    
+                                                    // Populate based on material type
+                                                    switch (materialType) {
+                                                        case 'text':
+                                                            const textArea = fieldsContainer.querySelector('textarea');
+                                                            if (textArea) textArea.value = typeof material.content === 'string' ? material.content : (contentData.text || contentData.content || '');
+                                                            break;
+                                                        case 'video':
+                                                            const videoDuration = fieldsContainer.querySelector('.content-duration');
+                                                            const videoDesc = fieldsContainer.querySelector('.content-description');
+                                                            if (videoDuration) videoDuration.value = contentData.duration || '';
+                                                            if (videoDesc) videoDesc.value = contentData.description || '';
+                                                            break;
+                                                        case 'audio':
+                                                            const audioDuration = fieldsContainer.querySelector('.content-duration');
+                                                            const transcript = fieldsContainer.querySelector('.content-transcript');
+                                                            if (audioDuration) audioDuration.value = contentData.duration || '';
+                                                            if (transcript) transcript.value = contentData.transcript || '';
+                                                            break;
+                                                        case 'pdf':
+                                                            const pages = fieldsContainer.querySelector('.content-pages');
+                                                            const synonym = fieldsContainer.querySelector('.content-synonym');
+                                                            const instructions = fieldsContainer.querySelector('.content-instructions');
+                                                            if (pages) pages.value = contentData.page_range || '';
+                                                            if (synonym) synonym.value = contentData.synonym || '';
+                                                            if (instructions) instructions.value = contentData.instructions || '';
+                                                            break;
+                                                        case 'quiz':
+                                                            const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
+                                                            const questions = fieldsContainer.querySelector('input[placeholder*="questions"]');
+                                                            if (quizTitle) quizTitle.value = contentData.title || '';
+                                                            if (questions) questions.value = contentData.questions || '';
+                                                            break;
+                                                        case 'image':
+                                                            const altInput = fieldsContainer.querySelector('.content-alt');
+                                                            const captionInput = fieldsContainer.querySelector('.content-caption');
+                                                            if (altInput) altInput.value = contentData.alt_text || '';
+                                                            if (captionInput) captionInput.value = contentData.caption || '';
+                                                            // Show preview of existing image if we have a url
+                                            if (material.url) {
+                                                let preview = fieldsContainer.querySelector('.image-loaded-preview');
+                                                if (!preview) {
+                                                    preview = document.createElement('div');
+                                                    preview.className = 'image-loaded-preview mt-2';
+                                                    preview.innerHTML = `<img class=\"max-h-40 rounded border\" alt=\"Image preview\">`;
+                                                    fieldsContainer.appendChild(preview);
+                                                }
+                                                const imgEl = preview.querySelector('img');
+                                                if (imgEl) imgEl.src = material.url;
+                                            }
+                                                            break;
+                                                    }
+                                                }
+                                            }, 200);
+                                        }
+                                    }
+                                }, 100);
+                            }
+                        });
+                    }
+                }
+
+                // small delay to allow nested timeouts to finish updating the DOM before returning
+                await new Promise(resolve => setTimeout(resolve, 350));
+                return true;
+            } catch (error) {
+                console.error('Error loading lesson materials:', error);
             }
         }
 
@@ -6752,9 +7626,442 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
 
         // ===== END COURSE MANAGEMENT FUNCTIONS =====
+        
+        // Image management functions for lesson materials
+        async function toggleImageSourceFields(selectElement) {
+            const contentItem = selectElement.closest('.content-item');
+            const fieldsContainer = contentItem.querySelector('.content-fields');
+            const fileInput = fieldsContainer.querySelector('.content-file');
+            const existingSelect = fieldsContainer.querySelector('.existing-image-select');
+            
+            if (selectElement.value === 'existing') {
+                fileInput.style.display = 'none';
+                existingSelect.style.display = 'block';
+                await populateExistingImages(existingSelect);
+            } else {
+                fileInput.style.display = 'block';
+                existingSelect.style.display = 'none';
+            }
+        }
+
+        async function populateExistingImages(selectElement) {
+            try {
+                selectElement.innerHTML = '<option value="">Loading existing images...</option>';
+                
+                // Recursively list all files in course-materials bucket
+                let allFiles = [];
+                
+                if (window.electronAPI) {
+                    // For Electron - assume it returns all files recursively
+                    const result = await window.electronAPI.invoke('db:listFiles', 'course-materials');
+                    if (result.success) {
+                        allFiles = result.result;
+                    }
+                } else {
+                    // For browser - need to recursively explore folders
+                    const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                    allFiles = await listAllFilesRecursively(client, 'course-materials', '');
+                }
+                
+                // Filter for image files
+                const imageFiles = allFiles.filter(file => {
+                    if (!file.name) return false;
+                    const ext = file.name.toLowerCase().split('.').pop();
+                    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+                });
+                
+                // Clear loading option and populate with images
+                selectElement.innerHTML = '<option value="">Select an existing image...</option>';
+                
+                if (imageFiles.length === 0) {
+                    selectElement.innerHTML = '<option value="">No existing images found</option>';
+                    return;
+                }
+                
+                // Group images by path for better organization
+                const groupedImages = {};
+                imageFiles.forEach(file => {
+                    const pathParts = file.name.split('/');
+                    let groupKey = 'root';
+                    
+                    // Check if it's organized in folders (e.g., reading/lesson_1/, course_name/lesson_1/)
+                    if (pathParts.length > 1) {
+                        if (pathParts.length === 3) {
+                            // Format: folder/lesson_x/filename
+                            groupKey = `${pathParts[0]}/${pathParts[1]}`;
+                        } else if (pathParts.length === 2) {
+                            // Format: folder/filename
+                            groupKey = pathParts[0];
+                        }
+                    }
+                    
+                    if (!groupedImages[groupKey]) {
+                        groupedImages[groupKey] = [];
+                    }
+                    groupedImages[groupKey].push(file);
+                });
+                
+                // Add grouped options
+                Object.keys(groupedImages).sort().forEach(group => {
+                    if (group !== 'root') {
+                        const optgroup = document.createElement('optgroup');
+                        optgroup.label = group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        selectElement.appendChild(optgroup);
+                        
+                        groupedImages[group].forEach(file => {
+                            const option = document.createElement('option');
+                            const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                            const { data: { publicUrl } } = client.storage
+                                .from('course-materials')
+                                .getPublicUrl(file.name);
+                            
+                            option.value = publicUrl;
+                            // Show just the filename for cleaner display
+                            const fileName = file.name.split('/').pop();
+                            option.textContent = fileName;
+                            optgroup.appendChild(option);
+                        });
+                    }
+                });
+                
+                // Add ungrouped files
+                if (groupedImages['root']) {
+                    groupedImages['root'].forEach(file => {
+                        const option = document.createElement('option');
+                        const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                        const { data: { publicUrl } } = client.storage
+                            .from('course-materials')
+                            .getPublicUrl(file.name);
+                        
+                        option.value = publicUrl;
+                        option.textContent = file.name;
+                        selectElement.appendChild(option);
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error loading existing images:', error);
+                selectElement.innerHTML = '<option value="">Error loading images</option>';
+            }
+        }
+
+        // Recursive helper function to list all files in a bucket
+        async function listAllFilesRecursively(client, bucket, prefix = '') {
+            const allFiles = [];
+            const folders = [];
+            
+            try {
+                const { data, error } = await client.storage
+                    .from(bucket)
+                    .list(prefix, { limit: 1000 });
+                
+                if (error) {
+                    console.error('Error listing files at prefix:', prefix, error);
+                    return allFiles;
+                }
+                
+                if (!data) return allFiles;
+                
+                // Separate files from folders
+                data.forEach(item => {
+                    if (item.id === null) {
+                        // This is a folder
+                        folders.push(item.name);
+                    } else {
+                        // This is a file - add the full path
+                        allFiles.push({
+                            ...item,
+                            name: prefix ? `${prefix}/${item.name}` : item.name
+                        });
+                    }
+                });
+                
+                // Recursively process folders
+                for (const folder of folders) {
+                    const subPrefix = prefix ? `${prefix}/${folder}` : folder;
+                    const subFiles = await listAllFilesRecursively(client, bucket, subPrefix);
+                    allFiles.push(...subFiles);
+                }
+                
+            } catch (error) {
+                console.error('Error in recursive file listing:', error);
+            }
+            
+            return allFiles;
+        }
+
+        async function handleExistingImageSelect(selectElement) {
+            if (!selectElement.value) return;
+            
+            const contentItem = selectElement.closest('.content-item');
+            const fieldsContainer = contentItem.querySelector('.content-fields');
+            
+            // Create or update image preview
+            let preview = fieldsContainer.querySelector('.image-loaded-preview');
+            if (!preview) {
+                preview = document.createElement('div');
+                preview.className = 'image-loaded-preview mt-3';
+                preview.innerHTML = `
+                    <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        <div class="flex items-start justify-between mb-2">
+                            <label class="block text-sm font-medium text-gray-600">Selected Image</label>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="replaceImage(this)" class="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                    <i data-lucide="refresh-cw" class="w-3 h-3 inline mr-1"></i>
+                                    Replace
+                                </button>
+                                <button type="button" onclick="deleteImage(this)" class="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">
+                                    <i data-lucide="trash-2" class="w-3 h-3 inline mr-1"></i>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                        <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                        <input type="hidden" class="current-image-url" value="">
+                        <input type="hidden" class="material-id" value="">
+                    </div>
+                `;
+                fieldsContainer.appendChild(preview);
+                lucide.createIcons();
+            }
+            
+            // Show selected image
+            const imgEl = preview.querySelector('img');
+            const currentUrlInput = preview.querySelector('.current-image-url');
+            
+            if (imgEl) {
+                imgEl.src = selectElement.value;
+                preview.style.display = 'block';
+            }
+            
+            if (currentUrlInput) {
+                currentUrlInput.value = selectElement.value;
+            }
+        }
+
+        function handleImageUpload(fileInput) {
+            if (fileInput.files && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                const contentItem = fileInput.closest('.content-item');
+                const fieldsContainer = contentItem.querySelector('.content-fields');
+                
+                // Create or update image preview
+                let preview = fieldsContainer.querySelector('.image-loaded-preview');
+                if (!preview) {
+                    preview = document.createElement('div');
+                    preview.className = 'image-loaded-preview mt-3';
+                    preview.innerHTML = `
+                        <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                            <div class="flex items-start justify-between mb-2">
+                                <label class="block text-sm font-medium text-gray-600">Image Preview</label>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="replaceImage(this)" class="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                        <i data-lucide="refresh-cw" class="w-3 h-3 inline mr-1"></i>
+                                        Replace
+                                    </button>
+                                    <button type="button" onclick="deleteImage(this)" class="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">
+                                        <i data-lucide="trash-2" class="w-3 h-3 inline mr-1"></i>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                            <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                            <input type="hidden" class="current-image-url" value="">
+                            <input type="hidden" class="material-id" value="">
+                        </div>
+                    `;
+                    fieldsContainer.appendChild(preview);
+                    lucide.createIcons();
+                }
+                
+                // Show image preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgEl = preview.querySelector('img');
+                    if (imgEl) {
+                        imgEl.src = e.target.result;
+                        preview.style.display = 'block';
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function replaceImage(button) {
+            const contentItem = button.closest('.content-item');
+            const replaceInput = contentItem.querySelector('.replace-file-input');
+            if (replaceInput) {
+                replaceInput.click();
+            }
+        }
+
+        async function handleImageReplace(replaceInput) {
+            if (!replaceInput.files || !replaceInput.files[0]) return;
+
+            const newFile = replaceInput.files[0];
+            const contentItem = replaceInput.closest('.content-item');
+            const fieldsContainer = contentItem.querySelector('.content-fields');
+            const currentUrlInput = fieldsContainer.querySelector('.current-image-url');
+            const materialIdInput = fieldsContainer.querySelector('.material-id');
+            const preview = fieldsContainer.querySelector('.image-loaded-preview');
+
+            try {
+                // Get lesson index for upload path
+                const lessonItem = contentItem.closest('.lesson-item');
+                const allLessons = document.querySelectorAll('.lesson-item');
+                const lessonIndex = Array.from(allLessons).indexOf(lessonItem);
+
+                // Upload new file
+                const newUrl = await uploadSingleFile(newFile, 'lessons', 'Course Content', `lesson_${lessonIndex + 1}`, lessonIndex);
+
+                // Delete old file if it exists
+                const oldUrl = currentUrlInput.value;
+                if (oldUrl) {
+                    await deleteImageFromStorage(oldUrl);
+                }
+
+                // Update UI and hidden inputs
+                const imgEl = preview.querySelector('img');
+                if (imgEl) {
+                    imgEl.src = newUrl;
+                }
+                currentUrlInput.value = newUrl;
+
+                // Update database if material exists
+                const materialId = materialIdInput.value;
+                if (materialId) {
+                    await updateMaterialUrl(materialId, newUrl);
+                }
+
+                // Clear the replace input
+                replaceInput.value = '';
+                showSuccess('Image replaced successfully!');
+            } catch (error) {
+                console.error('Error replacing image:', error);
+                showError('Failed to replace image: ' + error.message);
+            }
+        }
+
+        async function deleteImage(button) {
+            if (!confirm('Are you sure you want to delete this image?')) {
+                return;
+            }
+
+            const contentItem = button.closest('.content-item');
+            const fieldsContainer = contentItem.querySelector('.content-fields');
+            const currentUrlInput = fieldsContainer.querySelector('.current-image-url');
+            const materialIdInput = fieldsContainer.querySelector('.material-id');
+            const preview = fieldsContainer.querySelector('.image-loaded-preview');
+            const fileInput = fieldsContainer.querySelector('.content-file');
+
+            try {
+                // Delete from storage if URL exists
+                const currentUrl = currentUrlInput.value;
+                if (currentUrl) {
+                    await deleteImageFromStorage(currentUrl);
+                }
+
+                // Delete from database if material exists
+                const materialId = materialIdInput.value;
+                if (materialId) {
+                    await deleteMaterialFromDatabase(materialId);
+                }
+
+                // Clear UI
+                if (preview) {
+                    preview.style.display = 'none';
+                }
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+                currentUrlInput.value = '';
+                materialIdInput.value = '';
+
+                showSuccess('Image deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                showError('Failed to delete image: ' + error.message);
+            }
+        }
+
+        async function deleteImageFromStorage(imageUrl) {
+            try {
+                // Extract file path from URL
+                const urlParts = imageUrl.split('/storage/v1/object/public/course-materials/');
+                if (urlParts.length !== 2) {
+                    console.warn('Could not extract file path from URL:', imageUrl);
+                    return;
+                }
+                
+                const filePath = urlParts[1];
+                
+                // Use admin client for deletion if available
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                
+                if (window.electronAPI) {
+                    // Use IPC for Electron environment
+                    const result = await window.electronAPI.invoke('db:deleteFile', 'course-materials', filePath);
+                    if (!result.success) {
+                        throw new Error(result.error);
+                    }
+                } else {
+                    // Direct Supabase API call
+                    const { error } = await client.storage
+                        .from('course-materials')
+                        .remove([filePath]);
+                    
+                    if (error) {
+                        throw error;
+                    }
+                }
+                
+                console.log('✅ File deleted from storage:', filePath);
+            } catch (error) {
+                console.error('❌ Error deleting file from storage:', error);
+                throw error;
+            }
+        }
+
+        async function updateMaterialUrl(materialId, newUrl) {
+            try {
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                
+                const { error } = await client
+                    .from('lesson_materials')
+                    .update({ url: newUrl })
+                    .eq('id', materialId);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                console.log('✅ Material URL updated in database');
+            } catch (error) {
+                console.error('❌ Error updating material URL:', error);
+                throw error;
+            }
+        }
+
+        async function deleteMaterialFromDatabase(materialId) {
+            try {
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                
+                const { error } = await client
+                    .from('lesson_materials')
+                    .delete()
+                    .eq('id', materialId);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                console.log('✅ Material deleted from database');
+            } catch (error) {
+                console.error('❌ Error deleting material from database:', error);
+                throw error;
+            }
+        }
+
     </script>
-    
-    <!-- Course Form Submission Handler -->
-    <script src="admin-scripts.js"></script>
 </body>
 </html>
