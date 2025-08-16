@@ -32,7 +32,10 @@
     "supabase-mcp:validate-config": "node -e \"console.log('Checking .mcp.json...'); const fs = require('fs'); const config = JSON.parse(fs.readFileSync('.mcp.json', 'utf8')); console.log('✓ MCP config found:', Object.keys(config.mcpServers)); console.log('✓ Supabase server configured');\"",
     "sequentialthinking-mcp": "npx -y @modelcontextprotocol/server-sequential-thinking",
     "sequentialthinking-mcp:test": "node scripts/test-sequentialthinking-mcp.js",
-    "sequentialthinking-mcp:health": "echo 'Sequential Thinking MCP Server is configured. Use your MCP client (like Cursor) to interact with it.'"
+    "sequentialthinking-mcp:health": "echo 'Sequential Thinking MCP Server is configured. Use your MCP client (like Cursor) to interact with it.'",
+    "generate:env": "node scripts/generate-env.js",
+    "prebuild:netlify": "npm run generate:env",
+    "print:ls:env": "node scripts/print-localstorage-from-env.js"
   },
   "keywords": [
     "electron",

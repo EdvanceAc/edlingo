@@ -7,11 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="/env.js"></script>
     
     <!-- MCP Client for enhanced database operations (supports both browser and Electron environments) -->
     <script type="module">
         // Utility function to detect if we're in Electron environment
-        window.isElectron = typeof window.electronAPI !== 'undefined';
+        window.isElectron = typeof window.electronAPI !== 'undefined' && !(window.electronAPI && window.electronAPI._isShim);
         
         // Mock MCP client for browser environments
         if (!window.isElectron) {
@@ -1613,33 +1614,56 @@
 
     <script>
         // Initialize Supabase client with environment variables
-        // Note: In production, these should be loaded from environment variables
-        const supabaseUrl = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
-        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
-        
-        // Service role key for admin operations (bypasses RLS)
-        // This key is loaded from your .env file
-        const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg';
-        
-        // Check if we can get environment variables (for development)
-        const envUrl = window.location.hostname === 'localhost' ? 
-            (localStorage.getItem('VITE_SUPABASE_URL') || supabaseUrl) : supabaseUrl;
-        const envKey = window.location.hostname === 'localhost' ? 
-            (localStorage.getItem('VITE_SUPABASE_ANON_KEY') || supabaseAnonKey) : supabaseAnonKey;
-        const envServiceKey = window.location.hostname === 'localhost' ? 
-            (localStorage.getItem('VITE_SUPABASE_SERVICE_ROLE_KEY') || supabaseServiceKey) : supabaseServiceKey;
+        // Seed localStorage from env.js when running on localhost for dev convenience
+        if (window.location.hostname === 'localhost' && window.__ENV__) {
+            try {
+                const keys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_SERVICE_ROLE_KEY'];
+                keys.forEach((k) => {
+                    const v = window.__ENV__[k];
+                    if (v && !localStorage.getItem(k)) {
+                        localStorage.setItem(k, v);
+                    }
+                });
+                console.log('🧪 Seeded localStorage from env.js for localhost');
+            } catch (e) {
+                console.warn('Failed to seed localStorage from env.js', e);
+            }
+        }
+
+        // Values come from env.js (window.__ENV__) or localhost localStorage when developing
+        const supabaseUrl = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_URL) 
+            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_URL') : '');
+            
+        const supabaseAnonKey = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_ANON_KEY) 
+            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_ANON_KEY') : '');
+            
+        const supabaseServiceKey = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_SERVICE_ROLE_KEY) 
+            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_SERVICE_ROLE_KEY') : '');
+
+        // Log configuration source
+        if (window.__ENV__) {
+            console.log('🌍 Using environment variables from env.js');
+        } else if (window.location.hostname === 'localhost') {
+            console.log('🏠 Using localStorage for localhost development');
+        } else {
+            console.warn('⚠️ Using fallback credentials - please configure environment variables');
+        }
+
+        if (!supabaseUrl || !supabaseAnonKey) {
+            console.error('❌ Supabase URL or Anon Key is missing. Please configure environment variables.');
+        }
             
         // Create regular client
-        const supabase = window.supabase.createClient(envUrl, envKey);
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
         
         // Create admin client only if service key is available
         let supabaseAdmin = null;
-        if (envServiceKey) {
-            supabaseAdmin = window.supabase.createClient(envUrl, envServiceKey);
+        if (supabaseServiceKey && supabaseServiceKey !== 'undefined') {
+            supabaseAdmin = window.supabase.createClient(supabaseUrl, supabaseServiceKey);
             console.log('✅ Admin client initialized with service role key');
         } else {
             console.warn('⚠️ Service role key not found. Admin operations will be limited.');
-            console.warn('Please add SUPABASE_SERVICE_ROLE_KEY to your .env file or localStorage.');
+            console.warn('Please add VITE_SUPABASE_SERVICE_ROLE_KEY to your environment variables (Netlify) or localStorage for localhost.');
             // Use regular client as fallback (will be limited by RLS)
             supabaseAdmin = supabase;
         }
@@ -2119,7 +2143,7 @@
         }
         
         function redirectToLogin() {
-            if (window.electronAPI) {
+            if (window.isElectron) {
                 window.location.href = '#/admin-login';
             } else {
                 window.location.href = 'admin-login.html';
@@ -4248,7 +4272,7 @@
                         
                         if (lessonsData && lessonsData.length > 0) {
                             // Use IPC to save lessons if in Electron environment
-                            if (window.electronAPI) {
+                            if (window.isElectron) {
                                 const result = await window.electronAPI.invoke('db:createLessons', createdCourse.id, lessonsData);
                                 if (result.success) {
                                     console.log('✅ Lessons saved successfully via Electron IPC');
@@ -4691,7 +4715,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 if (lessonsData && lessonsData.length > 0 && createdCourse) {
                     console.log('📚 Creating lessons for course:', createdCourse.id);
                     try {
-                        if (window.electronAPI) {
+                        if (window.isElectron) {
                             const lessonResult = await window.electronAPI.invoke('db:createLessons', createdCourse.id, lessonsData);
                             if (lessonResult && lessonResult.error) {
                                 console.error('❌ Failed to create lessons via IPC:', lessonResult.error);
@@ -4976,7 +5000,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 filePath += `/${fileName}`;
                 
                 // Use IPC for file upload if in Electron environment
-                if (window.electronAPI) {
+                if (window.isElectron) {
                     // Convert file to buffer for IPC
                     const arrayBuffer = await file.arrayBuffer();
                     const buffer = new Uint8Array(arrayBuffer);
@@ -7651,7 +7675,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 // Recursively list all files in course-materials bucket
                 let allFiles = [];
                 
-                if (window.electronAPI) {
+                if (window.isElectron) {
                     // For Electron - assume it returns all files recursively
                     const result = await window.electronAPI.invoke('db:listFiles', 'course-materials');
                     if (result.success) {
@@ -7998,7 +8022,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 // Use admin client for deletion if available
                 const client = window.supabaseAdminClient || window.supabaseClient || supabase;
                 
-                if (window.electronAPI) {
+                if (window.isElectron) {
                     // Use IPC for Electron environment
                     const result = await window.electronAPI.invoke('db:deleteFile', 'course-materials', filePath);
                     if (!result.success) {
