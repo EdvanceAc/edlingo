@@ -4,6 +4,9 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  ELECTRON_SKIP_DOWNLOAD = "true"
+  PUPPETEER_SKIP_DOWNLOAD = "true"
+  NPM_FLAGS = "--no-audit --no-fund"
 
 # Admin dashboard route - serve admin-dashboard.html for /admin
 [[redirects]]

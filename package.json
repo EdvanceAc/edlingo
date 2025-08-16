@@ -98,6 +98,10 @@
     "ws": "^8.14.2",
     "zod": "^3.25.76"
   },
+  "engines": {
+    "node": "18.x",
+    "npm": ">=9.0.0"
+  },
   "build": {
     "appId": "com.edlingo.app",
     "productName": "EdLingo",
