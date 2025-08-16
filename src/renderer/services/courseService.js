@@ -1,3 +1,5 @@
+import adminDatabaseService from './adminDatabaseService.js';
+
 /**
  * Secure Course Service for Renderer Process
  * Communicates with main process via IPC for secure database operations
@@ -5,10 +7,27 @@
  */
 class CourseService {
   constructor() {
-    this.electronAPI = window.electronAPI;
+    this.electronAPI = typeof window !== 'undefined' ? window.electronAPI : undefined;
+    this.fallbackService = adminDatabaseService;
     
     if (!this.electronAPI) {
-      console.warn('⚠️ Electron API not available. Course operations will not work.');
+      console.warn('⚠️ Electron API not available. Falling back to Supabase/admin service for course operations.');
+    }
+  }
+
+  // Ensure the fallback service is initialized before use
+  async ensureFallbackReady() {
+    try {
+      if (this.fallbackService && typeof this.fallbackService.isReady === 'function') {
+        if (!this.fallbackService.isReady()) {
+          if (typeof this.fallbackService.initialize === 'function') {
+            await this.fallbackService.initialize();
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to initialize fallback course service:', err);
+      throw err;
     }
   }
 
@@ -20,10 +39,14 @@ class CourseService {
    */
   async createCourse(courseData, isDraft = false) {
     try {
-      console.log('🚀 Creating course via IPC...', { isDraft });
+      console.log('🚀 Creating course...', { isDraft, via: this.electronAPI ? 'IPC' : 'Fallback' });
       
       if (!this.electronAPI) {
-        throw new Error('Electron API not available');
+        await this.ensureFallbackReady();
+        if (this.fallbackService?.createCourse) {
+          return await this.fallbackService.createCourse(courseData);
+        }
+        throw new Error('Course creation not available in this environment');
       }
       
       const result = await this.electronAPI.invoke('db:createCourse', courseData, isDraft);
@@ -48,7 +71,11 @@ class CourseService {
   async getCourses() {
     try {
       if (!this.electronAPI) {
-        throw new Error('Electron API not available');
+        await this.ensureFallbackReady();
+        if (this.fallbackService?.getCourses) {
+          return await this.fallbackService.getCourses();
+        }
+        throw new Error('Course listing not available in this environment');
       }
       
       const result = await this.electronAPI.invoke('db:getCourses');
@@ -74,7 +101,11 @@ class CourseService {
   async updateCourse(courseId, updates) {
     try {
       if (!this.electronAPI) {
-        throw new Error('Electron API not available');
+        await this.ensureFallbackReady();
+        if (this.fallbackService?.updateCourse) {
+          return await this.fallbackService.updateCourse(courseId, updates);
+        }
+        throw new Error('Course update not available in this environment');
       }
       
       const result = await this.electronAPI.invoke('db:updateCourse', courseId, updates);
@@ -99,7 +130,11 @@ class CourseService {
   async deleteCourse(courseId) {
     try {
       if (!this.electronAPI) {
-        throw new Error('Electron API not available');
+        await this.ensureFallbackReady();
+        if (this.fallbackService?.deleteCourse) {
+          return await this.fallbackService.deleteCourse(courseId);
+        }
+        throw new Error('Course deletion not available in this environment');
       }
       
       const result = await this.electronAPI.invoke('db:deleteCourse', courseId);

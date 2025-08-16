@@ -11,6 +11,7 @@ class AdminDatabaseService {
     this.isInitialized = false;
     this.fallbackMode = false;
     this.mcpAvailable = false;
+    this.browserMode = false;
     this.supabaseUrl = null;
   }
 
@@ -19,6 +20,16 @@ class AdminDatabaseService {
    */
   async initialize() {
     try {
+      // Check if we're in browser mode
+      this.browserMode = window.isBrowserMode || !window.electronAPI;
+      
+      if (this.browserMode) {
+        console.log('🌐 Running in browser mode - using fallback data');
+        this.fallbackMode = true;
+        this.isInitialized = true;
+        return true;
+      }
+
       const config = AppConfig.get();
       if (!config.supabase.url || !config.supabase.anonKey) {
         console.warn('Supabase configuration missing, admin database service disabled');
@@ -32,7 +43,7 @@ class AdminDatabaseService {
       // Check if MCP is available
       this.mcpAvailable = typeof window.electronAPI?.runMcp === 'function';
       
-      if (this.mcpAvailable) {
+      if (this.mcpAvailable && !this.browserMode) {
         console.log('✅ MCP available, using PostgREST MCP for database operations');
         await this.testMcpConnection();
       } else {
@@ -111,8 +122,8 @@ class AdminDatabaseService {
    * Check if MCP is available and working
    */
   async checkMcpStatus() {
-    if (!this.mcpAvailable) {
-      return { available: false, connected: false, error: 'MCP not available' };
+    if (this.browserMode || !this.mcpAvailable) {
+      return { available: false, connected: false, error: this.browserMode ? 'Running in browser mode' : 'MCP not available' };
     }
 
     try {
@@ -144,6 +155,7 @@ class AdminDatabaseService {
    */
   getConnectionInfo() {
     return {
+      browserMode: this.browserMode,
       mcpAvailable: this.mcpAvailable,
       fallbackMode: this.fallbackMode,
       isInitialized: this.isInitialized,

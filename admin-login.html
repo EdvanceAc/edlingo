@@ -196,7 +196,7 @@
                     localStorage.setItem('adminRole', username === 'admin' ? 'admin' : 'teacher');
                     
                     // Redirect to admin dashboard
-                    if (window.electronAPI) {
+                    if (window.isElectron) {
                         // If running in Electron, navigate to the admin route
                         window.location.href = '#/admin';
                     } else {
@@ -213,7 +213,7 @@
 
             // Check if already authenticated
             if (localStorage.getItem('adminAuthenticated') === 'true') {
-                if (window.electronAPI) {
+                if (window.isElectron) {
                     window.location.href = '#/admin';
                 } else {
                     window.location.href = 'admin-dashboard.html';

@@ -1,8 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Helper to read environment variables from Vite or a window-injected object
+const getEnv = (key) => {
+  if (typeof import.meta !== 'undefined' && import.meta.env && key in import.meta.env) {
+    return import.meta.env[key];
+  }
+  if (typeof window !== 'undefined' && window.__ENV__ && key in window.__ENV__) {
+    return window.__ENV__[key];
+  }
+  return undefined;
+};
+
 // Supabase configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ecglfwqylqchdyuhmtuv.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
 
 if (!supabaseAnonKey) {
   console.warn('VITE_SUPABASE_ANON_KEY is not set. Some features may not work properly.');
@@ -28,6 +39,9 @@ export const supabaseConfig = {
   anonKey: supabaseAnonKey,
   client: supabase
 };
+
+// Whether Supabase is properly configured with both URL and anon key
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 // Helper function to check connection
 export const checkSupabaseConnection = async () => {

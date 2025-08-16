@@ -592,7 +592,7 @@ async writeLocalStorage(data) {
       xp: 0,
       streak: 0,
       totalStudyTime: 0,
-      lessonsCompleted: 0,
+      total_lessons_completed: 0,
       vocabularyLearned: 0
     };
   }

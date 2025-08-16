@@ -419,12 +419,12 @@ export function ProgressProvider({ children }) {
       const xpGained = lessonData.xp || 50;
       const newProgress = {
         ...prev,
-        lessonsCompleted: prev.lessonsCompleted + 1,
-        wordsLearned: prev.wordsLearned + (lessonData.newWords || 0),
-        dailyProgress: prev.dailyProgress + (lessonData.duration || 5),
+        total_lessons_completed: (prev.total_lessons_completed || 0) + 1,
+        wordsLearned: (prev.wordsLearned || 0) + (lessonData.newWords || 0),
+        daily_progress: (prev.daily_progress || 0) + (lessonData.duration || 5),
       };
       
-      const today = new Date().toLocaleDateString('en-US', { weekday: 'lowercase' });
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       if (newProgress.weeklyStats[today] !== undefined) {
         newProgress.weeklyStats[today] += lessonData.duration || 5;
       }
