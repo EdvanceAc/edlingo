@@ -219,6 +219,8 @@ class SupabaseService {
         .from('user_progress')
         .select('*')
         .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
         .single();
       
       if (error && error.code !== 'PGRST116' && error.code !== 'PGRST204') throw error;

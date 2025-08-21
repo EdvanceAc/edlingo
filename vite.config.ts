@@ -22,8 +22,8 @@ const adminRoutePlugin = () => {
       });
     },
     generateBundle() {
-      // Copy admin HTML files to dist folder during build
-      const adminFiles = ['admin-dashboard.html', 'admin-login.html'];
+      // Copy admin and diagnostic HTML files to dist folder during build
+      const adminFiles = ['admin-dashboard.html', 'admin-login.html', 'diagnose-fetch-errors.html', 'test-supabase-connection.html'];
       
       adminFiles.forEach(file => {
         const filePath = path.resolve(__dirname, file);
@@ -42,7 +42,7 @@ const adminRoutePlugin = () => {
 
 export default defineConfig({
   plugins: [react(), adminRoutePlugin()],
-  base: './',
+  base: '/',
   publicDir: 'public',
   build: {
     outDir: 'dist',

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/assets/icons/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="%BASE_URL%">
     <title>EdLingo - Language Learning</title>
     
     <!-- Preload fonts for better performance -->
@@ -119,7 +120,7 @@
       </div>
     </div>
     <!-- Inject generated env variables for Netlify/static builds -->
-    <script src="/env.js"></script>
+    <script src="%BASE_URL%env.js"></script>
     <script type="module" src="/src/renderer/main.jsx"></script>
   </body>
 </html>

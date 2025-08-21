@@ -244,7 +244,7 @@ const EnhancedAdminDashboard = () => {
     try {
       const { data, error } = await supabase
         .from('terms')
-        .select('id, name, description, course_id')
+        .select('*')
         .eq('course_id', courseId);
       
       if (error) throw error;
@@ -260,7 +260,7 @@ const EnhancedAdminDashboard = () => {
     try {
       const { data, error } = await supabase
         .from('lessons')
-        .select('id, name, content, level, term_id')
+        .select('*')
         .eq('term_id', termId);
       
       if (error) throw error;
@@ -730,7 +730,7 @@ const EnhancedAdminDashboard = () => {
                                 }}
                               >
                                 {expandedTerms.has(`${course.id}:${term.id}`) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                <span>{term.name}</span>
+                                <span>{term.name ?? term.title ?? `Term ${term.order_number ?? ''}`}</span>
                                 <Badge variant="secondary">{lessons.length} lessons</Badge>
                               </button>
                               <AnimatePresence>
@@ -740,10 +740,10 @@ const EnhancedAdminDashboard = () => {
                                       <div className="text-sm text-muted-foreground py-2">No lessons</div>
                                     ) : lessons.map(lesson => (
                                       <div key={lesson.id} className="flex items-center justify-between py-1">
-                                        <span className="text-sm">{lesson.title}</span>
+                                        <span className="text-sm">{lesson.name ?? lesson.title ?? `Lesson ${lesson.order_number ?? ''}`}</span>
                                         <div className="flex gap-1">
                                           <Badge variant="outline" className="text-xs">{lesson.lesson_materials?.length || 0} materials</Badge>  
-                                          <Badge variant="outline" className="text-xs">{lesson.order}</Badge>
+                                          <Badge variant="outline" className="text-xs">{lesson.order_number ?? lesson.order ?? ''}</Badge>
                                         </div>
                                       </div>
                                     ))}

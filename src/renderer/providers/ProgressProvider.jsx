@@ -86,6 +86,8 @@ export function ProgressProvider({ children }) {
            .from('user_progress')
            .select('user_id,total_xp,current_level,daily_streak,daily_goal,daily_progress,last_study_date,lessons_completed,pronunciation_accuracy,chat_messages,achievements,language,created_at,updated_at')
            .eq('user_id', user.id)
+           .order('updated_at', { ascending: false })
+           .limit(1)
            .single();
         
         if (error && error.code !== 'PGRST116') throw error;
@@ -170,6 +172,8 @@ export function ProgressProvider({ children }) {
             .from('user_progress')
             .select('user_id,total_xp,current_level,daily_streak,daily_goal,daily_progress,last_study_date,lessons_completed,pronunciation_accuracy,chat_messages,achievements,language,created_at,updated_at')
             .eq('user_id', user.id)
+            .order('updated_at', { ascending: false })
+            .limit(1)
             .single();
           
           if (data && !error) {

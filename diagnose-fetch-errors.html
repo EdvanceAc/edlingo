@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diagnose Fetch Errors</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="/env.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
@@ -19,12 +20,11 @@
     <div id="results"></div>
     
     <script>
-        const SUPABASE_URL = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
-        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg';
+        const SUPABASE_URL = (window.__ENV && window.__ENV.SUPABASE_URL) || '';
+        const SUPABASE_ANON_KEY = (window.__ENV && window.__ENV.SUPABASE_ANON_KEY) || '';
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        // Admin/service role tests removed for security
         
         function addResult(title, content, type = 'info') {
             const results = document.getElementById('results');
@@ -149,30 +149,7 @@
                 `, 'error');
             }
             
-            // Test 5: Admin Client Test
-            try {
-                addResult('Test 5: Admin Client Test', 'Testing with service role key...');
-                
-                const { data: adminTest, error } = await supabaseAdmin
-                    .from('user_profiles')
-                    .select('id, email')
-                    .limit(5);
-                
-                if (error) {
-                    addResult('❌ Admin Client Failed', `
-                        <p><strong>Error:</strong> ${error.message}</p>
-                        <p><strong>Code:</strong> ${error.code}</p>
-                    `, 'error');
-                } else {
-                    addResult('✅ Admin Client Success', `
-                        <p>Admin client working - found ${adminTest.length} profiles</p>
-                    `, 'success');
-                }
-            } catch (networkError) {
-                addResult('❌ Network Error - Admin Client', `
-                    <p><strong>Network Error:</strong> ${networkError.message}</p>
-                `, 'error');
-            }
+            // Admin/service role test intentionally removed
             
             addResult('Diagnosis Complete', 'All tests completed. Check results above for specific issues.');
         }

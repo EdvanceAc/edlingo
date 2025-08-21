@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Supabase Connection Test</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="/env.js"></script>
 </head>
 <body>
     <h1>Supabase Connection Test</h1>
     <div id="results"></div>
     
     <script>
-        const supabaseUrl = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
-        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+        const supabaseUrl = (window.__ENV && window.__ENV.SUPABASE_URL) || '';
+        const supabaseAnonKey = (window.__ENV && window.__ENV.SUPABASE_ANON_KEY) || '';
         
         const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
         const resultsDiv = document.getElementById('results');
@@ -28,8 +29,14 @@
         async function testConnection() {
             try {
                 log('Testing Supabase connection...');
+                log(`Origin: ${location.origin}`);
                 
-                // Test 1: Basic connection
+                if (!supabaseUrl || !supabaseAnonKey) {
+                    log('❌ Missing SUPABASE_URL or SUPABASE_ANON_KEY in env.js', 'error');
+                    return;
+                }
+                
+                // Test 1: Basic REST API connection
                 log('Test 1: Basic REST API connection');
                 const response = await fetch(`${supabaseUrl}/rest/v1/`, {
                     headers: {
@@ -41,45 +48,26 @@
                 if (response.ok) {
                     log('✅ Basic REST API connection successful', 'success');
                 } else {
-                    log(`❌ Basic REST API connection failed: ${response.status} ${response.statusText}`, 'error');
-                    return;
+                    log(`❌ Basic REST API connection non-OK: ${response.status} ${response.statusText}`, 'error');
                 }
                 
-                // Test 2: List tables
-                log('Test 2: Listing available tables');
-                const tablesResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
-                    headers: {
-                        'apikey': supabaseAnonKey,
-                        'Authorization': `Bearer ${supabaseAnonKey}`,
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (tablesResponse.ok) {
-                    const tables = await tablesResponse.json();
-                    log(`✅ Found ${Object.keys(tables.definitions || {}).length} tables`, 'success');
-                    log(`Available tables: ${Object.keys(tables.definitions || {}).join(', ')}`);
-                } else {
-                    log(`❌ Failed to list tables: ${tablesResponse.status}`, 'error');
-                }
-                
-                // Test 3: Try to query a specific table
-                log('Test 3: Querying user_profiles table');
-                const { data, error } = await supabase
+                // Test 2: Try to query a specific table with supabase-js
+                log('Test 2: Querying user_profiles count with supabase-js');
+                const { error: upError } = await supabase
                     .from('user_profiles')
                     .select('count', { count: 'exact', head: true });
                 
-                if (error) {
-                    log(`❌ Error querying user_profiles: ${error.message}`, 'error');
+                if (upError) {
+                    log(`❌ Error querying user_profiles: ${upError.message}`, 'error');
                 } else {
                     log(`✅ user_profiles table accessible`, 'success');
                 }
                 
-                // Test 4: Try other tables
+                // Test 3: Try other tables
                 const tables = ['courses', 'user_achievements', 'lessons'];
                 for (const table of tables) {
-                    log(`Test 4.${tables.indexOf(table) + 1}: Querying ${table} table`);
-                    const { data, error } = await supabase
+                    log(`Test 3.${tables.indexOf(table) + 1}: Querying ${table} table`);
+                    const { error } = await supabase
                         .from(table)
                         .select('count', { count: 'exact', head: true });
                     

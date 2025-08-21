@@ -32,28 +32,104 @@ const LessonsSection = ({ courseId: propCourseId }) => {
     fetchTerms();
   }, [courseId]);
 
+  // Helper: try a select with a filter and return first non-empty successful result
+  const trySelect = async (table, filter) => {
+    try {
+      const { data, error } = await supabase.from(table).select('*').match(filter);
+      if (error) {
+        console.warn(`[LessonsSection] Query error on ${table}:`, error.message);
+        return null;
+      }
+      if (Array.isArray(data) && data.length > 0) return data;
+      return null;
+    } catch (e) {
+      console.warn(`[LessonsSection] Exception querying ${table}:`, e);
+      return null;
+    }
+  };
+
+  // Helper: client-side sort by common order fields
+  const sortByOrder = (rows) => {
+    const orderKey = (row) => (
+      row.order_number ?? row.order ?? row.position ?? row.index ?? 0
+    );
+    return [...rows].sort((a, b) => orderKey(a) - orderKey(b));
+  };
+
   const fetchTerms = async () => {
-    const { data, error } = await supabase.from('terms')
-      .select('id,name,course_id,order_number')
-      .eq('course_id', courseId)
-      .order('order_number');
-    if (error) console.error('Error fetching terms:', error);
-    else setTerms(data);
+    // Avoid server-side order to prevent failures on missing columns; sort client-side
+    const tablesToTry = ['terms', 'sections', 'course_sections'];
+    let found = null;
+    for (const table of tablesToTry) {
+      const data = await trySelect(table, { course_id: courseId });
+      if (data) {
+        if (table !== 'terms') {
+          console.warn(`[LessonsSection] Falling back to ${table} for course sections.`);
+        }
+        found = data;
+        break;
+      }
+    }
+    if (!found) {
+      console.error('[LessonsSection] No terms/sections found for course:', courseId);
+      setTerms([]);
+      return;
+    }
+
+    // Warn if name field missing
+    if (found.length && (found[0].name == null && found[0].title != null)) {
+      console.warn('[LessonsSection] Terms/sections lack name column; using title');
+    }
+
+    setTerms(sortByOrder(found));
   };
 
   const fetchLessons = async (termId) => {
-    const { data, error } = await supabase.from('lessons')
-      .select('id,name,level,term_id,content')
-      .eq('term_id', termId);
-    if (error) console.error('Error fetching lessons:', error);
-    else {
-      const personalizedLessons = await Promise.all(data.map(async (lesson) => ({
-        ...lesson,
-        content: await unifiedLevelService.simplifyText(lesson.content, userLevel),
-        isUnlocked: checkUnlock(lesson)
-      })));
-      setLessons(personalizedLessons);
+    // Try multiple mappings: lessons.term_id, lessons.section_id, course_lessons.*
+    const candidates = [
+      { table: 'lessons', key: 'term_id' },
+      { table: 'lessons', key: 'section_id' },
+      { table: 'course_lessons', key: 'term_id' },
+      { table: 'course_lessons', key: 'section_id' }
+    ];
+
+    let lessonsData = null;
+    for (const c of candidates) {
+      const data = await trySelect(c.table, { [c.key]: termId });
+      if (data) {
+        if (!(c.table === 'lessons' && c.key === 'term_id')) {
+          console.warn(`[LessonsSection] Falling back to ${c.table}.${c.key} for lesson lookup.`);
+        }
+        lessonsData = data;
+        break;
+      }
     }
+
+    // Fallback: some schemas link lessons directly to courses via lessons.course_id
+    if (!lessonsData) {
+      const byCourse = await trySelect('lessons', { course_id: courseId });
+      if (byCourse) {
+        console.warn('[LessonsSection] Falling back to lessons.course_id for lesson lookup.');
+        lessonsData = byCourse;
+      }
+    }
+
+    if (!lessonsData) {
+      console.error('[LessonsSection] No lessons found for term/section or course:', termId, courseId);
+      setLessons([]);
+      return;
+    }
+
+    const sorted = sortByOrder(lessonsData);
+
+    const personalizedLessons = await Promise.all(
+      sorted.map(async (lesson) => ({
+        ...lesson,
+        content: lesson?.content ? await unifiedLevelService.simplifyText(lesson.content, userLevel) : lesson?.content,
+        isUnlocked: checkUnlock(lesson)
+      }))
+    );
+    setLessons(personalizedLessons);
   };
 
   const checkUnlock = (lesson) => {
@@ -62,20 +138,68 @@ const LessonsSection = ({ courseId: propCourseId }) => {
   };
 
   const fetchLessonDetails = async (lessonId) => {
-    const { data: materials } = await supabase.from('lesson_materials')
-      .select('id,lesson_id,type,url')
-      .eq('lesson_id', lessonId);
-    const { data: book } = await supabase.from('books')
-      .select('id,lesson_id,pdf_url')
-      .eq('lesson_id', lessonId)
-      .single();
-    if (book) {
-      setPdfUrl(book.pdf_url);
-      const { data: fetchedHl } = await supabase.from('word_highlights')
-        .select('id,book_id,word,page,x,y,width,height,color')
-        .eq('book_id', book.id);
-      setHighlights(fetchedHl || []);
-    } else {
+    try {
+      // Materials (best-effort)
+      const { data: materialsData, error: materialsError } = await supabase
+        .from('lesson_materials')
+        .select('id,lesson_id,type,url')
+        .eq('lesson_id', lessonId);
+      if (materialsError) {
+        console.warn('[LessonsSection] Error fetching lesson_materials:', materialsError.message);
+      }
+
+      // Books: avoid .single() and be resilient to schemas lacking updated_at
+      let booksData = null;
+      let bookQuery = supabase
+        .from('books')
+        .select('id,lesson_id,pdf_url,updated_at,created_at')
+        .eq('lesson_id', lessonId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+      let bookResp = await bookQuery;
+      if (bookResp.error) {
+        // Retry ordering by created_at if updated_at not present
+        console.warn('[LessonsSection] Books query with updated_at failed, retrying with created_at:', bookResp.error.message);
+        bookResp = await supabase
+          .from('books')
+          .select('id,lesson_id,pdf_url,created_at')
+          .eq('lesson_id', lessonId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+      }
+
+      if (bookResp.error) {
+        // Final fallback: no ordering, just take first
+        console.warn('[LessonsSection] Books query without ordering fallback due to error:', bookResp.error.message);
+        const fallback = await supabase
+          .from('books')
+          .select('id,lesson_id,pdf_url')
+          .eq('lesson_id', lessonId)
+          .limit(1);
+        if (!fallback.error) booksData = fallback.data;
+      } else {
+        booksData = bookResp.data;
+      }
+
+      const book = Array.isArray(booksData) && booksData.length > 0 ? booksData[0] : null;
+
+      if (book) {
+        setPdfUrl(book.pdf_url);
+        const { data: fetchedHl, error: hlError } = await supabase
+          .from('word_highlights')
+          .select('id,book_id,word,page,x,y,width,height,color')
+          .eq('book_id', book.id);
+        if (hlError) {
+          console.warn('[LessonsSection] Error fetching word_highlights:', hlError.message);
+        }
+        setHighlights(fetchedHl || []);
+      } else {
+        setPdfUrl(null);
+        setHighlights([]);
+      }
+    } catch (e) {
+      console.warn('[LessonsSection] Exception in fetchLessonDetails:', e);
       setPdfUrl(null);
       setHighlights([]);
     }
@@ -110,7 +234,9 @@ const LessonsSection = ({ courseId: propCourseId }) => {
       {/* Terms List */}
       {terms.map(term => (
         <Card key={term.id} onClick={() => { setSelectedTerm(term); fetchLessons(term.id); }}>
-          <CardHeader><CardTitle>{term.name}</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>{term.name ?? term.title ?? `Term ${term.order_number ?? term.order ?? ''}`}</CardTitle>
+          </CardHeader>
         </Card>
       ))}
       {/* Lessons Grid */}
@@ -118,7 +244,10 @@ const LessonsSection = ({ courseId: propCourseId }) => {
         {lessons.map(lesson => (
           <Card key={lesson.id}>
             <CardHeader>
-              <CardTitle>{lesson.name} ({lesson.level})</CardTitle>
+              <CardTitle>
+                {(lesson.name ?? lesson.title ?? `Lesson ${lesson.order_number ?? lesson.order ?? ''}`)}
+                {lesson.level ? ` (${lesson.level})` : (lesson.difficulty ? ` (${lesson.difficulty})` : '')}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Progress value={/* lesson progress */ 0} />
