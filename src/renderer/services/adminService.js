@@ -404,6 +404,57 @@ class AdminService {
     }
   }
 
+  // Add wrappers used by FileUpload component for course and assignment uploads
+  async uploadCourseFiles(files, courseId = null, subcategory = null) {
+    if (!this.isAdminAuthenticated()) {
+      throw new Error('Admin authentication required');
+    }
+
+    try {
+      return await this.storageService.uploadCourseFiles(files, courseId, subcategory);
+    } catch (error) {
+      console.error('Error uploading course files:', error);
+      throw error;
+    }
+  }
+
+  async uploadAssignmentFiles(files, assignmentId = null, subcategory = null) {
+    if (!this.isAdminAuthenticated()) {
+      throw new Error('Admin authentication required');
+    }
+
+    try {
+      return await this.storageService.uploadAssignmentFiles(files, assignmentId, subcategory);
+    } catch (error) {
+      console.error('Error uploading assignment files:', error);
+      throw error;
+    }
+  }
+
+  // Generic single-file upload used by FileUpload for other categories
+  // Despite the name, this routes to Supabase Storage shared-resources bucket
+  async uploadFileToGoogleDrive(file, category = 'shared_resources', subcategory = null, onProgress = null) {
+    if (!this.isAdminAuthenticated()) {
+      throw new Error('Admin authentication required');
+    }
+
+    try {
+      const bucketName = this.storageService.buckets.shared; // 'shared-resources'
+      const folder = [category, subcategory].filter(Boolean).join('/');
+      const result = await this.storageService.uploadFile(
+        file,
+        bucketName,
+        folder,
+        {},
+        onProgress
+      );
+      return result;
+    } catch (error) {
+      console.error('Error uploading file to Supabase storage:', error);
+      throw error;
+    }
+  }
+
   async getFiles(category = null) {
     if (!this.isAdminAuthenticated()) {
       throw new Error('Admin authentication required');

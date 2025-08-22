@@ -6154,7 +6154,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         // Load files from Supabase Storage
         async function loadFiles() {
             try {
-                const buckets = ['course-files', 'assignment-files', 'general-files', 'images', 'documents'];
+                const buckets = ['course-materials', 'assignment-materials', 'shared-resources'];
                 currentFiles = [];
 
                 for (const bucket of buckets) {
@@ -6167,10 +6167,15 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             });
 
                         if (!error && files) {
+                            const categoryMap = {
+                                'course-materials': 'courses',
+                                'assignment-materials': 'assignments',
+                                'shared-resources': 'general'
+                            };
                             const filesWithBucket = files.map(file => ({
                                 ...file,
                                 bucket: bucket,
-                                category: bucket.replace('-files', '').replace('-', ' ')
+                                category: categoryMap[bucket] || 'general'
                             }));
                             currentFiles.push(...filesWithBucket);
                         }
@@ -6240,7 +6245,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         // Load storage statistics
         async function loadStorageStats() {
             try {
-                const buckets = ['course-files', 'assignment-files', 'general-files', 'images', 'documents'];
+                const buckets = ['course-materials', 'assignment-materials', 'shared-resources'];
                 let totalFiles = 0;
                 let totalSize = 0;
 
@@ -6357,12 +6362,12 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 const uploadButton = document.getElementById('uploadButton');
                 uploadButton.disabled = true;
 
-                // Determine bucket name
-                const bucketName = category === 'general' ? 'general-files' : 
-                                 category === 'courses' ? 'course-files' :
-                                 category === 'assignments' ? 'assignment-files' :
-                                 category === 'images' ? 'images' :
-                                 category === 'documents' ? 'documents' : 'general-files';
+                // Determine bucket name (mapped to existing Supabase buckets)
+                const bucketName = category === 'general' ? 'shared-resources' : 
+                                 category === 'courses' ? 'course-materials' :
+                                 category === 'assignments' ? 'assignment-materials' :
+                                 category === 'images' ? 'shared-resources' :
+                                 category === 'documents' ? 'shared-resources' : 'shared-resources';
 
                 // Upload files one by one
                 for (let i = 0; i < files.length; i++) {
