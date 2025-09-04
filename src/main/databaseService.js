@@ -337,35 +337,22 @@ class DatabaseService {
    * @param {string} path - File path in storage
    * @returns {Object} Upload result with public URL
    */
-  async uploadFile(file, bucket = 'lesson-content', path) {
+  async uploadFile(file, bucket = 'lesson-content', path = '') {
     await this.ensureInitialized();
-    
+
     try {
       console.log('🚀 Uploading file to storage...', { fileName: file.name, bucket, path });
-      
-      const { data, error } = await this.supabaseAdmin.storage
-        .from(bucket)
-        .upload(path, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-        
-      if (error) {
-        console.error('❌ Storage upload error:', error);
-        throw new Error(`Storage error: ${error.message}`);
-      }
-      
-      // Get public URL
-      const { data: urlData } = this.supabaseAdmin.storage
-        .from(bucket)
-        .getPublicUrl(path);
-      
-      console.log('✅ File uploaded successfully:', urlData.publicUrl);
+
+      const supabaseStorageService = (await import('../renderer/services/supabaseStorageService.js')).default;
+      const folder = path ? path.split('/').slice(0, -1).join('/') : '';
+      const result = await supabaseStorageService.uploadFile(file, bucket, folder);
+
+      console.log('✅ File uploaded successfully:', result.url);
       return {
-        path: data.path,
-        publicUrl: urlData.publicUrl
+        path: result.path,
+        publicUrl: result.url
       };
-      
+
     } catch (error) {
       console.error('❌ Error uploading file:', error);
       throw error;

@@ -7,9 +7,30 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%93%8D%3C/text%3E%3C/svg%3E" />
     <script src="/env.js"></script>
-    
-    <!-- MCP Client for enhanced database operations (supports both browser and Electron environments) -->
+    <script>
+        // Fallback loader if /env.js fails (e.g., served on 127.0.0.1 or different base)
+        (function(){
+          function loadScript(src){
+            return new Promise((resolve)=>{ const s=document.createElement('script'); s.src=src; s.onload=()=>resolve(true); s.onerror=()=>resolve(false); document.head.appendChild(s); });
+          }
+          if(!window.__ENV__){
+            const candidates = [
+              '/env.js',
+              './env.js',
+              location.origin + '/env.js'
+            ];
+            (async ()=>{
+              for(const c of candidates){
+                const ok = await loadScript(c);
+                if(ok && window.__ENV__){ console.log('env.js loaded from', c); break; }
+              }
+              if(!window.__ENV__){ console.warn('env.js could not be loaded; will rely on localStorage if available'); }
+            })();
+          }
+        })();
+    </script>
     <script type="module">
         // Utility function to detect if we're in Electron environment
         window.isElectron = typeof window.electronAPI !== 'undefined' && !(window.electronAPI && window.electronAPI._isShim);
@@ -1612,10 +1633,12 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import supabaseStorageService from './src/renderer/services/supabaseStorageService.js';
         // Initialize Supabase client with environment variables
-        // Seed localStorage from env.js when running on localhost for dev convenience
-        if (window.location.hostname === 'localhost' && window.__ENV__) {
+        const isLocalDevHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        // Seed localStorage from env.js when running on local dev for convenience
+        if (isLocalDevHost && window.__ENV__) {
             try {
                 const keys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_SERVICE_ROLE_KEY'];
                 keys.forEach((k) => {
@@ -1624,27 +1647,27 @@
                         localStorage.setItem(k, v);
                     }
                 });
-                console.log('🧪 Seeded localStorage from env.js for localhost');
+                console.log('🧪 Seeded localStorage from env.js for', window.location.hostname);
             } catch (e) {
                 console.warn('Failed to seed localStorage from env.js', e);
             }
         }
 
-        // Values come from env.js (window.__ENV__) or localhost localStorage when developing
+        // Values come from env.js (window.__ENV__) or localStorage (dev convenience)
         const supabaseUrl = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_URL) 
-            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_URL') : '');
+            || localStorage.getItem('VITE_SUPABASE_URL') || '';
             
         const supabaseAnonKey = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_ANON_KEY) 
-            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_ANON_KEY') : '');
+            || localStorage.getItem('VITE_SUPABASE_ANON_KEY') || '';
             
         const supabaseServiceKey = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_SERVICE_ROLE_KEY) 
-            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_SERVICE_ROLE_KEY') : '');
+            || localStorage.getItem('VITE_SUPABASE_SERVICE_ROLE_KEY') || '';
 
         // Log configuration source
         if (window.__ENV__) {
             console.log('🌍 Using environment variables from env.js');
-        } else if (window.location.hostname === 'localhost') {
-            console.log('🏠 Using localStorage for localhost development');
+        } else if (localStorage.getItem('VITE_SUPABASE_URL')) {
+            console.log('🏠 Using localStorage for local development');
         } else {
             console.warn('⚠️ Using fallback credentials - please configure environment variables');
         }
@@ -2254,14 +2277,7 @@
             }
         }
 
-        function updateLastUpdated() {
-            const now = new Date();
-            const timeString = now.toLocaleString();
-            const lastUpdatedElement = document.getElementById('last-updated');
-            if (lastUpdatedElement) {
-                lastUpdatedElement.textContent = `Last updated: ${timeString}`;
-            }
-        }
+        // duplicate removed: updateLastUpdated is defined once in Utility functions section
 
         async function loadCourses() {
             try {
@@ -2284,47 +2300,6 @@
                                 <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors" onclick="showAddCourseModal()">
                                     Create Course
                                 </button>
-                            </div>
-                            <!-- Test Course Card for debugging -->
-                            <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow mt-4">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div class="flex-1">
-                                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Test Course</h3>
-                                        <p class="text-gray-600 mb-3">This is a test course for debugging the edit functionality</p>
-                                        <div class="flex flex-wrap gap-2 mb-3">
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                beginner
-                                            </span>
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                                Spanish
-                                            </span>
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
-                                                10 hours
-                                            </span>
-                                        </div>
-                                        <p class="text-sm text-gray-500">Created: Today</p>
-                                    </div>
-                                    <div class="flex space-x-2 ml-4">
-                                        <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors" onclick="editCourse('test-course-id')">
-                                            <i data-lucide="edit" class="w-4 h-4 inline mr-1"></i>
-                                            Edit
-                                        </button>
-                                        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors" onclick="deleteCourse('test-course-id')">
-                                            <i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i>
-                                            Delete
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between items-center pt-3 border-t border-gray-100">
-                                    <span class="text-sm text-gray-500">
-                                        Status: <span class="font-medium text-green-600">
-                                            Active
-                                        </span>
-                                    </span>
-                                    <button class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick="viewCourseDetails('test-course-id')">
-                                        View Details →
-                                    </button>
-                                </div>
                             </div>
                         `;
                     }
@@ -2831,17 +2806,17 @@
         }
 
          // User management functions
-         function viewUser(userId) {
+         window.viewUser = window.viewUser || function(userId) {
              alert(`View user details for ID: ${userId}\n\nThis feature will show detailed user information, progress, and activity history.`);
-         }
+         };
 
-         function deleteUser(userId) {
+         window.deleteUser = window.deleteUser || async function(userId) {
              if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-                 // In a real implementation, this would delete the user from the database
+                 // Placeholder in early section; real implementation exists later
                  console.log(`Delete user with ID: ${userId}`);
                  alert('User deletion functionality would be implemented here.');
              }
-         }
+         };
 
         async function loadVocabulary() {
             try {
@@ -2961,14 +2936,14 @@
         }
 
         // Utility functions
-        function updateLastUpdated() {
+        window.updateLastUpdated = window.updateLastUpdated || function() {
             const now = new Date();
             const timeString = now.toLocaleString();
             const lastUpdatedElement = document.getElementById('last-updated');
             if (lastUpdatedElement) {
                 lastUpdatedElement.textContent = `Last updated: ${timeString}`;
             }
-        }
+        };
 
         function showError(message) {
             alert(`Error: ${message}`);
@@ -3155,28 +3130,50 @@
                 loadQuestions();
             }
         }
-
+        
+        window.showTab = window.showTab || showTab;
+        
         // Modal functions
-        function showAddCourseModal() {
+        window.showAddCourseModal = window.showAddCourseModal || function() {
             // Reset modal to create mode
             const modalTitleElement = document.getElementById('courseModalTitle');
             const finishBtnElement = document.getElementById('finishBtn');
-            
             if (modalTitleElement) {
                 modalTitleElement.textContent = 'Create New Course';
             }
             if (finishBtnElement) {
                 finishBtnElement.innerHTML = '<i data-lucide="check" class="w-4 h-4 mr-1"></i>Create Course';
             }
-            
-            // Clear any edit data
+            // Clear any edit data and reset form
             const form = document.getElementById('courseForm');
-            delete form.dataset.courseId;
-            delete form.dataset.isEdit;
-            form.reset();
-            
-            document.getElementById('courseModal').classList.remove('hidden');
-        }
+            if (form) {
+                delete form.dataset.courseId;
+                delete form.dataset.isEdit;
+                form.reset();
+            }
+            // Reset wizard data and show first step if available
+            try {
+                if (typeof showWizardStep === 'function') {
+                    if (typeof window.courseWizardData !== 'object') {
+                        window.courseWizardData = {};
+                    } else {
+                        window.courseWizardData = {};
+                    }
+                    if (typeof window.currentWizardStep !== 'number') {
+                        window.currentWizardStep = 1;
+                    } else {
+                        window.currentWizardStep = 1;
+                    }
+                    showWizardStep(1);
+                }
+            } catch (e) {
+                console.warn('Wizard init not available:', e);
+            }
+            const modalEl = document.getElementById('courseModal');
+            if (modalEl) {
+                modalEl.classList.remove('hidden');
+            }
+        };
 
         function closeCourseModal() {
             document.getElementById('courseModal').classList.add('hidden');
@@ -3201,6 +3198,7 @@
             // Reset wizard to first step
             showWizardStep(1);
         }
+        window.closeCourseModal = window.closeCourseModal || closeCourseModal;
 
         // Course Creation Wizard Functions
         let currentWizardStep = 1;
@@ -3279,6 +3277,7 @@
             
             currentWizardStep = stepNumber;
         }
+        window.showWizardStep = window.showWizardStep || showWizardStep;
 
         function updateNavigationHighlighting(currentStep) {
             // Reset all navigation items
@@ -3356,12 +3355,14 @@
                 showWizardStep(currentWizardStep + 1);
             }
         }
+        window.nextWizardStep = window.nextWizardStep || nextWizardStep;
 
         function prevWizardStep() {
             if (currentWizardStep > 1) {
                 showWizardStep(currentWizardStep - 1);
             }
         }
+        window.prevWizardStep = window.prevWizardStep || prevWizardStep;
 
         function validateCurrentStep() {
             switch (currentWizardStep) {
@@ -3653,11 +3654,28 @@
                             Add Questions
                         </button>
                     </div>
+
+                    <!-- Lesson Files (auto-linked by lesson number) -->
+                    <div class="mt-4 border-t pt-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h5 class="font-medium text-gray-800">Lesson Files</h5>
+                            <button type="button" class="refresh-lesson-files px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">Refresh</button>
+                        </div>
+                        <div class="text-xs text-gray-500 mb-2">These links are pulled from the course-materials storage under the folder for this lesson.</div>
+                        <div class="lesson-files-list border rounded-lg p-3 bg-white">
+                            <div class="text-gray-500 text-sm">No files found for this lesson.</div>
+                        </div>
+                    </div>
                 </div>
             `;
             
             lessonsContainer.insertAdjacentHTML('beforeend', lessonHTML);
             lucide.createIcons();
+            // Initialize the Lesson Files section for the newly added lesson
+            const lessonItemEl = document.getElementById(`lesson-${lessonCount}`);
+            if (lessonItemEl && typeof setupLessonFilesSection === 'function') {
+                setupLessonFilesSection(lessonItemEl);
+            }
         }
 
         function removeLesson(button) {
@@ -3678,6 +3696,88 @@
                 if (title && title.textContent.startsWith('Lesson ')) {
                     title.textContent = `Lesson ${index + 1}`;
                 }
+            });
+
+            // After renumbering, refresh files list for all lessons to reflect new lesson numbers
+            if (typeof refreshAllLessonFiles === 'function') {
+                refreshAllLessonFiles();
+            }
+        }
+        window.removeLesson = window.removeLesson || removeLesson;
+
+        // ===== Lesson Files helpers (Supabase Storage) =====
+        function getSanitizedCourseFolder() {
+            let courseName = '';
+            const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+            if (courseTitleInput && courseTitleInput.value) {
+                courseName = courseTitleInput.value.trim();
+            }
+            if (courseName) {
+                return courseName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
+            }
+            return 'course_content';
+        }
+
+        async function renderLessonFilesForItem(lessonItem) {
+            try {
+                const lessonsContainer = document.getElementById('lessonsContainer');
+                const items = Array.from(lessonsContainer.querySelectorAll('.lesson-item'));
+                const lessonNumber = items.indexOf(lessonItem) + 1; // 1-based index
+
+                const listEl = lessonItem.querySelector('.lesson-files-list');
+                if (!listEl) return;
+
+                listEl.innerHTML = '<div class="text-gray-500 text-sm">Loading files…</div>';
+
+                const courseFolder = getSanitizedCourseFolder();
+                const folderPath = `${courseFolder}/lesson_${lessonNumber}`;
+
+                let files = [];
+                try {
+                    files = await supabaseStorageService.listFiles('course-materials', folderPath);
+                } catch (err) {
+                    console.warn('Failed to list lesson files:', err);
+                }
+
+                if (!files || files.length === 0) {
+                    listEl.innerHTML = '<div class="text-gray-500 text-sm">No files found for this lesson.</div>';
+                    return;
+                }
+
+                const linksHtml = files.map(f => {
+                    const filePath = `${folderPath}/${f.name}`;
+                    const url = supabaseStorageService.getFileUrl('course-materials', filePath);
+                    const icon = f.type?.startsWith('image/') ? '🖼️' : f.type?.startsWith('audio/') ? '🎧' : f.type?.startsWith('video/') ? '📹' : f.name.toLowerCase().endsWith('.pdf') ? '📄' : '📎';
+                    return `<li class=\"py-1 flex items-center gap-2\"><span>${icon}</span><a class=\"text-blue-600 hover:underline break-all\" href=\"${url}\" target=\"_blank\" rel=\"noopener\">${f.name}</a></li>`;
+                }).join('');
+
+                listEl.innerHTML = `<ul class=\"list-disc pl-5\">${linksHtml}</ul>`;
+            } catch (e) {
+                console.error('Error rendering lesson files:', e);
+            }
+        }
+
+        function setupLessonFilesSection(lessonItem) {
+            const refreshBtn = lessonItem.querySelector('.refresh-lesson-files');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => renderLessonFilesForItem(lessonItem));
+            }
+            // Initial render
+            renderLessonFilesForItem(lessonItem);
+        }
+
+        function refreshAllLessonFiles() {
+            const lessons = document.querySelectorAll('.lesson-item');
+            lessons.forEach(item => renderLessonFilesForItem(item));
+        }
+
+        // Refresh lesson files when course title changes (so folder path updates)
+        const courseTitleEl = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+        if (courseTitleEl) {
+            let debounceTimer;
+            courseTitleEl.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => refreshAllLessonFiles(), 500);
             });
         }
 
@@ -3750,6 +3850,7 @@
             contentContainer.insertAdjacentHTML('beforeend', contentHTML);
             lucide.createIcons();
         }
+        window.addLessonContent = window.addLessonContent || addLessonContent;
 
         function removeLessonContent(button) {
             if (!button) {
@@ -3772,6 +3873,7 @@
                 }
             });
         }
+        window.removeLessonContent = window.removeLessonContent || removeLessonContent;
 
         function updateContentFields(selectElement) {
             if (!selectElement) {
@@ -3942,6 +4044,7 @@
             
             contentFields.innerHTML = fieldsHTML;
         }
+        window.updateContentFields = window.updateContentFields || updateContentFields;
 
         function previewContent(button) {
             if (!button) {
@@ -3959,6 +4062,7 @@
             // Create a simple preview modal or alert
             alert(`Preview: ${contentType.toUpperCase()} - ${contentTitle || 'Untitled'}`);
         }
+        window.previewContent = window.previewContent || previewContent;
 
         function moveContentUp(button) {
             if (!button) {
@@ -4341,43 +4445,54 @@
         }
 
         // Initialize wizard when modal opens
+        // Delegate to global guarded function to avoid duplicate declarations
         function showAddCourseModal() {
-            // Reset modal to create mode
-            document.getElementById('courseModalTitle').textContent = 'Create New Course';
-            
-            // Clear any edit data and reset wizard
+            if (typeof window.showAddCourseModal === 'function' && window.showAddCourseModal !== showAddCourseModal) {
+                return window.showAddCourseModal();
+            }
+            // Fallback in case global is missing
+            const titleEl = document.getElementById('courseModalTitle');
+            if (titleEl) titleEl.textContent = 'Create New Course';
             const form = document.getElementById('courseForm');
             if (form) {
                 delete form.dataset.courseId;
                 delete form.dataset.isEdit;
                 form.reset();
             }
-            
-            // Reset wizard data and show first step
-            courseWizardData = {};
-            currentWizardStep = 1;
-            showWizardStep(1);
-            
-            document.getElementById('courseModal').classList.remove('hidden');
+            try {
+                if (typeof showWizardStep === 'function') {
+                    window.courseWizardData = {};
+                    window.currentWizardStep = 1;
+                    showWizardStep(1);
+                }
+            } catch (e) {
+                console.warn('Wizard fallback init issue:', e);
+            }
+            const modal = document.getElementById('courseModal');
+            if (modal) modal.classList.remove('hidden');
         }
 
         function showAddAssignmentModal() {
             document.getElementById('assignmentModal').classList.remove('hidden');
         }
+        window.showAddAssignmentModal = window.showAddAssignmentModal || showAddAssignmentModal;
 
         function closeAssignmentModal() {
             document.getElementById('assignmentModal').classList.add('hidden');
             document.getElementById('assignmentForm').reset();
         }
+        window.closeAssignmentModal = window.closeAssignmentModal || closeAssignmentModal;
 
         function showAddQuestionModal() {
             document.getElementById('questionModal').classList.remove('hidden');
         }
+        window.showAddQuestionModal = window.showAddQuestionModal || showAddQuestionModal;
 
         function closeQuestionModal() {
             document.getElementById('questionModal').classList.add('hidden');
             document.getElementById('questionForm').reset();
         }
+        window.closeQuestionModal = window.closeQuestionModal || closeQuestionModal;
 
         async function loadQuestionsForAssignment() {
             const assignmentSelect = document.getElementById('questionAssignmentSelect');
@@ -4567,38 +4682,43 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
         // File upload helper function
          async function uploadFiles(files, folder, courseId = null, assignmentId = null) {
+             if (uploadFiles.uploading) return [];
+             uploadFiles.uploading = true;
              const uploadedFiles = [];
-             
-             for (const file of files) {
-                 const fileExt = file.name.split('.').pop();
-                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-                 const filePath = `${folder}/${fileName}`;
-                 
-                 try {
-                     const client = window.supabaseAdminClient || window.supabaseClient || supabase;
-                     const { data, error } = await client.storage
-                         .from('course-materials')
-                         .upload(filePath, file, { contentType: file.type });
-                     
-                     if (error) throw error;
-                     
-                     // Get public URL
-                     const { data: { publicUrl } } = client.storage
-                         .from('course-materials')
-                         .getPublicUrl(filePath);
-                     
-                     uploadedFiles.push({
-                         name: file.name,
-                         url: publicUrl,
-                         type: file.type,
-                         size: file.size,
-                         path: filePath
-                     });
-                 } catch (error) {
-                     console.error(`Error uploading ${file.name}:`, error);
+             const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+
+             try {
+                 for (const file of files) {
+                     const contentType = file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : file.type;
+                     try {
+                         const result = await supabaseStorageService.uploadFile(file, 'course-materials', folder, { contentType });
+
+                         try {
+                             await client.from('documents').upsert({
+                                 name: file.name,
+                                 path: result.path,
+                                 bucket: 'course-materials',
+                                 url: result.url
+                             }, { onConflict: 'path' });
+                         } catch (dbError) {
+                             console.error('Error storing file info:', dbError);
+                         }
+
+                         uploadedFiles.push({
+                             name: file.name,
+                             url: result.url,
+                             type: contentType,
+                             size: file.size,
+                             path: result.path
+                         });
+                     } catch (error) {
+                         console.error(`Error uploading ${file.name}:`, error);
+                     }
                  }
+             } finally {
+                 uploadFiles.uploading = false;
              }
-             
+
              return uploadedFiles;
          }
 
@@ -4996,20 +5116,39 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 // Add lesson number (1-based index)
                 const lessonNumber = lessonIndex + 1;
                 filePath += `/lesson_${lessonNumber}`;
-                
+
                 filePath += `/${fileName}`;
-                
+
+                // Ensure the bucket exists before uploading
+                await supabaseStorageService.ensureBucket('course-materials');
+
                 // Use IPC for file upload if in Electron environment
                 if (window.isElectron) {
                     // Convert file to buffer for IPC
                     const arrayBuffer = await file.arrayBuffer();
                     const buffer = new Uint8Array(arrayBuffer);
-                    
+
                     const result = await window.electronAPI.invoke('db:uploadFile', buffer, fileName, 'course-materials', filePath);
-                    
+
                     if (result.success) {
-                        console.log('✅ File uploaded successfully via Electron IPC:', result.result);
-                        return result.result.publicUrl || result.result;
+                        const publicUrl = result.result.publicUrl || result.result;
+                        const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                        try {
+                            await client.from('documents').upsert({
+                                name: file.name,
+                                path: filePath,
+                                bucket: 'course-materials',
+                                url: publicUrl
+                            }, { onConflict: 'path' });
+                        } catch (dbError) {
+                            console.error('Error storing file info:', dbError);
+                        }
+
+                        console.log('✅ File uploaded successfully via Electron IPC:', publicUrl);
+                        if (typeof refreshAllLessonFiles === 'function') {
+                            try { refreshAllLessonFiles(); } catch (e) { console.warn('refreshAllLessonFiles error:', e); }
+                        }
+                        return publicUrl;
                     } else {
                         console.error('❌ Failed to upload file via IPC:', result.error);
                         throw new Error(result.error);
@@ -5017,19 +5156,27 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 } else {
                     // Fallback to direct Supabase upload for web environment (prefer admin client if available)
                     const client = window.supabaseAdminClient || window.supabaseClient || supabase;
-                    const { data, error } = await client.storage
-                        .from('course-materials')
-                        .upload(filePath, file, { contentType: file.type });
-                    
-                    if (error) throw error;
-                    
-                    // Get public URL
-                    const { data: { publicUrl } } = client.storage
-                        .from('course-materials')
-                        .getPublicUrl(filePath);
-                    
-                    console.log('✅ File uploaded successfully via direct Supabase:', publicUrl);
-                    return publicUrl;
+                    const contentType = fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : file.type;
+                    const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
+                    const result = await supabaseStorageService.uploadFile(file, 'course-materials', folderPath, { contentType });
+
+                    // Store path and public URL in documents table
+                    try {
+                        await client.from('documents').upsert({
+                            name: file.name,
+                            path: result.path,
+                            bucket: 'course-materials',
+                            url: result.url
+                        }, { onConflict: 'path' });
+                    } catch (dbError) {
+                        console.error('Error storing file info:', dbError);
+                    }
+
+                    console.log('✅ File uploaded successfully via direct Supabase:', result.url);
+                    if (typeof refreshAllLessonFiles === 'function') {
+                        try { refreshAllLessonFiles(); } catch (e) { console.warn('refreshAllLessonFiles error:', e); }
+                    }
+                    return result.url;
                 }
             } catch (error) {
                 console.error('❌ Error uploading file:', error);
@@ -5141,10 +5288,16 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
 
         function viewUser(userId) {
+            if (typeof window.viewUser === 'function' && window.viewUser !== viewUser) {
+                return window.viewUser(userId);
+            }
             alert(`View user details for: ${userId}`);
         }
 
         async function deleteUser(userId) {
+            if (typeof window.deleteUser === 'function' && window.deleteUser !== deleteUser) {
+                return window.deleteUser(userId);
+            }
             if (!confirm('Are you sure you want to delete this user?')) {
                 return;
             }
@@ -5434,6 +5587,8 @@ After running this SQL, refresh the admin dashboard to see the user management w
             }
         }
 
+        window.editCourse = window.editCourse || editCourse;
+
         async function deleteCourse(courseId) {
             console.log('🗑️ Delete course called with ID:', courseId);
             
@@ -5637,6 +5792,11 @@ After running this SQL, refresh the admin dashboard to see the user management w
         // Function to load lesson data from database for editing using RPC
         async function loadLessonContentFromDatabase(courseId) {
             try {
+                if (window.__lessonsLoading) {
+                    console.warn('Lesson load already in progress, skipping this invocation.');
+                    return;
+                }
+                window.__lessonsLoading = true;
                 if (!supabase) {
                     console.error('Supabase not initialized');
                     return;
@@ -5748,6 +5908,8 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 console.error('❌ Error loading lesson content from database:', error);
                 // Try fallback method
                 return await loadLessonContentFromDatabaseFallback(courseId);
+            } finally {
+                window.__lessonsLoading = false;
             }
         }
         
@@ -5923,8 +6085,17 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                     if (altInput) altInput.value = contentData.alt_text || '';
                                                     if (captionInput) captionInput.value = contentData.caption || '';
                                                     
-                                                    // Show preview of existing image if we have a url
-                                                    if (material.url) {
+                                                    // Show preview of existing image using stored URL or generate if missing
+                                                    let imageUrl = material.url;
+                                                    if (!imageUrl && material.path) {
+                                                        const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                                                        const { data: { publicUrl } } = client.storage
+                                                            .from('course-materials')
+                                                            .getPublicUrl(material.path);
+                                                        imageUrl = publicUrl;
+                                                        material.url = publicUrl;
+                                                    }
+                                                    if (imageUrl) {
                                                         let preview = fieldsContainer.querySelector('.image-loaded-preview');
                                                         if (!preview) {
                                                             preview = document.createElement('div');
@@ -5933,7 +6104,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                             fieldsContainer.appendChild(preview);
                                                         }
                                                         const imgEl = preview.querySelector('img');
-                                                        if (imgEl) imgEl.src = material.url;
+                                                        if (imgEl) imgEl.src = imageUrl;
                                                     }
                                                     break;
                                             }
@@ -6064,8 +6235,17 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                             const captionInput = fieldsContainer.querySelector('.content-caption');
                                                             if (altInput) altInput.value = contentData.alt_text || '';
                                                             if (captionInput) captionInput.value = contentData.caption || '';
-                                                            // Show preview of existing image if we have a url
-                                            if (material.url) {
+                                                            // Show preview of existing image using stored URL or generate if missing
+                                            let imageUrl2 = material.url;
+                                            if (!imageUrl2 && material.path) {
+                                                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                                                const { data: { publicUrl } } = client.storage
+                                                    .from('course-materials')
+                                                    .getPublicUrl(material.path);
+                                                imageUrl2 = publicUrl;
+                                                material.url = publicUrl;
+                                            }
+                                            if (imageUrl2) {
                                                 let preview = fieldsContainer.querySelector('.image-loaded-preview');
                                                 if (!preview) {
                                                     preview = document.createElement('div');
@@ -6074,7 +6254,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                     fieldsContainer.appendChild(preview);
                                                 }
                                                 const imgEl = preview.querySelector('img');
-                                                if (imgEl) imgEl.src = material.url;
+                                                if (imgEl) imgEl.src = imageUrl2;
                                             }
                                                             break;
                                                     }
@@ -6154,7 +6334,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         // Load files from Supabase Storage
         async function loadFiles() {
             try {
-                const buckets = ['course-materials', 'assignment-materials', 'shared-resources'];
+                const buckets = ['course-files', 'assignment-files', 'general-files', 'images', 'documents'];
                 currentFiles = [];
 
                 for (const bucket of buckets) {
@@ -6167,17 +6347,30 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             });
 
                         if (!error && files) {
-                            const categoryMap = {
-                                'course-materials': 'courses',
-                                'assignment-materials': 'assignments',
-                                'shared-resources': 'general'
-                            };
-                            const filesWithBucket = files.map(file => ({
-                                ...file,
-                                bucket: bucket,
-                                category: categoryMap[bucket] || 'general'
-                            }));
-                            currentFiles.push(...filesWithBucket);
+                            for (const file of files) {
+                                const { data: { publicUrl } } = supabase.storage
+                                    .from(bucket)
+                                    .getPublicUrl(file.name);
+
+                                const fileRecord = {
+                                    ...file,
+                                    bucket: bucket,
+                                    category: bucket.replace('-files', '').replace('-', ' '),
+                                    url: publicUrl
+                                };
+                                currentFiles.push(fileRecord);
+
+                                try {
+                                    await supabase.from('documents').upsert({
+                                        name: file.name.split('/').pop(),
+                                        path: file.name,
+                                        bucket: bucket,
+                                        url: publicUrl
+                                    }, { onConflict: 'path' });
+                                } catch (dbError) {
+                                    console.error('Error updating file URL:', dbError);
+                                }
+                            }
                         }
                     } catch (bucketError) {
                         console.warn(`Bucket ${bucket} not accessible:`, bucketError);
@@ -6245,7 +6438,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         // Load storage statistics
         async function loadStorageStats() {
             try {
-                const buckets = ['course-materials', 'assignment-materials', 'shared-resources'];
+                const buckets = ['course-files', 'assignment-files', 'general-files', 'images', 'documents'];
                 let totalFiles = 0;
                 let totalSize = 0;
 
@@ -6328,16 +6521,21 @@ After running this SQL, refresh the admin dashboard to see the user management w
         function openFileUploadModal() {
             document.getElementById('fileUploadModal').classList.remove('hidden');
         }
+        window.openFileUploadModal = window.openFileUploadModal || openFileUploadModal;
+        window.showUploadModal = window.showUploadModal || openFileUploadModal;
 
         function closeFileUploadModal() {
             document.getElementById('fileUploadModal').classList.add('hidden');
             document.getElementById('fileUploadForm').reset();
             document.getElementById('uploadProgress').classList.add('hidden');
         }
+        window.closeFileUploadModal = window.closeFileUploadModal || closeFileUploadModal;
 
         // Handle file upload
         async function handleFileUpload(event) {
             event.preventDefault();
+            if (handleFileUpload.uploading) return;
+            handleFileUpload.uploading = true;
 
             const formData = new FormData(event.target);
             const category = formData.get('category');
@@ -6346,11 +6544,13 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
             if (!files || files.length === 0) {
                 showError('Please select at least one file');
+                handleFileUpload.uploading = false;
                 return;
             }
 
             if (!category) {
                 showError('Please select a file category');
+                handleFileUpload.uploading = false;
                 return;
             }
 
@@ -6362,37 +6562,47 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 const uploadButton = document.getElementById('uploadButton');
                 uploadButton.disabled = true;
 
-                // Determine bucket name (mapped to existing Supabase buckets)
-                const bucketName = category === 'general' ? 'shared-resources' : 
-                                 category === 'courses' ? 'course-materials' :
-                                 category === 'assignments' ? 'assignment-materials' :
-                                 category === 'images' ? 'shared-resources' :
-                                 category === 'documents' ? 'shared-resources' : 'shared-resources';
+                // Determine bucket name
+                const bucketName = category === 'general' ? 'general-files' :
+                                 category === 'courses' ? 'course-files' :
+                                 category === 'assignments' ? 'assignment-files' :
+                                 category === 'images' ? 'images' :
+                                 category === 'documents' ? 'documents' : 'general-files';
+
+                // Ensure target bucket exists
+                await supabaseStorageService.ensureBucket(bucketName);
 
                 // Upload files one by one
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
-                    const fileName = `${Date.now()}_${file.name}`;
+                    const contentType = file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : file.type;
 
                     progressText.textContent = `Uploading ${file.name} (${i + 1}/${files.length})...`;
                     progressBar.style.width = `${((i + 0.5) / files.length) * 100}%`;
 
-                    const { data, error } = await supabase.storage
-                        .from(bucketName)
-                        .upload(fileName, file, {
-                            cacheControl: '3600',
-                            upsert: false
-                        });
+                    try {
+                        const result = await supabaseStorageService.uploadFile(file, bucketName, '', { contentType });
 
-                    if (error) {
+                        if (contentType === 'application/pdf') {
+                            try {
+                                await supabase.from('documents').insert({
+                                    name: file.name,
+                                    path: result.path,
+                                    bucket: bucketName
+                                });
+                            } catch (dbError) {
+                                console.error('Error storing file path:', dbError);
+                            }
+                        }
+
+                        progressBar.style.width = `${((i + 1) / files.length) * 100}%`;
+                    } catch (error) {
                         throw new Error(`Failed to upload ${file.name}: ${error.message}`);
                     }
-
-                    progressBar.style.width = `${((i + 1) / files.length) * 100}%`;
                 }
 
                 progressText.textContent = 'Upload completed!';
-                
+
                 // Close modal and refresh files
                 setTimeout(() => {
                     closeFileUploadModal();
@@ -6405,6 +6615,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to upload files: ' + error.message);
             } finally {
                 document.getElementById('uploadButton').disabled = false;
+                handleFileUpload.uploading = false;
             }
         }
 
@@ -6454,6 +6665,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to delete file');
             }
         }
+        window.deleteFile = window.deleteFile || deleteFile;
 
         // Filter files
         function filterFiles() {
@@ -6700,6 +6912,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
             document.getElementById('assessmentQuestionModal').classList.remove('hidden');
             resetAssessmentQuestionForm();
         }
+        window.showCreateAssessmentQuestionModal = window.showCreateAssessmentQuestionModal || showCreateAssessmentQuestionModal;
 
         // Close assessment question modal
         function closeAssessmentQuestionModal() {
@@ -6713,6 +6926,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
             // Reset modal title
             document.querySelector('#assessmentQuestionModal h3').textContent = 'Create CEFR Assessment Question';
         }
+        window.closeAssessmentQuestionModal = window.closeAssessmentQuestionModal || closeAssessmentQuestionModal;
 
         // Reset assessment question form
         function resetAssessmentQuestionForm() {
@@ -6878,6 +7092,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
             document.getElementById(`question${type.charAt(0).toUpperCase() + type.slice(1)}`).value = '';
             document.getElementById(`${type}Preview`).classList.add('hidden');
         }
+        window.removeMedia = window.removeMedia || removeMedia;
 
         // Handle assessment question form submission
         async function handleAssessmentQuestionSubmit(event) {
@@ -7291,6 +7506,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to load question data: ' + error.message);
             }
         }
+        window.editAssessmentQuestion = window.editAssessmentQuestion || editAssessmentQuestion;
 
         // Delete assessment question
         async function deleteAssessmentQuestion(questionId) {
@@ -7321,6 +7537,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to delete assessment question: ' + error.message);
             }
         }
+        window.deleteAssessmentQuestion = window.deleteAssessmentQuestion || deleteAssessmentQuestion;
 
         // View student details
         function viewStudentDetails(studentId) {
@@ -7672,6 +7889,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 existingSelect.style.display = 'none';
             }
         }
+        window.toggleImageSourceFields = window.toggleImageSourceFields || toggleImageSourceFields;
 
         async function populateExistingImages(selectElement) {
             try {
@@ -7867,6 +8085,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 currentUrlInput.value = selectElement.value;
             }
         }
+        window.handleExistingImageSelect = window.handleExistingImageSelect || handleExistingImageSelect;
 
         function handleImageUpload(fileInput) {
             if (fileInput.files && fileInput.files[0]) {
@@ -7915,6 +8134,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 reader.readAsDataURL(file);
             }
         }
+        window.handleImageUpload = window.handleImageUpload || handleImageUpload;
 
         function replaceImage(button) {
             const contentItem = button.closest('.content-item');
@@ -7923,6 +8143,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 replaceInput.click();
             }
         }
+        window.replaceImage = window.replaceImage || replaceImage;
 
         async function handleImageReplace(replaceInput) {
             if (!replaceInput.files || !replaceInput.files[0]) return;
@@ -7970,6 +8191,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to replace image: ' + error.message);
             }
         }
+        window.handleImageReplace = window.handleImageReplace || handleImageReplace;
 
         async function deleteImage(button) {
             if (!confirm('Are you sure you want to delete this image?')) {
@@ -8012,6 +8234,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to delete image: ' + error.message);
             }
         }
+        window.deleteImage = window.deleteImage || deleteImage;
 
         async function deleteImageFromStorage(imageUrl) {
             try {
@@ -8090,6 +8313,66 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 throw error;
             }
         }
+
+    // ===== Global guarded exposures for inline onclick and external access =====
+        (function() {
+            if (typeof window !== 'undefined') {
+                // General navigation and data actions
+                window.logout = window.logout || logout;
+                window.refreshData = window.refreshData || refreshData;
+                window.refreshUsers = window.refreshUsers || refreshUsers;
+                window.showFilesTab = window.showFilesTab || showFilesTab;
+                window.loadFiles = window.loadFiles || loadFiles;
+                window.showAssessmentsTab = window.showAssessmentsTab || showAssessmentsTab;
+                window.showAssessmentSubTab = window.showAssessmentSubTab || showAssessmentSubTab;
+                window.showCourseSubTab = window.showCourseSubTab || showCourseSubTab;
+
+                // Course and lesson CRUD helpers
+                window.editVocabulary = window.editVocabulary || editVocabulary;
+                window.deleteVocabulary = window.deleteVocabulary || deleteVocabulary;
+                window.editLesson = window.editLesson || editLesson;
+                window.deleteLesson = window.deleteLesson || deleteLesson;
+                window.deleteCourse = window.deleteCourse || deleteCourse;
+
+                // Assignment handlers
+                window.editAssignment = window.editAssignment || editAssignment;
+                window.deleteAssignment = window.deleteAssignment || deleteAssignment;
+
+                // Content builder helpers (inline onclick handlers)
+                window.updateContentFields = window.updateContentFields || updateContentFields;
+                window.previewContent = window.previewContent || previewContent;
+                window.moveContentUp = window.moveContentUp || moveContentUp;
+                window.moveContentDown = window.moveContentDown || moveContentDown;
+                window.renumberContentItems = window.renumberContentItems || renumberContentItems;
+                window.openQuizBuilder = window.openQuizBuilder || openQuizBuilder;
+                window.addQuestion = window.addQuestion || addQuestion;
+                window.removeQuestion = window.removeQuestion || removeQuestion;
+                window.generateLessonContent = window.generateLessonContent || generateLessonContent;
+                window.generateQuestionContent = window.generateQuestionContent || generateQuestionContent;
+
+                // Image helpers for inline handlers
+                window.toggleImageSourceFields = window.toggleImageSourceFields || toggleImageSourceFields;
+                window.replaceImage = window.replaceImage || replaceImage;
+                window.deleteImage = window.deleteImage || deleteImage;
+                window.handleImageReplace = window.handleImageReplace || handleImageReplace;
+                window.handleImageUpload = window.handleImageUpload || handleImageUpload;
+                window.handleExistingImageSelect = window.handleExistingImageSelect || handleExistingImageSelect;
+
+                // Fallback stubs for not-yet-implemented features
+                if (typeof window.viewCourseDetails !== 'function') {
+                    window.viewCourseDetails = function(courseId) {
+                        console.warn('viewCourseDetails not implemented yet. courseId:', courseId);
+                        alert('Course details view is not implemented yet.');
+                    };
+                }
+                if (typeof window.showTemplateGallery !== 'function') {
+                    window.showTemplateGallery = function() {
+                        console.warn('showTemplateGallery not implemented yet.');
+                        alert('Template gallery is coming soon.');
+                    };
+                }
+            }
+        })();
 
     </script>
 </body>
