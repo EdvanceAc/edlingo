@@ -54,6 +54,7 @@
     </script>
 
     <style>
+        /* Existing styles kept for compatibility */
         .admin-gradient {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
@@ -66,6 +67,93 @@
         }
         .loading {
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Modern luxury theme additions */
+        :root {
+          --lux-primary: #6366f1; /* indigo-500 */
+          --lux-secondary: #22d3ee; /* cyan-400 */
+          --lux-accent: #a78bfa; /* violet-400 */
+          --lux-card-bg: rgba(255, 255, 255, 0.7);
+          --lux-border: rgba(255, 255, 255, 0.55);
+        }
+
+        body {
+          position: relative;
+          background-image:
+            radial-gradient(90rem 40rem at 10% -10%, rgba(99,102,241,0.08), transparent 60%),
+            radial-gradient(90rem 40rem at 90% 0%, rgba(34,211,238,0.08), transparent 60%);
+          background-repeat: no-repeat;
+        }
+
+        .glass-card {
+          background: var(--lux-card-bg);
+          -webkit-backdrop-filter: saturate(140%) blur(12px);
+          backdrop-filter: saturate(140%) blur(12px);
+          border: 1px solid var(--lux-border);
+          border-radius: 16px;
+          box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+        }
+
+        .gradient-border { position: relative; border-radius: 16px; }
+        .gradient-border::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          padding: 1px;
+          border-radius: inherit;
+          background: linear-gradient(135deg, var(--lux-primary), var(--lux-secondary));
+          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+                  mask-composite: exclude;
+          pointer-events: none;
+        }
+
+        .shine-on-hover { position: relative; overflow: hidden; }
+        .shine-on-hover::after {
+          content: '';
+          position: absolute;
+          inset: -150% -30%;
+          background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+          transform: translateX(-100%);
+        }
+        .shine-on-hover:hover::after { animation: shine 1.2s ease; }
+        @keyframes shine { to { transform: translateX(100%); } }
+
+        .section-title {
+          background: linear-gradient(135deg, var(--lux-primary), var(--lux-secondary));
+          -webkit-background-clip: text;
+                  background-clip: text;
+          color: transparent;
+        }
+
+        .icon-blob { position: relative; z-index: 0; }
+        .icon-blob::before {
+          content: '';
+          position: absolute;
+          inset: -6px;
+          border-radius: 9999px;
+          background: radial-gradient(circle at 50% 50%, rgba(99,102,241,0.25), transparent 60%);
+          filter: blur(3px);
+          z-index: -1;
+        }
+
+        .lux-action {
+          border-radius: 14px;
+          border: 1px solid transparent;
+          background: linear-gradient(#ffffff,#ffffff) padding-box,
+                      linear-gradient(135deg, rgba(99,102,241,0.6), rgba(34,211,238,0.6)) border-box;
+          transition: all .25s ease;
+        }
+        .lux-action:hover {
+          background: linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)) padding-box,
+                      linear-gradient(135deg, var(--lux-primary), var(--lux-secondary)) border-box;
+          box-shadow: 0 10px 25px rgba(2,6,23,.06);
+          transform: translateY(-2px);
+        }
+
+        .lux-muted {
+          color: rgb(75 85 99); /* gray-600 */
         }
     </style>
 </head>
@@ -135,9 +223,9 @@
         <div id="overview-content" class="tab-content">
             <!-- Stats Overview -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+            <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 icon-blob">
                         <i data-lucide="users" class="w-6 h-6"></i>
                     </div>
                     <div class="ml-4">
@@ -147,9 +235,9 @@
                 </div>
             </div>
             
-            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+            <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600 icon-blob">
                         <i data-lucide="book-open" class="w-6 h-6"></i>
                     </div>
                     <div class="ml-4">
@@ -159,9 +247,9 @@
                 </div>
             </div>
             
-            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+            <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600 icon-blob">
                         <i data-lucide="clipboard-list" class="w-6 h-6"></i>
                     </div>
                     <div class="ml-4">
@@ -171,9 +259,9 @@
                 </div>
             </div>
             
-            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+            <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600 icon-blob">
                         <i data-lucide="trophy" class="w-6 h-6"></i>
                     </div>
                     <div class="ml-4">
@@ -185,28 +273,32 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="bg-white rounded-lg shadow-md mb-8">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">Quick Actions</h2>
+        <div class="bg-white glass-card gradient-border mb-8">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-lg font-semibold section-title">Quick Actions</h2>
+                <div class="hidden md:flex items-center text-sm lux-muted">
+                    <i data-lucide="zap" class="w-4 h-4 mr-2"></i>
+                    <span>Speed up your workflow</span>
+                </div>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button class="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" onclick="showTab('courses')">
+                    <button class="lux-action flex items-center justify-center p-5 border rounded-lg transition-all shine-on-hover" onclick="showTab('courses')">
                         <div class="text-center">
-                            <i data-lucide="book-open" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
-                            <span class="text-sm font-medium text-gray-700">Manage Courses</span>
+                            <i data-lucide="book-open" class="w-8 h-8 mx-auto text-gray-500 mb-2"></i>
+                            <span class="text-sm font-medium text-gray-800">Manage Courses</span>
                         </div>
                     </button>
-                    <button class="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" onclick="showTab('assignments')">
+                    <button class="lux-action flex items-center justify-center p-5 border rounded-lg transition-all shine-on-hover" onclick="showTab('assignments')">
                         <div class="text-center">
-                            <i data-lucide="file-text" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
-                            <span class="text-sm font-medium text-gray-700">Manage Assignments</span>
+                            <i data-lucide="file-text" class="w-8 h-8 mx-auto text-gray-500 mb-2"></i>
+                            <span class="text-sm font-medium text-gray-800">Manage Assignments</span>
                         </div>
                     </button>
-                    <button class="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" onclick="showTab('users')">
+                    <button class="lux-action flex items-center justify-center p-5 border rounded-lg transition-all shine-on-hover" onclick="showTab('users')">
                         <div class="text-center">
-                            <i data-lucide="users" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
-                            <span class="text-sm font-medium text-gray-700">Manage Users</span>
+                            <i data-lucide="users" class="w-8 h-8 mx-auto text-gray-500 mb-2"></i>
+                            <span class="text-sm font-medium text-gray-800">Manage Users</span>
                         </div>
                     </button>
                 </div>
@@ -214,9 +306,13 @@
         </div>
 
         <!-- Recent Activity Section -->
-        <div class="bg-white rounded-lg shadow-md mb-8">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">Recent Activity</h2>
+        <div class="bg-white glass-card gradient-border mb-8">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-lg font-semibold section-title">Recent Activity</h2>
+                <div class="hidden md:flex items-center text-sm lux-muted">
+                    <i data-lucide="activity" class="w-4 h-4 mr-2"></i>
+                    <span>Latest events across the platform</span>
+                </div>
             </div>
             <div class="p-6">
                 <div id="activity-list">
@@ -228,9 +324,13 @@
         <!-- Data Management Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <!-- Vocabulary Management -->
-            <div class="bg-white rounded-lg shadow-md">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Vocabulary Management</h2>
+            <div class="bg-white glass-card gradient-border shine-on-hover">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold section-title">Vocabulary Management</h2>
+                    <div class="hidden md:flex items-center text-sm lux-muted">
+                        <i data-lucide="list" class="w-4 h-4 mr-2"></i>
+                        <span>Manage your word sets</span>
+                    </div>
                 </div>
                 <div class="p-6">
                     <div class="space-y-4" id="vocabulary-list">
@@ -240,9 +340,13 @@
             </div>
 
             <!-- Grammar Lessons Management -->
-            <div class="bg-white rounded-lg shadow-md">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Grammar Lessons</h2>
+            <div class="bg-white glass-card gradient-border shine-on-hover">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold section-title">Grammar Lessons</h2>
+                    <div class="hidden md:flex items-center text-sm lux-muted">
+                        <i data-lucide="graduation-cap" class="w-4 h-4 mr-2"></i>
+                        <span>Curate and refine lessons</span>
+                    </div>
                 </div>
                 <div class="p-6">
                     <div class="space-y-4" id="lessons-list">
