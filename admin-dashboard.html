@@ -194,18 +194,20 @@
         .lux-tab i { transition: transform .25s ease, color .25s ease; }
         .lux-tab:hover i { transform: translateY(-1px); }
 
-        /* Tooltip (glass) */
+        /* Tooltip (glass) via global portal (prevents clipping) */
         .tooltip { position: relative; }
-        .tooltip::after { content: attr(data-tooltip); position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%) translateY(6px) scale(.98);
-          background: rgba(17,24,39,0.82); color: #fff; padding: 6px 10px; font-size: 12px; line-height: 1; border-radius: 8px;
-          border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 10px 24px rgba(2,6,23,.25);
-          backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-          white-space: nowrap; opacity: 0; pointer-events: none; z-index: 40; transition: all .2s ease; }
-        .tooltip::before { content: ""; position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%) rotate(45deg);
-          width: 10px; height: 10px; background: rgba(17,24,39,0.82); border-left: 1px solid rgba(255,255,255,0.12); border-top: 1px solid rgba(255,255,255,0.12);
-          opacity: 0; transition: all .2s ease; z-index: 39; }
-        .tooltip:hover::after, .tooltip:focus::after { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-        .tooltip:hover::before, .tooltip:focus::before { opacity: 1; bottom: calc(100% + 6px); }
+        .tooltip::before, .tooltip::after { display: none !important; }
+        #tooltip-portal { position: fixed; left: 0; top: 0; opacity: 0; visibility: hidden; pointer-events: none; z-index: 1000;
+          background: rgba(17,24,39,0.86); color: #fff; padding: 8px 12px; font-size: 12px; line-height: 1.2; border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 10px 24px rgba(2,6,23,.25); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+          white-space: nowrap; transform: translate(-50%, 4px) scale(.98); transition: opacity .15s ease, transform .15s ease; }
+        #tooltip-portal.visible { opacity: 1; visibility: visible; transform: translate(-50%, 0) scale(1); }
+        #tooltip-portal::after { content: ""; position: absolute; width: 10px; height: 10px; background: rgba(17,24,39,0.86);
+          border-left: 1px solid rgba(255,255,255,0.14); border-top: 1px solid rgba(255,255,255,0.14); transform: rotate(45deg); }
+        #tooltip-portal[data-placement="bottom"]::after { top: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); }
+        #tooltip-portal[data-placement="top"]::after { bottom: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); }
+        /* Safety: prevent accidental horizontal overflow */
+        html, body { max-width: 100%; overflow-x: hidden; }
 
         /* Minimal Dark Theme scaffold (non-invasive) */
         [data-theme="dark"] body { background: radial-gradient(circle at 20% 0%, rgba(2,6,23,1) 0%, rgba(15,23,42,1) 45%, rgba(17,24,39,1) 100%); }
@@ -239,15 +241,15 @@
                     <i data-lucide="graduation-cap" class="w-8 h-8 mr-3"></i>
                     <h1 class="text-2xl font-bold brand-glow">EdLingo Admin Dashboard</h1>
                 </div>
-                <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-3 overflow-visible">
                     <span class="text-sm opacity-90">Welcome, Admin</span>
-                    <button class="glass-icon-btn tooltip" onclick="refreshData()" aria-label="Refresh" data-tooltip="به‌روزرسانی داده‌ها">
+                    <button class="glass-icon-btn tooltip" onclick="refreshData()" aria-label="Refresh" data-tooltip="Refresh data">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
-                    <button class="glass-icon-btn tooltip" onclick="toggleDarkMode()" aria-label="Dark Mode" data-tooltip="تغییر حالت تیره/روشن">
+                    <button class="glass-icon-btn tooltip" onclick="toggleDarkMode()" aria-label="Dark Mode" data-tooltip="Toggle dark/light mode">
                         <i id="theme-icon" data-lucide="moon" class="w-4 h-4"></i>
                     </button>
-                    <button class="glass-icon-btn tooltip" onclick="logout()" aria-label="Logout" data-tooltip="خروج از حساب">
+                    <button class="glass-icon-btn tooltip" onclick="logout()" aria-label="Logout" data-tooltip="Sign out">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -8655,6 +8657,96 @@ After running this SQL, refresh the admin dashboard to see the user management w
             }
         })();
 
+        // Global tooltip portal logic (prevents clipping and supports auto-flip)
+        (function setupTooltipPortal(){
+            try {
+                const portalId = 'tooltip-portal';
+                let portal = document.getElementById(portalId);
+                if (!portal) {
+                    portal = document.createElement('div');
+                    portal.id = portalId;
+                    document.body.appendChild(portal);
+                }
+                const show = (el) => {
+                    const text = el.getAttribute('data-tooltip');
+                    if (!text) return;
+                    portal.textContent = text;
+                    portal.classList.remove('visible');
+                    portal.removeAttribute('data-placement');
+
+                    const rect = el.getBoundingClientRect();
+                    const spacing = 10;
+                    // default: bottom
+                    let left = rect.left + rect.width/2; // center x
+                    let top = rect.bottom + spacing;
+                    portal.setAttribute('data-placement', 'bottom');
+                    portal.style.left = `${left}px`;
+                    portal.style.top = `${top}px`;
+
+                    // make visible to measure size
+                    portal.classList.add('visible');
+                    const pRect = portal.getBoundingClientRect();
+
+                    // auto-flip if not enough space at bottom
+                    const spaceBottom = window.innerHeight - rect.bottom;
+                    const spaceTop = rect.top;
+                    if (spaceBottom < pRect.height + spacing && spaceTop > pRect.height + spacing) {
+                        top = rect.top - spacing - pRect.height;
+                        portal.setAttribute('data-placement', 'top');
+                        portal.style.top = `${top}px`;
+                    } else {
+                        portal.setAttribute('data-placement', 'bottom');
+                        portal.style.top = `${rect.bottom + spacing}px`;
+                    }
+                    // keep inside viewport horizontally
+                    const minX = 8 + pRect.width/2;
+                    const maxX = window.innerWidth - 8 - pRect.width/2;
+                    left = Math.min(Math.max(left, minX), maxX);
+                    portal.style.left = `${left}px`;
+                };
+                const hide = () => portal.classList.remove('visible');
+
+                let activeEl = null;
+                // Show on mouseover (entering a trigger)
+                document.addEventListener('mouseover', (e) => {
+                    const target = e.target.closest('.tooltip');
+                    if (!target) return;
+                    if (activeEl !== target) {
+                        activeEl = target;
+                        show(target);
+                    }
+                }, true);
+                // Hide when leaving the same trigger (not when moving inside it)
+                document.addEventListener('mouseout', (e) => {
+                    const target = e.target.closest('.tooltip');
+                    if (!target) return;
+                    if (target.contains(e.relatedTarget)) return; // still inside same trigger
+                    if (activeEl === target) {
+                        activeEl = null;
+                        hide();
+                    }
+                }, true);
+                // Accessible focus/blur
+                document.addEventListener('focusin', (e) => {
+                    const target = e.target.closest('.tooltip');
+                    if (target) {
+                        activeEl = target;
+                        show(target);
+                    }
+                });
+                document.addEventListener('focusout', (e) => {
+                    const target = e.target.closest('.tooltip');
+                    if (target && activeEl === target) {
+                        activeEl = null;
+                        hide();
+                    }
+                });
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { activeEl = null; hide(); } });
+                window.addEventListener('scroll', () => { activeEl = null; hide(); }, true);
+                window.addEventListener('resize', () => { activeEl = null; hide(); });
+            } catch (e) { /* no-op */ }
+        })();
     </script>
+    <div id="tooltip-portal" aria-hidden="true"></div>
 </body>
 </html>
