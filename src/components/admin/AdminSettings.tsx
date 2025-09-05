@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../renderer/config/supabaseConfig.js';
 import supabaseStorageService from '../../renderer/services/supabaseStorageService.js';
 import { toast } from 'react-hot-toast';
 import { 
   Settings, 
-  Save, 
   Upload, 
   Trash2, 
   Download, 
-  Eye, 
   FileText,
   Image,
   Video,
