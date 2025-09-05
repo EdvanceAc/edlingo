@@ -39,19 +39,29 @@ import {
   Send,
   ChevronDown,
   ChevronRight,
-  Layers
+  Layers,
+  Sparkles,
+  Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../renderer/components/ui/Card';
 import { Progress } from '../../renderer/components/ui/Progress';
 import { Badge } from '../../renderer/components/ui/Badge';
 import Button from '../../renderer/components/ui/Button';
+import ThemeToggle from '../../renderer/components/ui/ThemeToggle';
+import { useTheme } from '../../renderer/contexts/ThemeContext';
+import SkeletonLoader, { StatsCardSkeleton, CourseCardSkeleton, TableRowSkeleton } from '../../renderer/components/ui/SkeletonLoader';
 import { supabase } from '../../renderer/config/supabaseConfig';
+import '../../renderer/styles/themes.css';
 
 const EnhancedAdminDashboard = () => {
+  const { isDark } = useTheme();
   const [activeSection, setActiveSection] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Course Management State
   const [courses, setCourses] = useState([]);
@@ -88,7 +98,7 @@ const EnhancedAdminDashboard = () => {
   // Course Management Functions
   const loadCourses = async () => {
     try {
-      setIsLoading(true);
+      setIsLoadingCourses(true);
       const { data, error } = await supabase
         .from('courses')
         .select('id,title,description,language,level,instructor,is_active,price,duration,updated_at,created_at,status,students,completion')
@@ -144,7 +154,7 @@ const EnhancedAdminDashboard = () => {
         }
       ]);
     } finally {
-      setIsLoading(false);
+      setIsLoadingCourses(false);
     }
   };
 
@@ -348,10 +358,18 @@ const EnhancedAdminDashboard = () => {
 
   // Load courses when course management section is active
   useEffect(() => {
-    if (activeSection === 'course-management') {
+    if (activeSection === 'courses') {
       loadCourses();
     }
   }, [activeSection]);
+
+  // Simulate stats loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoadingStats(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Navigation sections
   const navigationSections = [
@@ -584,12 +602,12 @@ const EnhancedAdminDashboard = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mobile-stack">
         <div>
           <h2 className="text-2xl font-bold">Course Management</h2>
           <p className="text-muted-foreground">Create, edit, and manage your language courses</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 mobile-full mobile-stack sm:flex-row">
           <Button onClick={() => setShowCourseForm(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Create Course
@@ -602,7 +620,7 @@ const EnhancedAdminDashboard = () => {
       </div>
 
       {/* Course Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mobile-grid-1">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -764,25 +782,21 @@ const EnhancedAdminDashboard = () => {
       )}
 
       {/* Course Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="h-3 bg-gray-200 rounded"></div>
-                  <div className="h-3 bg-gray-200 rounded w-5/6"></div>
-                </div>
-              </CardContent>
-            </Card>
+      {isLoadingCourses ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mobile-grid-1">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index, duration: 0.3 }}
+            >
+              <CourseCardSkeleton />
+            </motion.div>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mobile-grid-1">
           {
             courses
               .filter(course => 
@@ -954,108 +968,387 @@ const EnhancedAdminDashboard = () => {
         return <NotificationManagement />;
       default:
         return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Dashboard Overview</h2>
-              <div className="flex gap-2">
-                <Button onClick={() => {
-                  setActiveSection('course-management');
-                  setShowCourseForm(true);
-                }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Course
-                </Button>
-                <Button variant="outline" onClick={() => setActiveSection('course-management')}>
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Manage Courses
-                </Button>
+          <div className="space-y-8">
+            {/* Header */}
+            <motion.div 
+              className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <div>
+                <h2 className="text-3xl font-bold text-gradient mb-2">نمای کلی داشبورد</h2>
+                <p className="opacity-70">آمار و اطلاعات کلیدی سیستم آموزشی</p>
               </div>
+              <div className="flex flex-wrap gap-3">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    onClick={() => {
+                      setActiveSection('course-management');
+                      setShowCourseForm(true);
+                    }}
+                    className="gradient-primary hover:shadow-lg transition-all duration-300 btn-micro ripple bounce-hover"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    ایجاد دوره جدید
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setActiveSection('course-management')}
+                    className="glass border-white/20 hover:border-white/40 transition-all duration-300 btn-micro hover-lift"
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    مدیریت دوره‌ها
+                  </Button>
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mobile-grid-1">
+              {isLoadingStats ? (
+                // Skeleton Loading State
+                Array.from({ length: 4 }).map((_, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 * index, duration: 0.5 }}
+                  >
+                    <StatsCardSkeleton />
+                  </motion.div>
+                ))
+              ) : (
+                // Actual Stats Cards
+                [
+                  {
+                    title: 'کل دوره‌ها',
+                    value: '24',
+                    icon: BookOpen,
+                    color: 'blue',
+                    gradient: 'from-blue-500 to-blue-600',
+                    change: '+12%',
+                    changeType: 'positive'
+                  },
+                  {
+                    title: 'کل دانشجویان',
+                    value: '1,247',
+                    icon: Users,
+                    color: 'emerald',
+                    gradient: 'from-emerald-500 to-emerald-600',
+                    change: '+8%',
+                    changeType: 'positive'
+                  },
+                  {
+                    title: 'نرخ تکمیل',
+                    value: '78.5%',
+                    icon: Target,
+                    color: 'orange',
+                    gradient: 'from-orange-500 to-orange-600',
+                    change: '+5%',
+                    changeType: 'positive'
+                  },
+                  {
+                    title: 'درآمد',
+                    value: '$15,420',
+                    icon: TrendingUp,
+                    color: 'purple',
+                    gradient: 'from-purple-500 to-purple-600',
+                    change: '+23%',
+                    changeType: 'positive'
+                  }
+                ].map((stat, index) => {
+                  const Icon = stat.icon;
+                  return (
+                    <motion.div
+                      key={stat.title}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index, duration: 0.5 }}
+                      whileHover={{ y: -5, scale: 1.02 }}
+                      className="group"
+                    >
+                      <div className="glass rounded-2xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-xl relative overflow-hidden">
+                        {/* Background Gradient */}
+                        <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+                        
+                        {/* Glow Effect */}
+                        <div className="absolute -inset-1 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
+                        
+                        <div className="relative">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} shadow-lg`}>
+                              <Icon className="w-6 h-6 text-white" />
+                            </div>
+                            <div className={`text-xs px-2 py-1 rounded-full ${
+                              stat.changeType === 'positive' 
+                                ? 'bg-green-500/20 text-green-400' 
+                                : 'bg-red-500/20 text-red-400'
+                            }`}>
+                              {stat.change}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm opacity-70 mb-1">{stat.title}</p>
+                            <p className="text-2xl font-bold text-gradient group-hover:scale-105 transition-transform duration-300">
+                              {stat.value}
+                            </p>
+                          </div>
+                          
+                          {/* Progress Bar */}
+                          <div className="mt-4 h-1 bg-white/10 rounded-full overflow-hidden">
+                            <motion.div
+                              className={`h-full bg-gradient-to-r ${stat.gradient}`}
+                              initial={{ width: 0 }}
+                              animate={{ width: '70%' }}
+                              transition={{ delay: 0.5 + 0.1 * index, duration: 1 }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Courses</p>
-                      <p className="text-2xl font-bold">24</p>
-                    </div>
-                    <BookOpen className="w-8 h-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Students</p>
-                      <p className="text-2xl font-bold">1,247</p>
-                    </div>
-                    <Users className="w-8 h-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Completion Rate</p>
-                      <p className="text-2xl font-bold">78.5%</p>
-                    </div>
-                    <Target className="w-8 h-8 text-orange-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Revenue</p>
-                      <p className="text-2xl font-bold">$15,420</p>
-                    </div>
-                    <TrendingUp className="w-8 h-8 text-purple-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+
+            {/* Quick Actions */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              className="glass rounded-2xl p-6 border border-white/10"
+            >
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-yellow-400" />
+                اقدامات سریع
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mobile-grid-1">
+                {[
+                  { title: 'ایجاد دوره جدید', icon: Plus, action: () => setActiveSection('course-management') },
+                  { title: 'مشاهده آمار', icon: BarChart3, action: () => setActiveSection('student-analytics') },
+                  { title: 'ارسال اعلان', icon: Bell, action: () => setActiveSection('notifications') }
+                ].map((action, index) => {
+                  const Icon = action.icon;
+                  return (
+                    <motion.button
+                      key={action.title}
+                      onClick={action.action}
+                      className="p-4 rounded-xl glass border border-white/10 hover:border-white/20 transition-all duration-300 hover-lift group btn-micro ripple"
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Icon className="w-6 h-6 mb-2 text-accent-500 group-hover:scale-110 transition-transform duration-300" />
+                      <p className="font-medium">{action.title}</p>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
           </div>
         );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-white shadow-lg">
-          <div className="p-6">
-            <h1 className="text-xl font-bold text-gray-800">Admin Dashboard</h1>
-          </div>
-          <nav className="mt-6">
-            {navigationSections.map((section) => {
-              const Icon = section.icon;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`w-full flex items-center px-6 py-3 text-left hover:bg-gray-100 transition-colors ${
-                    activeSection === section.id ? 'bg-blue-50 border-r-2 border-blue-500 text-blue-600' : 'text-gray-600'
-                  }`}
-                >
-                  <Icon className="w-5 h-5 mr-3" />
-                  <div>
-                    <div className="font-medium">{section.name}</div>
-                    <div className="text-xs text-gray-500">{section.description}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
+    <div className="min-h-screen transition-colors duration-500" style={{
+      background: isDark 
+        ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)'
+        : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%)'
+    }}>
+      <div className="flex relative">
+        {/* Animated Background Elements */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <motion.div
+            className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20"
+            style={{
+              background: 'radial-gradient(circle, var(--accent-500) 0%, transparent 70%)'
+            }}
+            animate={{
+              scale: [1, 1.2, 1],
+              rotate: [0, 180, 360]
+            }}
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+          <motion.div
+            className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-10"
+            style={{
+              background: 'radial-gradient(circle, var(--accent-600) 0%, transparent 70%)'
+            }}
+            animate={{
+              scale: [1.2, 1, 1.2],
+              rotate: [360, 180, 0]
+            }}
+            transition={{
+              duration: 25,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 p-8">
-          {renderActiveSection()}
-        </div>
+        {/* Mobile Overlay */}
+        <div 
+          className={`mobile-overlay ${isMobileSidebarOpen ? 'active' : ''}`}
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+        
+        {/* Enhanced Sidebar */}
+        <motion.div 
+          className={`w-80 relative z-10 mobile-sidebar ${isMobileSidebarOpen ? 'open' : ''}`}
+          initial={{ x: -100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
+          <div className="h-screen glass-strong border-r border-white/10 backdrop-blur-xl">
+            {/* Header */}
+            <div className="p-8 border-b border-white/10">
+              <motion.div 
+                className="flex items-center justify-between"
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl gradient-primary">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gradient">پنل مدیریت</h1>
+                    <p className="text-sm opacity-70">داشبورد پیشرفته</p>
+                  </div>
+                </div>
+                <ThemeToggle showAccentPicker={true} />
+              </motion.div>
+            </div>
+
+            {/* Navigation */}
+            <nav className="p-4 space-y-2">
+              {navigationSections.map((section, index) => {
+                const Icon = section.icon;
+                const isActive = activeSection === section.id;
+                
+                return (
+                  <motion.button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={`w-full group relative overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 hover-lift ${
+                      isActive 
+                        ? 'glass border-gradient shadow-lg' 
+                        : 'hover:glass hover:border-white/20'
+                    }`}
+                    initial={{ x: -50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 * index, duration: 0.4 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {/* Active Indicator */}
+                    {isActive && (
+                      <motion.div
+                        className="absolute inset-0 gradient-primary opacity-10 rounded-2xl"
+                        layoutId="activeSection"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    
+                    {/* Hover Glow Effect */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300 rounded-2xl" 
+                         style={{ background: 'radial-gradient(circle at center, var(--accent-500) 0%, transparent 70%)' }} />
+                    
+                    <div className="relative flex items-center gap-4">
+                      <div className={`p-2 rounded-xl transition-all duration-300 ${
+                        isActive 
+                          ? 'gradient-primary text-white shadow-lg' 
+                          : 'bg-white/10 group-hover:bg-white/20'
+                      }`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className={`font-semibold transition-colors duration-300 ${
+                          isActive ? 'text-gradient' : 'group-hover:text-white'
+                        }`}>
+                          {section.name}
+                        </div>
+                        <div className="text-sm opacity-60 group-hover:opacity-80 transition-opacity duration-300">
+                          {section.description}
+                        </div>
+                      </div>
+                      {isActive && (
+                        <motion.div
+                          initial={{ scale: 0, rotate: -180 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          className="w-2 h-2 rounded-full gradient-primary"
+                        />
+                      )}
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </nav>
+
+            {/* Footer Stats */}
+            <motion.div 
+              className="absolute bottom-0 left-0 right-0 p-6 border-t border-white/10"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              <div className="glass rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <Activity className="w-5 h-5 text-green-400" />
+                  <span className="font-medium">وضعیت سیستم</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-70">کاربران آنلاین</span>
+                    <span className="font-semibold text-green-400">247</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-70">عملکرد سرور</span>
+                    <span className="font-semibold text-blue-400">98.5%</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* Enhanced Main Content */}
+        <motion.div 
+          className="flex-1 relative z-10 flex flex-col"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+        >
+          {/* Mobile Header */}
+          <div className="md:hidden bg-white/10 backdrop-blur-xl border-b border-white/20 p-4 flex items-center justify-between">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors touch-target"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 className="text-lg font-semibold">EdLingo Admin</h1>
+            <ThemeToggle showAccentPicker={false} />
+          </div>
+          
+          {/* Content Area */}
+          <div className="flex-1 p-4 md:p-8">
+            <div className="max-w-7xl mx-auto">
+              {renderActiveSection()}
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
