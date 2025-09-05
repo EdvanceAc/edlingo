@@ -216,6 +216,28 @@
         [data-theme="dark"] .glass-icon-btn { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.28); }
         [data-theme="dark"] .glass-icon-btn:hover { background: rgba(255,255,255,0.20); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
         [data-theme="dark"] .section-title { background: linear-gradient(90deg, #93c5fd, #67e8f9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        /* Overview polish: reveal animations, KPI numbers, activity timeline, and interactions */
+        .reveal { opacity: 0; transform: translateY(12px) scale(.98); transition: opacity .45s ease, transform .45s cubic-bezier(.22,.61,.36,1); transition-delay: var(--reveal-delay, 0ms); }
+        .reveal.revealed { opacity: 1; transform: none; }
+        .kpi-number { font-variant-numeric: tabular-nums; letter-spacing: 0.2px; display: inline-block; transform-origin: center; }
+        /* KPI pulse animation */
+        .kpi-pulse { animation: kpiPulse .5s ease-out; }
+        @keyframes kpiPulse { 0% { transform: scale(1) } 20% { transform: scale(1.08) } 100% { transform: scale(1) } }
+        #overview-content .glass-card:hover { box-shadow: 0 18px 40px rgba(2,6,23,.10); }
+        /* Quick Actions micro-interactions */
+        .lux-action { position: relative; overflow: hidden; }
+        .lux-action:active { transform: translateY(0) scale(.98); }
+        .lux-action::before { content:""; position:absolute; inset:0; background: radial-gradient(300px 120px at var(--rx,50%) var(--ry,50%), rgba(99,102,241,.12), transparent 60%); opacity:0; transition: opacity .25s ease; }
+        .lux-action:hover::before { opacity:1; }
+        /* Recent Activity timeline styling (non-invasive) */
+        #activity-list.activity-timeline { position: relative; margin-left: 10px; padding-left: 8px; border-left: 2px dashed rgba(99,102,241,.22); }
+        #activity-list .activity-item { position: relative; padding-left: 10px; }
+        #activity-list .activity-item::before { content: ""; position: absolute; left: -10px; top: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; border-radius: 9999px; background: linear-gradient(135deg, var(--lux-primary), var(--lux-secondary)); box-shadow: 0 0 0 2px #fff; }
+        /* Motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+          .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+          .glass-card, .lux-action, .lux-tab, .glass-icon-btn { transition: none !important; }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -290,7 +312,7 @@
         <!-- Overview Tab -->
         <div id="overview-content" class="tab-content">
             <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 reveal" style="--reveal-delay: 40ms">
             <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
                     <div class="p-3 rounded-full bg-blue-100 text-blue-600 icon-blob">
@@ -298,7 +320,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Total Users</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="total-users">Loading...</p>
+                        <p class="text-2xl font-semibold text-gray-900 kpi-number" id="total-users">Loading...</p>
                     </div>
                 </div>
             </div>
@@ -310,7 +332,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Grammar Lessons</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="total-lessons">Loading...</p>
+                        <p class="text-2xl font-semibold text-gray-900 kpi-number" id="total-lessons">Loading...</p>
                     </div>
                 </div>
             </div>
@@ -322,7 +344,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Vocabulary Words</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="total-vocabulary">Loading...</p>
+                        <p class="text-2xl font-semibold text-gray-900 kpi-number" id="total-vocabulary">Loading...</p>
                     </div>
                 </div>
             </div>
@@ -334,7 +356,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Achievements</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="total-achievements">Loading...</p>
+                        <p class="text-2xl font-semibold text-gray-900 kpi-number" id="total-achievements">Loading...</p>
                     </div>
                 </div>
             </div>
@@ -427,37 +449,130 @@
 
         <!-- Users Tab -->
         <div id="users-content" class="tab-content hidden">
-            <!-- User Management Section -->
-            <div class="bg-white rounded-lg shadow-md mb-8">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-lg font-semibold text-gray-900">User Management</h2>
+            <!-- Users Management (Redesigned) -->
+            <div class="bg-white glass-card gradient-border shine-on-hover mb-8">
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="p-2 rounded-full bg-blue-50 text-blue-600 mr-3">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold section-title">User Management</h2>
+                            <p class="text-xs lux-muted">Manage accounts, monitor activity, and perform quick actions</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-100" id="users-total-chip">Total: <span id="users-total-count" class="ml-1">0</span></span>
+                        <button class="lux-action px-3 py-2 rounded-lg flex items-center" onclick="(window.exportUsersToCSV&&exportUsersToCSV())||createToast({type:'info',message:'Export coming soon'})">
+                            <i data-lucide="download" class="w-4 h-4 mr-2"></i>
+                            Export CSV
+                        </button>
                         <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center" onclick="refreshUsers()">
                             <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
-                            Refresh Users
+                            Refresh
                         </button>
                     </div>
                 </div>
+
+                <!-- Toolbar -->
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                            <input id="users-search" type="text" class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Search users...">
+                        </div>
+                        <select id="users-level-filter" class="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                            <option value="">All Levels</option>
+                            <option value="beginner">Beginner</option>
+                            <option value="elementary">Elementary</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                        <select id="users-activity-filter" class="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                            <option value="">All Activity</option>
+                            <option value="active">Active (7 days)</option>
+                            <option value="inactive">Inactive (30+ days)</option>
+                            <option value="new">New Users (7 days)</option>
+                        </select>
+                        <div class="flex items-center space-x-2">
+                            <select id="users-per-page" class="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                <option value="10">10 per page</option>
+                                <option value="25" selected>25 per page</option>
+                                <option value="50">50 per page</option>
+                                <option value="100">100 per page</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Table -->
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors" onclick="sortUsersTable('id')">
+                                    <div class="flex items-center">
+                                        User ID
+                                        <i data-lucide="chevrons-up-down" class="w-3 h-3 ml-1 opacity-50"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors" onclick="sortUsersTable('email')">
+                                    <div class="flex items-center">
+                                        Email
+                                        <i data-lucide="chevrons-up-down" class="w-3 h-3 ml-1 opacity-50"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors" onclick="sortUsersTable('name')">
+                                    <div class="flex items-center">
+                                        Full Name
+                                        <i data-lucide="chevrons-up-down" class="w-3 h-3 ml-1 opacity-50"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors" onclick="sortUsersTable('created')">
+                                    <div class="flex items-center">
+                                        Joined
+                                        <i data-lucide="chevrons-up-down" class="w-3 h-3 ml-1 opacity-50"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Progress & Activity
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200" id="users-table-body-tab">
                             <tr>
-                                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                                    <div class="loading">Loading users...</div>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <div class="flex flex-col items-center">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
+                                        <div class="text-sm font-medium">Loading users...</div>
+                                        <div class="text-xs text-gray-400 mt-1">Please wait while we fetch user data</div>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between" id="users-pagination" style="display: none;">
+                    <div class="flex items-center text-sm text-gray-600">
+                        <span>Showing <span id="users-showing-start">1</span> to <span id="users-showing-end">25</span> of <span id="users-showing-total">0</span> users</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="users-prev-page" class="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <div id="users-page-numbers" class="flex items-center space-x-1">
+                            <!-- Page numbers will be inserted here -->
+                        </div>
+                        <button id="users-next-page" class="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2460,6 +2575,9 @@
                     loadRecentActivity()
                 ]);
                 updateLastUpdated();
+                // Initialize reveal animations and timeline hooks after content is in DOM
+                if (window.initReveals) initReveals();
+                if (window.applyActivityTimeline) applyActivityTimeline();
                 console.log('✅ Dashboard data loaded successfully');
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
@@ -2662,6 +2780,60 @@
             }
         }
         
+        // UI helper utilities
+        function updateKpiValue(elementId, value) {
+            try {
+                const el = document.getElementById(elementId);
+                if (!el) return;
+                const text = String(value);
+                // Update content
+                el.textContent = text;
+                // Restart pulse animation
+                el.classList.remove('kpi-pulse');
+                // Force reflow to restart animation reliably
+                void el.offsetWidth;
+                el.classList.add('kpi-pulse');
+            } catch (e) {
+                console.warn('updateKpiValue error:', e);
+            }
+        }
+        
+        function initReveals() {
+            try {
+                const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                const items = document.querySelectorAll('.reveal');
+                if (!items || items.length === 0) return;
+                if (prefersReduced) {
+                    items.forEach(el => el.classList.add('revealed'));
+                    return;
+                }
+                const io = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('revealed');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.1 });
+                items.forEach(el => io.observe(el));
+            } catch (e) {
+                console.warn('initReveals error:', e);
+            }
+        }
+        window.initReveals = window.initReveals || initReveals;
+        
+        function applyActivityTimeline() {
+            try {
+                const el = document.getElementById('activity-list');
+                if (el && !el.classList.contains('activity-timeline')) {
+                    el.classList.add('activity-timeline');
+                }
+            } catch (e) {
+                console.warn('applyActivityTimeline error:', e);
+            }
+        }
+        window.applyActivityTimeline = window.applyActivityTimeline || applyActivityTimeline;
+        
         async function loadTableCount(tableName, elementId) {
             try {
                 console.log(`🔍 Loading count for ${tableName}...`);
@@ -2691,7 +2863,7 @@
                             }
                             
                             console.log(`✅ MCP ${tableName} count: ${count}`);
-                            document.getElementById(elementId).textContent = count;
+                            updateKpiValue(elementId, count);
                             return;
                         } else {
                             console.warn(`⚠️ MCP failed for ${tableName}:`, mcpResult?.error);
@@ -2715,23 +2887,23 @@
                     if (error.code === '42P01') {
                         // Table doesn't exist
                         console.warn(`⚠️ Table ${tableName} does not exist, setting count to 0`);
-                        document.getElementById(elementId).textContent = '0';
+                        updateKpiValue(elementId, '0');
                     } else if (error.code === '42501' || error.message.includes('row-level security')) {
                         // RLS policy restriction - show 0 for user_profiles, demo for others
                         console.warn(`⚠️ RLS restriction for ${tableName}`);
                         if (tableName === 'user_profiles') {
-                            document.getElementById(elementId).textContent = '0';
+                            updateKpiValue(elementId, '0');
                         } else {
                             const demoCount = getDemoCount(tableName);
-                            document.getElementById(elementId).textContent = demoCount;
+                            updateKpiValue(elementId, demoCount);
                         }
                     } else {
                         console.error(`❌ Error with table ${tableName}:`, error);
-                        document.getElementById(elementId).textContent = '0';
+                        updateKpiValue(elementId, '0');
                     }
                 } else {
                     console.log(`✅ ${tableName} count: ${count}`);
-                    document.getElementById(elementId).textContent = count || 0;
+                    updateKpiValue(elementId, count || 0);
                 }
             } catch (error) {
                 console.error(`Error loading count for ${tableName}:`, error);
@@ -2741,11 +2913,11 @@
                         document.getElementById(elementId).textContent = 'RLS Active';
                         document.getElementById(elementId).title = 'Row Level Security policies are preventing access to user count';
                     } else {
-                        document.getElementById(elementId).textContent = '0';
+                        updateKpiValue(elementId, '0');
                     }
                 } else {
                     const demoCount = getDemoCount(tableName);
-                    document.getElementById(elementId).textContent = demoCount;
+                    updateKpiValue(elementId, demoCount);
                 }
             }
         }
@@ -2858,7 +3030,7 @@
                 // Update the total users count to 0 in the overview
                 const totalUsersElement = document.getElementById('total-users');
                 if (totalUsersElement) {
-                    totalUsersElement.textContent = '0';
+                    if (window.updateKpiValue) updateKpiValue('total-users', '0'); else totalUsersElement.textContent = '0';
                 }
                 
                 tableBody.innerHTML = `
@@ -2885,7 +3057,7 @@
             // Update the total users count in the overview
             const totalUsersElement = document.getElementById('total-users');
             if (totalUsersElement) {
-                totalUsersElement.textContent = users.length;
+                if (window.updateKpiValue) updateKpiValue('total-users', users.length); else totalUsersElement.textContent = users.length;
             }
             
             tableBody.innerHTML = users.map(user => {
@@ -7030,10 +7202,17 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     completionRate: '87%'
                 };
                 
-                document.getElementById('total-assessments').textContent = stats.totalAssessments;
-                document.getElementById('students-assessed').textContent = stats.studentsAssessed;
-                document.getElementById('avg-cefr-level').textContent = stats.avgCefrLevel;
-                document.getElementById('completion-rate').textContent = stats.completionRate;
+                if (window.updateKpiValue) {
+                    updateKpiValue('total-assessments', stats.totalAssessments);
+                    updateKpiValue('students-assessed', stats.studentsAssessed);
+                    updateKpiValue('avg-cefr-level', stats.avgCefrLevel);
+                    updateKpiValue('completion-rate', stats.completionRate);
+                } else {
+                    document.getElementById('total-assessments').textContent = stats.totalAssessments;
+                    document.getElementById('students-assessed').textContent = stats.studentsAssessed;
+                    document.getElementById('avg-cefr-level').textContent = stats.avgCefrLevel;
+                    document.getElementById('completion-rate').textContent = stats.completionRate;
+                }
                 
             } catch (error) {
                 console.error('Error loading assessment stats:', error);
