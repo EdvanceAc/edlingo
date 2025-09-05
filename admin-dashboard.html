@@ -464,11 +464,11 @@
                     </div>
                     <div class="flex items-center space-x-2">
                         <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-100" id="users-total-chip">Total: <span id="users-total-count" class="ml-1">0</span></span>
-                        <button class="lux-action px-3 py-2 rounded-lg flex items-center" onclick="(window.exportUsersToCSV&&exportUsersToCSV())||createToast({type:'info',message:'Export coming soon'})">
+                        <button id="export-users-btn" class="lux-action px-3 py-2 rounded-lg flex items-center">
                             <i data-lucide="download" class="w-4 h-4 mr-2"></i>
                             Export CSV
                         </button>
-                        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center" onclick="refreshUsers()">
+                        <button id="refresh-users-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
                             <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
                             Refresh
                         </button>
@@ -3016,16 +3016,12 @@
         }
         
         async function renderUsersTable(users, dataSource) {
-            const tableBody = document.getElementById('users-table-body-tab');
-            if (!tableBody) {
-                console.error('❌ Could not find users-table-body-tab element');
-                return;
-            }
-            
             console.log(`📋 Found ${users ? users.length : 0} users from ${dataSource}`);
             
             if (!users || users.length === 0) {
                 console.log('📝 No users found');
+                usersCache = [];
+                filteredUsers = [];
                 
                 // Update the total users count to 0 in the overview
                 const totalUsersElement = document.getElementById('total-users');
@@ -3033,86 +3029,78 @@
                     if (window.updateKpiValue) updateKpiValue('total-users', '0'); else totalUsersElement.textContent = '0';
                 }
                 
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="px-6 py-4">
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div class="flex items-center">
-                                    <i data-lucide="users" class="w-5 h-5 text-blue-600 mr-2"></i>
-                                    <h3 class="text-sm font-medium text-blue-800">No Users Found</h3>
+                const tableBody = document.getElementById('users-table-body-tab');
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4">
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <i data-lucide="users" class="w-5 h-5 text-blue-600 mr-2"></i>
+                                        <h3 class="text-sm font-medium text-blue-800">No Users Found</h3>
+                                    </div>
+                                    <div class="mt-2 text-sm text-blue-700">
+                                        <p>No users have registered yet. Users will appear here once they sign up for the application.</p>
+                                    </div>
                                 </div>
-                                <div class="mt-2 text-sm text-blue-700">
-                                    <p>No users have registered yet. Users will appear here once they sign up for the application.</p>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                lucide.createIcons();
+                            </td>
+                        </tr>
+                    `;
+                    lucide.createIcons();
+                }
                 return;
             }
 
-            console.log('🎨 Rendering user table with', users.length, 'users');
+            console.log('🎨 Processing user data for filtering system');
+            
+            // Normalize and cache user data
+            usersCache = users.map(user => {
+                let normalizedUser;
+                
+                if (dataSource === 'auth_users') {
+                    // auth.users format
+                    normalizedUser = {
+                        id: user.id,
+                        user_id: user.id,
+                        email: user.email,
+                        full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email,
+                        name: user.user_metadata?.full_name || user.user_metadata?.name || user.email,
+                        created_at: user.created_at,
+                        updated_at: user.updated_at,
+                        last_activity: user.last_sign_in_at || user.updated_at,
+                        level: 'beginner' // Default level for auth users
+                    };
+                } else {
+                    // user_profiles format
+                    const progress = user.user_progress?.[0] || {};
+                    normalizedUser = {
+                        id: user.id,
+                        user_id: user.id,
+                        email: user.email,
+                        full_name: user.full_name || user.email,
+                        name: user.full_name || user.email,
+                        created_at: user.created_at,
+                        updated_at: user.updated_at,
+                        last_activity: user.last_activity || user.updated_at,
+                        level: progress.current_level || 'beginner'
+                    };
+                }
+                
+                return normalizedUser;
+            });
+            
+            // Initialize filtered users with all users
+            filteredUsers = [...usersCache];
             
             // Update the total users count in the overview
             const totalUsersElement = document.getElementById('total-users');
             if (totalUsersElement) {
-                if (window.updateKpiValue) updateKpiValue('total-users', users.length); else totalUsersElement.textContent = users.length;
+                if (window.updateKpiValue) updateKpiValue('total-users', usersCache.length); 
+                else totalUsersElement.textContent = usersCache.length;
             }
             
-            tableBody.innerHTML = users.map(user => {
-                // Handle different data formats
-                let userId, email, fullName, createdAt, progress;
-                
-                if (dataSource === 'auth_users') {
-                    // auth.users format
-                    userId = user.id;
-                    email = user.email;
-                    fullName = user.user_metadata?.full_name || user.user_metadata?.name || email;
-                    createdAt = new Date(user.created_at).toLocaleDateString();
-                    progress = {}; // No progress data from auth.users
-                } else {
-                    // user_profiles format
-                    userId = user.id;
-                    email = user.email;
-                    fullName = user.full_name || email;
-                    createdAt = new Date(user.created_at).toLocaleDateString();
-                    progress = user.user_progress?.[0] || {};
-                }
-                
-                return `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                            ${userId.substring(0, 8)}...
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${email || 'N/A'}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${fullName || 'N/A'}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${createdAt}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <div class="flex flex-col">
-                                <span class="text-xs text-gray-500">Level: ${progress.current_level || 'beginner'}</span>
-                                <span class="text-xs text-gray-500">XP: ${progress.total_xp || 0}</span>
-                                <span class="text-xs text-gray-500">Streak: ${progress.daily_streak || 0}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="viewUser('${userId}')">
-                                View
-                            </button>
-                            <button class="text-red-600 hover:text-red-900" onclick="deleteUser('${userId}')">
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            console.log('✅ User table rendered successfully');
+            // Use the new filtering system to render users
+            filterAndRenderUsers();
         }
         
         async function handleUserLoadError(error) {
@@ -3240,12 +3228,19 @@
 
         // Filter and render users
         function filterAndRenderUsers() {
+            // If no users in cache, don't filter
+            if (!usersCache || usersCache.length === 0) {
+                filteredUsers = [];
+                renderFilteredUsers();
+                return;
+            }
+
             const searchTerm = document.getElementById('users-search')?.value.toLowerCase() || '';
             const levelFilter = document.getElementById('users-level-filter')?.value || 'all';
             const activityFilter = document.getElementById('users-activity-filter')?.value || 'all';
 
             filteredUsers = usersCache.filter(user => {
-                // Search filter
+                // Search filter - improved to search in email and full name
                 const matchesSearch = !searchTerm || 
                     (user.email && user.email.toLowerCase().includes(searchTerm)) ||
                     (user.full_name && user.full_name.toLowerCase().includes(searchTerm)) ||
