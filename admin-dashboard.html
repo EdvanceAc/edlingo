@@ -3180,6 +3180,354 @@
              }
          };
 
+        // Users tab functionality
+        let usersCache = [];
+        let filteredUsers = [];
+        let currentUsersPage = 1;
+        let usersPerPage = 10;
+        let currentSortField = 'created';
+        let currentSortDirection = 'desc';
+
+        // Initialize Users tab
+        function initializeUsersTab() {
+            // Set up event listeners
+            const searchInput = document.getElementById('users-search');
+            const levelFilter = document.getElementById('users-level-filter');
+            const activityFilter = document.getElementById('users-activity-filter');
+            const perPageSelect = document.getElementById('users-per-page');
+            const exportBtn = document.getElementById('export-users-btn');
+            const refreshBtn = document.getElementById('refresh-users-btn');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', debounce(filterAndRenderUsers, 300));
+            }
+            if (levelFilter) {
+                levelFilter.addEventListener('change', filterAndRenderUsers);
+            }
+            if (activityFilter) {
+                activityFilter.addEventListener('change', filterAndRenderUsers);
+            }
+            if (perPageSelect) {
+                perPageSelect.addEventListener('change', (e) => {
+                    usersPerPage = parseInt(e.target.value);
+                    currentUsersPage = 1;
+                    filterAndRenderUsers();
+                });
+            }
+            if (exportBtn) {
+                exportBtn.addEventListener('click', exportUsersToCSV);
+            }
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    loadUsers();
+                    createToast({ type: 'success', message: 'Users data refreshed successfully!' });
+                });
+            }
+        }
+
+        // Debounce function for search
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Filter and render users
+        function filterAndRenderUsers() {
+            const searchTerm = document.getElementById('users-search')?.value.toLowerCase() || '';
+            const levelFilter = document.getElementById('users-level-filter')?.value || 'all';
+            const activityFilter = document.getElementById('users-activity-filter')?.value || 'all';
+
+            filteredUsers = usersCache.filter(user => {
+                // Search filter
+                const matchesSearch = !searchTerm || 
+                    (user.email && user.email.toLowerCase().includes(searchTerm)) ||
+                    (user.full_name && user.full_name.toLowerCase().includes(searchTerm)) ||
+                    (user.name && user.name.toLowerCase().includes(searchTerm));
+
+                // Level filter
+                const userLevel = user.level || 'beginner';
+                const matchesLevel = levelFilter === 'all' || userLevel === levelFilter;
+
+                // Activity filter
+                let matchesActivity = true;
+                if (activityFilter !== 'all') {
+                    const lastActivity = user.last_activity || user.updated_at || user.created_at;
+                    if (lastActivity) {
+                        const daysSinceActivity = Math.floor((Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24));
+                        if (activityFilter === 'active' && daysSinceActivity > 7) matchesActivity = false;
+                        if (activityFilter === 'inactive' && daysSinceActivity <= 7) matchesActivity = false;
+                    }
+                }
+
+                return matchesSearch && matchesLevel && matchesActivity;
+            });
+
+            // Sort filtered users
+            sortFilteredUsers();
+            
+            // Reset to first page
+            currentUsersPage = 1;
+            
+            // Render users
+            renderFilteredUsers();
+        }
+
+        // Sort filtered users
+        function sortFilteredUsers() {
+            filteredUsers.sort((a, b) => {
+                let aVal = a[currentSortField];
+                let bVal = b[currentSortField];
+
+                // Handle different data types
+                if (currentSortField === 'created' || currentSortField === 'updated_at') {
+                    aVal = new Date(aVal || 0).getTime();
+                    bVal = new Date(bVal || 0).getTime();
+                } else if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = (bVal || '').toLowerCase();
+                }
+
+                if (currentSortDirection === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+        }
+
+        // Sort users table
+        function sortUsersTable(field) {
+            if (currentSortField === field) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortDirection = 'asc';
+            }
+
+            // Update sort indicators
+            document.querySelectorAll('.sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '';
+            });
+
+            const currentHeader = document.querySelector(`[onclick="sortUsersTable('${field}')"]`);
+            if (currentHeader) {
+                const indicator = currentHeader.querySelector('.sort-indicator') || 
+                    (() => {
+                        const span = document.createElement('span');
+                        span.className = 'sort-indicator ml-1';
+                        currentHeader.appendChild(span);
+                        return span;
+                    })();
+                indicator.innerHTML = currentSortDirection === 'asc' ? '↑' : '↓';
+            }
+
+            filterAndRenderUsers();
+        }
+
+        // Render filtered users with pagination
+        function renderFilteredUsers() {
+            const tableBody = document.getElementById('users-table-body-tab');
+            if (!tableBody) return;
+
+            // Update total count
+            const totalUsersElement = document.getElementById('total-users');
+            if (totalUsersElement) {
+                totalUsersElement.textContent = filteredUsers.length;
+            }
+
+            // Calculate pagination
+            const startIndex = (currentUsersPage - 1) * usersPerPage;
+            const endIndex = startIndex + usersPerPage;
+            const pageUsers = filteredUsers.slice(startIndex, endIndex);
+
+            // Render users
+            if (pageUsers.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center">
+                            <div class="text-gray-400">
+                                <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">No users found</h3>
+                                <p class="text-sm text-gray-500">Try adjusting your search or filter criteria.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tableBody.innerHTML = pageUsers.map(user => {
+                    const userId = user.id || user.user_id;
+                    const email = user.email || 'No email';
+                    const name = user.full_name || user.name || 'No name';
+                    const created = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown';
+                    const level = user.level || 'beginner';
+                    const lastActivity = user.last_activity || user.updated_at;
+                    const activityText = lastActivity ? getTimeAgo(new Date(lastActivity)) : 'No activity';
+
+                    return `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                ${userId}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">${email}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">${name}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                ${created}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    level === 'advanced' ? 'bg-purple-100 text-purple-800' :
+                                    level === 'intermediate' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-green-100 text-green-800'
+                                }">
+                                    ${level}
+                                </span>
+                                <div class="text-xs text-gray-500 mt-1">${activityText}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button class="text-blue-600 hover:text-blue-900 mr-3 transition-colors" onclick="viewUser('${userId}')">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-900 transition-colors" onclick="deleteUser('${userId}')">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Update pagination
+            updateUsersPagination();
+            
+            // Recreate icons
+            lucide.createIcons();
+        }
+
+        // Update pagination controls
+        function updateUsersPagination() {
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+            const paginationContainer = document.getElementById('users-pagination');
+            
+            if (!paginationContainer || totalPages <= 1) {
+                if (paginationContainer) paginationContainer.innerHTML = '';
+                return;
+            }
+
+            let paginationHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                        Showing ${((currentUsersPage - 1) * usersPerPage) + 1} to ${Math.min(currentUsersPage * usersPerPage, filteredUsers.length)} of ${filteredUsers.length} results
+                    </div>
+                    <div class="flex items-center space-x-2">
+            `;
+
+            // Previous button
+            paginationHTML += `
+                <button onclick="changeUsersPage(${currentUsersPage - 1})" 
+                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors ${
+                            currentUsersPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+                        }" 
+                        ${currentUsersPage === 1 ? 'disabled' : ''}>
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            // Page numbers
+            const startPage = Math.max(1, currentUsersPage - 2);
+            const endPage = Math.min(totalPages, currentUsersPage + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `
+                    <button onclick="changeUsersPage(${i})" 
+                            class="px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                i === currentUsersPage 
+                                    ? 'bg-blue-600 text-white' 
+                                    : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                            }">
+                        ${i}
+                    </button>
+                `;
+            }
+
+            // Next button
+            paginationHTML += `
+                <button onclick="changeUsersPage(${currentUsersPage + 1})" 
+                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors ${
+                            currentUsersPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+                        }" 
+                        ${currentUsersPage === totalPages ? 'disabled' : ''}>
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            paginationHTML += `
+                    </div>
+                </div>
+            `;
+
+            paginationContainer.innerHTML = paginationHTML;
+            lucide.createIcons();
+        }
+
+        // Change users page
+        function changeUsersPage(page) {
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+            if (page < 1 || page > totalPages) return;
+            
+            currentUsersPage = page;
+            renderFilteredUsers();
+        }
+
+        // Export users to CSV
+        function exportUsersToCSV() {
+            if (filteredUsers.length === 0) {
+                createToast({ type: 'warning', message: 'No users to export!' });
+                return;
+            }
+
+            const headers = ['ID', 'Email', 'Name', 'Created Date', 'Level', 'Last Activity'];
+            const csvContent = [
+                headers.join(','),
+                ...filteredUsers.map(user => [
+                    user.id || user.user_id || '',
+                    `"${(user.email || '').replace(/"/g, '""')}"`,
+                    `"${(user.full_name || user.name || '').replace(/"/g, '""')}"`,
+                    user.created_at ? new Date(user.created_at).toLocaleDateString() : '',
+                    user.level || 'beginner',
+                    user.last_activity ? new Date(user.last_activity).toLocaleDateString() : 'No activity'
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            createToast({ type: 'success', message: `Exported ${filteredUsers.length} users to CSV!` });
+        }
+
+        // Make functions globally available
+        window.sortUsersTable = sortUsersTable;
+        window.changeUsersPage = changeUsersPage;
+        window.initializeUsersTab = initializeUsersTab;
+        window.filterAndRenderUsers = filterAndRenderUsers;
+
         async function loadVocabulary() {
             try {
                 const { data: vocabulary, error } = await supabase
@@ -3534,6 +3882,11 @@
             // Load data for specific tabs
             if (tabName === 'users') {
                 loadUsers();
+                // Initialize users tab functionality if not already done
+                if (typeof window.usersTabInitialized === 'undefined') {
+                    initializeUsersTab();
+                    window.usersTabInitialized = true;
+                }
             } else if (tabName === 'questions') {
                 loadQuestions();
             }
