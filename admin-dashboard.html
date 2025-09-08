@@ -3174,9 +3174,17 @@
             
             // Clear any edit data
             const form = document.getElementById('courseForm');
-            delete form.dataset.courseId;
-            delete form.dataset.isEdit;
-            form.reset();
+            if (form) {
+                delete form.dataset.courseId;
+                delete form.dataset.isEdit;
+                form.reset();
+            }
+            
+            // Clear lessons container to prevent duplication
+            const lessonsContainer = document.getElementById('lessonsContainer');
+            if (lessonsContainer) {
+                lessonsContainer.innerHTML = '';
+            }
             
             document.getElementById('courseModal').classList.remove('hidden');
         }
@@ -3186,9 +3194,17 @@
             
             // Reset form and clear edit data
             const form = document.getElementById('courseForm');
-            form.reset();
-            delete form.dataset.courseId;
-            delete form.dataset.isEdit;
+            if (form) {
+                form.reset();
+                delete form.dataset.courseId;
+                delete form.dataset.isEdit;
+            }
+            
+            // Clear lessons container
+            const lessonsContainer = document.getElementById('lessonsContainer');
+            if (lessonsContainer) {
+                lessonsContainer.innerHTML = '';
+            }
             
             // Reset modal to default state
             const modalTitleElement = document.getElementById('courseModalTitle');
@@ -3226,12 +3242,16 @@
             }
             
             // Ensure a default lesson with one material exists when entering Course Content (Step 2)
+            // Skip adding default lesson when in edit mode to prevent duplication
             if (stepNumber === 2) {
                 try {
+                    const courseForm = document.getElementById('courseForm');
+                    const isEditMode = courseForm && courseForm.dataset.isEdit === 'true';
+                    
                     const lessonsContainer = document.getElementById('lessonsContainer');
                     if (lessonsContainer) {
                         const existingLessons = lessonsContainer.querySelectorAll('.lesson-item');
-                        if (existingLessons.length === 0 && typeof addLesson === 'function') {
+                        if (existingLessons.length === 0 && !isEditMode && typeof addLesson === 'function') {
                             // Add the first lesson
                             addLesson();
                             
