@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Debug</title>
+    <script src="/env.js"></script>
+</head>
+<body>
+    <h1>Environment Variables Debug</h1>
+    <div id="debug-output"></div>
+    
+    <script>
+        function debugEnv() {
+            const output = document.getElementById('debug-output');
+            let html = '<h2>Environment Variables Status:</h2>';
+            
+            // Check window.ENV
+            html += '<h3>window.ENV:</h3>';
+            if (window.ENV) {
+                html += '<pre>' + JSON.stringify(window.ENV, null, 2) + '</pre>';
+            } else {
+                html += '<p style="color: red;">window.ENV is undefined</p>';
+            }
+            
+            // Check window.__ENV__
+            html += '<h3>window.__ENV__:</h3>';
+            if (window.__ENV__) {
+                html += '<pre>' + JSON.stringify(window.__ENV__, null, 2) + '</pre>';
+            } else {
+                html += '<p style="color: red;">window.__ENV__ is undefined</p>';
+            }
+            
+            // Check global variables
+            html += '<h3>Global Variables:</h3>';
+            html += '<p>window.supabaseUrl: ' + (window.supabaseUrl || 'undefined') + '</p>';
+            html += '<p>window.supabaseAnonKey: ' + (window.supabaseAnonKey ? 'Set (hidden)' : 'undefined') + '</p>';
+            html += '<p>window.supabaseServiceRoleKey: ' + (window.supabaseServiceRoleKey ? 'Set (hidden)' : 'undefined') + '</p>';
+            
+            // Check localStorage
+            html += '<h3>localStorage:</h3>';
+            const keys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_SERVICE_ROLE_KEY'];
+            keys.forEach(key => {
+                const value = localStorage.getItem(key);
+                html += '<p>' + key + ': ' + (value ? 'Set (hidden)' : 'Not set') + '</p>';
+            });
+            
+            // Check hostname
+            html += '<h3>Location Info:</h3>';
+            html += '<p>hostname: ' + window.location.hostname + '</p>';
+            html += '<p>isLocalDev: ' + ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname) + '</p>';
+            
+            output.innerHTML = html;
+        }
+        
+        // Run debug when page loads
+        window.addEventListener('load', debugEnv);
+    </script>
+</body>
+</html>

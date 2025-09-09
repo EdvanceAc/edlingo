@@ -1208,6 +1208,10 @@
                                         Next
                                         <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
                                     </button>
+                                    <button type="button" id="verifyFilesBtn" onclick="verifyLessonFiles()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors" style="display: none;">
+                                        <i data-lucide="search" class="w-4 h-4 mr-1"></i>
+                                        Verify Files
+                                    </button>
                                     <button type="submit" id="finishBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors" style="display: none;">
                                         <i data-lucide="check" class="w-4 h-4 mr-1"></i>
                                         Create Course
@@ -1436,9 +1440,6 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Select Files</label>
                         <input type="file" id="fileInput" name="files" multiple class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp3,.mp4,.zip">
                         <p class="text-xs text-gray-500 mt-1">Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG, GIF, MP3, MP4, ZIP</p>
-                        <div id="filePreviewContainer" class="mt-3 border border-gray-200 rounded-lg p-3 hidden">
-                            <p class="text-sm text-gray-500">No files selected.</p>
-                        </div>
                     </div>
                     
                     <div class="mb-4">
@@ -1548,7 +1549,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Image</label>
                                     <input type="file" id="questionImage" name="questionImage" class="w-full px-3 py-2 border border-gray-300 rounded-lg" accept="image/*" onchange="previewMedia('image')">
                                     <div id="imagePreview" class="mt-2 hidden">
-                                        <img id="imagePreviewImg" class="max-w-full h-32 object-cover rounded" alt="Image preview">
+                                        <img id="imagePreviewImg" class="max-w-full h-32 object-cover rounded" alt="Image preview" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">
                                         <button type="button" onclick="removeMedia('image')" class="mt-1 text-red-600 text-sm hover:text-red-800">Remove</button>
                                     </div>
                                 </div>
@@ -1618,7 +1619,9 @@
     <script>
         // Initialize Supabase client with environment variables
         // Seed localStorage from env.js when running on localhost for dev convenience
-        if (window.location.hostname === 'localhost' && window.__ENV__) {
+        const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+
+        if (isLocalDev && window.__ENV__) {
             try {
                 const keys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_SERVICE_ROLE_KEY'];
                 keys.forEach((k) => {
@@ -1627,29 +1630,34 @@
                         localStorage.setItem(k, v);
                     }
                 });
-                console.log('🧪 Seeded localStorage from env.js for localhost');
+                console.log('🧪 Seeded localStorage from env.js for local development');
             } catch (e) {
                 console.warn('Failed to seed localStorage from env.js', e);
             }
         }
 
-        // Values come from env.js (window.__ENV__) or localhost localStorage when developing
-        const supabaseUrl = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_URL) 
-            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_URL') : '');
+        // Values come from env.js (window.ENV or window.__ENV__) or localStorage in local dev
+        const supabaseUrl = (window.ENV && window.ENV.SUPABASE_URL)
+            || (window.__ENV__ && window.__ENV__.VITE_SUPABASE_URL)
+            || (isLocalDev ? localStorage.getItem('VITE_SUPABASE_URL') : '');
             
-        const supabaseAnonKey = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_ANON_KEY) 
-            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_ANON_KEY') : '');
+        const supabaseAnonKey = (window.ENV && window.ENV.SUPABASE_ANON_KEY)
+            || (window.__ENV__ && window.__ENV__.VITE_SUPABASE_ANON_KEY)
+            || (isLocalDev ? localStorage.getItem('VITE_SUPABASE_ANON_KEY') : '');
             
-        const supabaseServiceKey = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_SERVICE_ROLE_KEY) 
-            || (window.location.hostname === 'localhost' ? localStorage.getItem('VITE_SUPABASE_SERVICE_ROLE_KEY') : '');
+        const supabaseServiceKey = (window.ENV && window.ENV.SUPABASE_SERVICE_ROLE_KEY)
+            || (window.__ENV__ && window.__ENV__.VITE_SUPABASE_SERVICE_ROLE_KEY)
+            || (isLocalDev ? localStorage.getItem('VITE_SUPABASE_SERVICE_ROLE_KEY') : '');
 
         // Log configuration source
-        if (window.__ENV__) {
-            console.log('🌍 Using environment variables from env.js');
-        } else if (window.location.hostname === 'localhost') {
-            console.log('🏠 Using localStorage for localhost development');
+        if (window.ENV) {
+            console.log('🌍 Using environment variables from env.js (window.ENV)');
+        } else if (window.__ENV__) {
+            console.log('🌍 Using environment variables from env.js (window.__ENV__)');
+        } else if (isLocalDev) {
+            console.log('🏠 Using localStorage for local development');
         } else {
-            console.warn('⚠️ Using fallback credentials - please configure environment variables');
+            console.warn('⚠️ No environment variables found - please configure environment variables');
         }
 
         if (!supabaseUrl || !supabaseAnonKey) {
@@ -3174,17 +3182,9 @@
             
             // Clear any edit data
             const form = document.getElementById('courseForm');
-            if (form) {
-                delete form.dataset.courseId;
-                delete form.dataset.isEdit;
-                form.reset();
-            }
-            
-            // Clear lessons container to prevent duplication
-            const lessonsContainer = document.getElementById('lessonsContainer');
-            if (lessonsContainer) {
-                lessonsContainer.innerHTML = '';
-            }
+            delete form.dataset.courseId;
+            delete form.dataset.isEdit;
+            form.reset();
             
             document.getElementById('courseModal').classList.remove('hidden');
         }
@@ -3194,17 +3194,9 @@
             
             // Reset form and clear edit data
             const form = document.getElementById('courseForm');
-            if (form) {
-                form.reset();
-                delete form.dataset.courseId;
-                delete form.dataset.isEdit;
-            }
-            
-            // Clear lessons container
-            const lessonsContainer = document.getElementById('lessonsContainer');
-            if (lessonsContainer) {
-                lessonsContainer.innerHTML = '';
-            }
+            form.reset();
+            delete form.dataset.courseId;
+            delete form.dataset.isEdit;
             
             // Reset modal to default state
             const modalTitleElement = document.getElementById('courseModalTitle');
@@ -3242,16 +3234,12 @@
             }
             
             // Ensure a default lesson with one material exists when entering Course Content (Step 2)
-            // Skip adding default lesson when in edit mode to prevent duplication
             if (stepNumber === 2) {
                 try {
-                    const courseForm = document.getElementById('courseForm');
-                    const isEditMode = courseForm && courseForm.dataset.isEdit === 'true';
-                    
                     const lessonsContainer = document.getElementById('lessonsContainer');
                     if (lessonsContainer) {
                         const existingLessons = lessonsContainer.querySelectorAll('.lesson-item');
-                        if (existingLessons.length === 0 && !isEditMode && typeof addLesson === 'function') {
+                        if (existingLessons.length === 0 && typeof addLesson === 'function') {
                             // Add the first lesson
                             addLesson();
                             
@@ -3355,10 +3343,17 @@
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             const createBtn = document.getElementById('finishBtn');
+            const verifyBtn = document.getElementById('verifyFilesBtn');
             
             // Previous button
             if (prevBtn) {
                 prevBtn.style.display = currentStep === 1 ? 'none' : 'inline-flex';
+            }
+            
+            // Verification button - show in step 4 or when editing existing course
+            if (verifyBtn) {
+                const isEditMode = document.getElementById('courseModalTitle')?.textContent?.includes('Edit');
+                verifyBtn.style.display = (currentStep === totalWizardSteps || isEditMode) ? 'inline-flex' : 'none';
             }
             
             // Next/Create button
@@ -3602,12 +3597,12 @@
 
 
         // Lesson Management Functions
-        function addLesson() {
+        function addLesson(databaseId = null) {
             const lessonsContainer = document.getElementById('lessonsContainer');
             const lessonCount = document.querySelectorAll('.lesson-item').length + 1;
             
             const lessonHTML = `
-                <div id="lesson-${lessonCount}" class="lesson-item bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                <div id="lesson-${lessonCount}" class="lesson-item bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4" data-lesson-db-id="${databaseId || ''}">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-medium text-gray-900">Lesson ${lessonCount}</h4>
                         <button type="button" onclick="removeLesson(this)" class="text-red-600 hover:text-red-800">
@@ -3683,7 +3678,7 @@
             lucide.createIcons();
         }
 
-        function removeLesson(button) {
+        async function removeLesson(button) {
             if (!button) {
                 console.error('Button element is null in removeLesson');
                 return;
@@ -3693,6 +3688,31 @@
                 console.error('Lesson item not found');
                 return;
             }
+            
+            const databaseId = lessonItem.getAttribute('data-lesson-db-id');
+            
+            // If lesson has a database ID, delete from database
+            if (databaseId && databaseId.trim() !== '') {
+                try {
+                    const { error } = await client
+                        .from('lessons')
+                        .delete()
+                        .eq('id', databaseId);
+                    
+                    if (error) {
+                        console.error('❌ Failed to delete lesson from database:', error);
+                        alert('Failed to delete lesson from database. Please try again.');
+                        return;
+                    }
+                    
+                    console.log('✅ Lesson deleted from database:', databaseId);
+                } catch (error) {
+                    console.error('❌ Error deleting lesson:', error);
+                    alert('Error deleting lesson. Please try again.');
+                    return;
+                }
+            }
+            
             lessonItem.remove();
             
             // Renumber remaining lessons
@@ -3860,7 +3880,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                                    <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview" loading="lazy" decoding="async" referrerpolicy="no-referrer" crossorigin="anonymous" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">
                                     <input type="hidden" class="current-image-url" value="">
                                     <input type="hidden" class="material-id" value="">
                                 </div>
@@ -3964,6 +3984,309 @@
             }
             
             contentFields.innerHTML = fieldsHTML;
+            
+            // If image content type is selected, automatically check for existing images
+            if (contentType === 'image') {
+                setTimeout(async () => {
+                    try {
+                        // Get lesson ID from the lesson container
+                        const lessonItem = contentItem.closest('.lesson-item');
+                        const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                        
+                        if (lessonId) {
+                            // Get content item index within the lesson
+                            const contentContainer = lessonItem.querySelector('.lesson-content-container');
+                            const contentItems = contentContainer.querySelectorAll('.content-item');
+                            const contentIndex = Array.from(contentItems).indexOf(contentItem);
+                            
+                            // Check and load existing image
+                            await checkAndLoadExistingImage(lessonId, contentIndex, contentItem);
+                        }
+                    } catch (error) {
+                        console.error('Error auto-loading existing image:', error);
+                    }
+                }, 100);
+            }
+        }
+
+        // Function to check and load existing images from Supabase storage
+        async function checkAndLoadExistingImage(lessonId, contentIndex, contentItem) {
+            try {
+                console.log(`Checking for existing image: lesson ${lessonId}, content ${contentIndex}`);
+                
+                // List files in the lesson content directory
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                if (!client?.storage) {
+                    console.error('Supabase client not initialized for storage');
+                    return;
+                }
+                const { data, error } = await client.storage
+                    .from('course-materials')
+                    .list(`lessons/${lessonId}/content`, {
+                        limit: 100,
+                        offset: 0
+                    });
+                
+                if (error) {
+                    console.error('Error listing storage files:', error);
+                    return;
+                }
+                
+                // Filter for images that match the content index
+                const imageFiles = data.filter(file => 
+                    file.name.includes(`content-${contentIndex}`) && 
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+                );
+                
+                if (imageFiles.length === 0) {
+                    console.log(`No existing images found for lesson ${lessonId}, content ${contentIndex}`);
+                    return;
+                }
+                
+                // Get the most recent image (by name which includes timestamp)
+                const latestImage = imageFiles.sort((a, b) => b.name.localeCompare(a.name))[0];
+                const imagePath = `lessons/${lessonId}/content/${latestImage.name}`;
+                
+                // Get public URL
+                const { data: urlData } = client.storage
+                    .from('course-materials')
+                    .getPublicUrl(imagePath);
+                
+                if (urlData && urlData.publicUrl) {
+                    // Load the existing image into the content item
+                    loadExistingImageIntoContentItem(contentItem, urlData.publicUrl, latestImage.name);
+                    console.log(`Loaded existing image: ${latestImage.name}`);
+                }
+                
+            } catch (error) {
+                console.error('Error checking for existing image:', error);
+            }
+        }
+        
+        // Function to load existing image into content item UI
+        function loadExistingImageIntoContentItem(contentItem, imageUrl, fileName) {
+            try {
+                // Hide the upload input and show the preview
+                const uploadInput = contentItem.querySelector('.content-file');
+                const imageSourceSelect = contentItem.querySelector('.image-source-type');
+                const previewSection = contentItem.querySelector('.image-loaded-preview');
+                const previewImg = previewSection.querySelector('img');
+                const currentImageUrlInput = previewSection.querySelector('.current-image-url');
+                
+                if (uploadInput) uploadInput.style.display = 'none';
+                if (imageSourceSelect) imageSourceSelect.value = 'existing';
+                
+                // Set the image preview
+                if (previewImg) {
+                    previewImg.src = imageUrl;
+                    previewImg.alt = `Existing image: ${fileName}`;
+                }
+                
+                // Store the current image URL
+                if (currentImageUrlInput) {
+                    currentImageUrlInput.value = imageUrl;
+                }
+                
+                // Show the preview section
+                if (previewSection) {
+                    previewSection.style.display = 'block';
+                }
+                
+                // Update the source type selector to show existing image option
+                toggleImageSourceFields(imageSourceSelect);
+                
+            } catch (error) {
+                console.error('Error loading existing image into UI:', error);
+            }
+        }
+        
+        // Function to handle image source type changes
+        function toggleImageSourceFields(selectElement) {
+            if (!selectElement) return;
+            
+            const contentItem = selectElement.closest('.content-item');
+            const uploadInput = contentItem.querySelector('.content-file');
+            const existingSelect = contentItem.querySelector('.existing-image-select');
+            const previewSection = contentItem.querySelector('.image-loaded-preview');
+            
+            if (selectElement.value === 'upload') {
+                if (uploadInput) uploadInput.style.display = 'block';
+                if (existingSelect) existingSelect.style.display = 'none';
+                if (previewSection) previewSection.style.display = 'none';
+            } else if (selectElement.value === 'existing') {
+                if (uploadInput) uploadInput.style.display = 'none';
+                if (existingSelect) existingSelect.style.display = 'block';
+                // Load existing images list
+                loadExistingImagesList(contentItem);
+            }
+        }
+        
+        // Function to load list of existing images for selection
+        async function loadExistingImagesList(contentItem) {
+            try {
+                const lessonItem = contentItem.closest('.lesson-item');
+                const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                const existingSelect = contentItem.querySelector('.existing-image-select');
+                
+                if (!lessonId || !existingSelect) return;
+                
+                existingSelect.innerHTML = '<option value="">Loading...</option>';
+                
+                // List all images in the lesson directory
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                if (!client?.storage) {
+                    existingSelect.innerHTML = '<option value="Client not ready"></option>';
+                    return;
+                }
+                const { data, error } = await client.storage
+                    .from('course-materials')
+                    .list(`lessons/${lessonId}/content`, {
+                        limit: 100,
+                        offset: 0
+                    });
+                
+                if (error) {
+                    existingSelect.innerHTML = '<option value="">Error loading images</option>';
+                    return;
+                }
+                
+                const imageFiles = data.filter(file => 
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+                );
+                
+                if (imageFiles.length === 0) {
+                    existingSelect.innerHTML = '<option value="">No existing images found</option>';
+                    return;
+                }
+                
+                // Populate the select with existing images (use public URLs in option values)
+                let optionsHTML = '<option value="">Select an existing image...</option>';
+                imageFiles.forEach(file => {
+                    const imagePath = `lessons/${lessonId}/content/${file.name}`;
+                    const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                    const { data: { publicUrl } } = client.storage
+                        .from('course-materials')
+                        .getPublicUrl(imagePath);
+                    optionsHTML += `<option value="${publicUrl}">${file.name}</option>`;
+                });
+                
+                existingSelect.innerHTML = optionsHTML;
+                
+            } catch (error) {
+                console.error('Error loading existing images list:', error);
+                const existingSelect = contentItem.querySelector('.existing-image-select');
+                if (existingSelect) {
+                    existingSelect.innerHTML = '<option value="">Error loading images</option>';
+                }
+            }
+        }
+        
+        // Function to handle existing image selection
+        async function handleExistingImageSelect(selectElement) {
+            try {
+                const publicUrl = selectElement.value;
+                if (!publicUrl) return;
+
+                const contentItem = selectElement.closest('.content-item');
+                // Derive a display name from the URL for alt text
+                const fileName = publicUrl.split('/').pop().split('?')[0];
+
+                loadExistingImageIntoContentItem(contentItem, publicUrl, fileName);
+            } catch (error) {
+                console.error('Error handling existing image selection:', error);
+            }
+        }
+        
+        // Function to replace an existing image
+        function replaceImage(button) {
+            const contentItem = button.closest('.content-item');
+            const replaceInput = contentItem.querySelector('.replace-file-input');
+            if (replaceInput) {
+                replaceInput.click();
+            }
+        }
+        
+        // Function to handle image replacement
+        async function handleImageReplace(input) {
+            try {
+                const file = input.files[0];
+                if (!file) return;
+                
+                const contentItem = input.closest('.content-item');
+                const fieldsContainer = contentItem.querySelector('.content-fields');
+                const currentUrlInput = fieldsContainer?.querySelector('.current-image-url');
+                
+                const lessonItem = contentItem.closest('.lesson-item');
+                const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                
+                if (!lessonId) {
+                    alert('Cannot replace image: lesson ID not found');
+                    return;
+                }
+                
+                // Get content item index
+                const contentContainer = lessonItem.querySelector('.lesson-content-container');
+                const contentItems = contentContainer.querySelectorAll('.content-item');
+                const contentIndex = Array.from(contentItems).indexOf(contentItem);
+                
+                // Upload the new image using standardized helper
+                const newUrl = await uploadSingleFile(file, 'lessons', '', '', 0, { lessonId, contentIndex });
+                
+                // Delete the old image if present
+                const oldUrl = currentUrlInput?.value;
+                if (oldUrl) {
+                    try { await deleteImageFromStorage(oldUrl); } catch (e) { console.warn('Old image deletion warning:', e?.message || e); }
+                }
+                
+                // Update the preview and hidden input
+                const fileNameFromUrl = newUrl.split('/').pop().split('?')[0];
+                loadExistingImageIntoContentItem(contentItem, newUrl, fileNameFromUrl);
+                alert('Image replaced successfully!');
+                
+                // Clear the input
+                input.value = '';
+                
+            } catch (error) {
+                console.error('Error replacing image:', error);
+                alert('Error replacing image: ' + error.message);
+            }
+        }
+        
+        // Function to delete an existing image
+        async function deleteImage(button) {
+            try {
+                if (!confirm('Are you sure you want to delete this image?')) {
+                    return;
+                }
+                
+                const contentItem = button.closest('.content-item');
+                const currentImageUrlInput = contentItem.querySelector('.current-image-url');
+                const imageUrl = currentImageUrlInput?.value;
+                
+                if (!imageUrl) {
+                    alert('No image URL found to delete');
+                    return;
+                }
+                
+                // Delete from storage
+                await deleteImageFromStorage(imageUrl);
+                
+                // Reset the content item to upload mode
+                const imageSourceSelect = contentItem.querySelector('.image-source-type');
+                const uploadInput = contentItem.querySelector('.content-file');
+                const previewSection = contentItem.querySelector('.image-loaded-preview');
+                
+                if (imageSourceSelect) imageSourceSelect.value = 'upload';
+                if (uploadInput) uploadInput.style.display = 'block';
+                if (previewSection) previewSection.style.display = 'none';
+                if (currentImageUrlInput) currentImageUrlInput.value = '';
+                
+                alert('Image deleted successfully!');
+                
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                alert('Error deleting image: ' + error.message);
+            }
         }
 
         function previewContent(button) {
@@ -4748,7 +5071,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             }
                         } else {
                             const { data: lessonData, error: lessonError } = await supabase
-                                .rpc('create_lessons_with_materials', { p_course_id: createdCourse.id, p_lessons: lessonsData });
+                                .rpc('upsert_lessons_with_materials', { p_course_id: createdCourse.id, p_lessons: lessonsData });
                             if (lessonError) {
                                 console.error('❌ Failed to create lessons via Supabase:', lessonError);
                                 showError('Course saved but lessons failed: ' + lessonError.message);
@@ -4879,7 +5202,9 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             const imageFile = contentItem.querySelector('.content-file')?.files[0];
                             if (imageFile) {
                                 try {
-                                    materialData.file_url = await uploadSingleFile(imageFile, 'lessons', sectionNameForPath, lessonNameForPath, i);
+                                    const lessonDbId = lessonItem.getAttribute('data-lesson-db-id');
+                                    const opts = lessonDbId ? { lessonId: lessonDbId, contentIndex: j } : {};
+                                    materialData.file_url = await uploadSingleFile(imageFile, 'lessons', sectionNameForPath, lessonNameForPath, i, opts);
                                     materialData.file_size = imageFile.size;
                                     materialData.file_type = imageFile.type;
                                     materialData.metadata = {
@@ -4977,6 +5302,9 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     materials.push(materialData);
                 }
                 
+                // Get database ID if this is an existing lesson
+                const databaseId = lessonItem.getAttribute('data-lesson-db-id');
+                
                 // Create lesson data structure that matches the enhanced database schema
                 const lessonData = {
                     title: titleElement.value,
@@ -4984,6 +5312,11 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     order_number: i + 1,
                     materials: materials
                 };
+                
+                // Add database ID if this is an existing lesson
+                if (databaseId && databaseId !== '') {
+                    lessonData.id = databaseId;
+                }
                 
                 lessons.push(lessonData);
             }
@@ -4996,31 +5329,36 @@ After running this SQL, refresh the admin dashboard to see the user management w
          window.collectLessonsData = collectLessonsData;
 
          // Helper function to upload a single file with organized folder structure
-         async function uploadSingleFile(file, folder, sectionName = '', lessonName = '', lessonIndex = 0) {
+         async function uploadSingleFile(file, folder, sectionName = '', lessonName = '', lessonIndex = 0, options = {}) {
             try {
-                const fileName = `${Date.now()}_${file.name}`;
-                
-                // Get course name from DOM
-                let courseName = '';
-                const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
-                if (courseTitleInput && courseTitleInput.value) {
-                    courseName = courseTitleInput.value.trim();
-                }
-                
-                // Create organized path structure: courseName/lesson_number/fileName
+                let fileName = '';
                 let filePath = '';
-                if (courseName) {
-                    const sanitizedCourse = courseName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
-                    filePath = sanitizedCourse;
+                
+                if (options && options.lessonId && (options.contentIndex !== undefined && options.contentIndex !== null)) {
+                    const ext = file.name.split('.').pop();
+                    const safeLessonId = options.lessonId;
+                    const idx = options.contentIndex; // 0-based index
+                    fileName = `lesson-${safeLessonId}-content-${idx}-${Date.now()}.${ext}`;
+                    filePath = `lessons/${safeLessonId}/content/${fileName}`;
                 } else {
-                    filePath = 'course_content'; // fallback if no course name
+                    const generated = `${Date.now()}_${file.name}`;
+                    
+                    // Get course name from DOM
+                    let courseName = '';
+                    const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+                    if (courseTitleInput && courseTitleInput.value) {
+                        courseName = courseTitleInput.value.trim();
+                    }
+                    
+                    // Create organized path structure: courseName/lesson_number/fileName
+                    if (courseName) {
+                        const sanitizedCourse = courseName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
+                        filePath = `${sanitizedCourse}/lesson_${lessonIndex + 1}/${generated}`;
+                    } else {
+                        filePath = `course_content/lesson_${lessonIndex + 1}/${generated}`;
+                    }
+                    fileName = generated;
                 }
-                
-                // Add lesson number (1-based index)
-                const lessonNumber = lessonIndex + 1;
-                filePath += `/lesson_${lessonNumber}`;
-                
-                filePath += `/${fileName}`;
                 
                 // Use IPC for file upload if in Electron environment
                 if (window.isElectron) {
@@ -5062,90 +5400,6 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
          // Make uploadSingleFile available globally
          window.uploadSingleFile = uploadSingleFile;
-
-         // Helpers to show files stored in the same Supabase directory for each lesson
-         function getSanitizedCourseName() {
-            const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
-            const raw = courseTitleInput && courseTitleInput.value ? courseTitleInput.value.trim() : '';
-            if (!raw) return null;
-            return raw.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
-         }
-
-         async function listFilesInLessonDirectory(lessonIndex) {
-            try {
-                const sanitizedCourse = getSanitizedCourseName();
-                if (!sanitizedCourse) return [];
-                const client = window.supabaseAdminClient || window.supabaseClient || window.supabase || supabase;
-                if (!client || !client.storage) return [];
-                const path = `${sanitizedCourse}/lesson_${lessonIndex + 1}`;
-                const { data, error } = await client.storage
-                    .from('course-materials')
-                    .list(path, { limit: 100, sortBy: { column: 'name', order: 'asc' } });
-                if (error) {
-                    console.warn('Storage list error:', error);
-                    return [];
-                }
-                if (!data || data.length === 0) return [];
-                return data.map(item => {
-                    const { data: { publicUrl } } = client.storage
-                        .from('course-materials')
-                        .getPublicUrl(`${path}/${item.name}`);
-                    return { name: item.name, url: publicUrl };
-                });
-            } catch (e) {
-                console.error('Error listing files for lesson directory:', e);
-                return [];
-            }
-         }
-
-         async function renderLessonDirectoryFiles(lessonContainer, lessonIndex) {
-            try {
-                const contentContainer = lessonContainer.querySelector('.lesson-content-container');
-                if (!contentContainer) return;
-
-                // Ensure holder exists
-                let holder = lessonContainer.querySelector('.lesson-folder-files');
-                if (!holder) {
-                    holder = document.createElement('div');
-                    holder.className = 'lesson-folder-files bg-gray-50 border border-dashed border-gray-300 rounded p-2 mb-2';
-                    contentContainer.insertAdjacentElement('afterbegin', holder);
-                }
-
-                // Load files
-                const files = await listFilesInLessonDirectory(lessonIndex);
-                holder.innerHTML = '';
-
-                const title = document.createElement('div');
-                title.className = 'text-xs font-medium text-gray-600 mb-1';
-                title.textContent = 'Files in this lesson folder:';
-                holder.appendChild(title);
-
-                if (!files.length) {
-                    const empty = document.createElement('div');
-                    empty.className = 'text-xs text-gray-500';
-                    empty.textContent = 'No files uploaded for this lesson yet.';
-                    holder.appendChild(empty);
-                    return;
-                }
-
-                const list = document.createElement('ul');
-                list.className = 'list-disc ml-4';
-                files.forEach(f => {
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.href = f.url;
-                    a.target = '_blank';
-                    a.rel = 'noopener';
-                    a.className = 'text-blue-600 hover:underline text-xs break-all';
-                    a.textContent = f.name;
-                    li.appendChild(a);
-                    list.appendChild(li);
-                });
-                holder.appendChild(list);
-            } catch (e) {
-                console.error('Failed to render lesson directory files:', e);
-            }
-         }
 
         // Assignment form submission
         document.getElementById('assignmentForm').addEventListener('submit', async function(e) {
@@ -5439,7 +5693,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     modalElement.classList.remove('hidden');
                     console.log('Test modal should be visible now');
                 }
-                return;
+                return; // Early return to prevent executing the real course loading code
             }
             
             try {
@@ -5733,8 +5987,6 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                     }
                                 });
                             }
-                            // Render list of files in Supabase directory for this lesson
-                            try { renderLessonDirectoryFiles(lessonItem, index); } catch (e) { console.warn('Could not render lesson folder files:', e); }
                         }
                     });
                 }
@@ -5799,7 +6051,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             id: row.material_id,
                             type: row.material_type,
                             content: row.material_content,
-                            url: row.file_url,
+                            url: row.file_url || row.url,
                             metadata: row.metadata
                         });
                     }
@@ -5812,7 +6064,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 
                 // Populate each lesson in the form
                 for (const lesson of lessons) {
-                    addLesson();
+                    addLesson(lesson.id);
                     
                     // Get the last added lesson container
                     const lessonContainers = document.querySelectorAll('.lesson-item');
@@ -5832,14 +6084,6 @@ After running this SQL, refresh the admin dashboard to see the user management w
                         
                         // Populate materials for this lesson
                         await populateLessonMaterials(lesson.materials, currentLesson);
-
-                        // Render list of files in Supabase directory for this lesson (RPC path)
-                        try {
-                            const idAttr = currentLesson.id || '';
-                            const match = idAttr.match(/lesson-(\d+)/);
-                            const idx = match ? (parseInt(match[1], 10) - 1) : (Array.from(document.querySelectorAll('.lesson-item')).indexOf(currentLesson));
-                            await renderLessonDirectoryFiles(currentLesson, Math.max(idx, 0));
-                        } catch (e) { console.warn('Could not render lesson folder files (RPC):', e); }
                     }
                 }
 
@@ -5914,14 +6158,6 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             
                             // Load lesson materials/content if available (await to ensure DOM is populated sequentially)
                             await loadLessonMaterials(lesson.id, currentLesson);
-
-                            // Render list of files in Supabase directory for this lesson (fallback path)
-                            try {
-                                const idAttr = currentLesson.id || '';
-                                const match = idAttr.match(/lesson-(\d+)/);
-                                const idx = match ? (parseInt(match[1], 10) - 1) : (Array.from(document.querySelectorAll('.lesson-item')).indexOf(currentLesson));
-                                await renderLessonDirectoryFiles(currentLesson, Math.max(idx, 0));
-                            } catch (e) { console.warn('Could not render lesson folder files (fallback):', e); }
                         }
                     }
 
@@ -5949,6 +6185,67 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
         
         // Function to populate materials for a lesson using pre-fetched data
+        // Function to check and load existing images from Supabase storage
+        async function checkAndLoadExistingImage(lessonId, contentIndex, contentItem) {
+            try {
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                if (!client) {
+                    console.warn('Supabase not initialized');
+                    return null;
+                }
+                
+                // List files in the standardized content directory
+                const { data: files, error } = await client.storage
+                    .from('course-materials')
+                    .list(`lessons/${lessonId}/content`, {
+                        limit: 100,
+                        offset: 0
+                    });
+                
+                if (error) {
+                    console.log('No existing images found or error:', error.message || error);
+                    return null;
+                }
+                
+                // Find a file that matches this content index pattern
+                const matching = (files || []).filter(file => 
+                    file.name.includes(`content-${contentIndex}`) && 
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+                );
+                
+                if (matching.length) {
+                    // Get the most recent image by name
+                    const latest = matching.sort((a,b) => b.name.localeCompare(a.name))[0];
+                    const path = `lessons/${lessonId}/content/${latest.name}`;
+                    // Get public URL for the image
+                    const { data: { publicUrl } } = client.storage
+                        .from('course-materials')
+                        .getPublicUrl(path);
+                    
+                    if (publicUrl) {
+                        const fieldsContainer = contentItem.querySelector('.content-fields');
+                        if (fieldsContainer) {
+                            let preview = fieldsContainer.querySelector('.image-loaded-preview');
+                            if (preview) {
+                                preview.style.display = 'block';
+                                const imgEl = preview.querySelector('img');
+                                const urlInput = preview.querySelector('.current-image-url');
+                                if (imgEl) imgEl.src = publicUrl;
+                                if (urlInput) urlInput.value = publicUrl;
+                                console.log('✅ Loaded existing image:', latest.name);
+                                return publicUrl;
+                            }
+                        }
+                    }
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Error checking for existing image:', error);
+                return null;
+            }
+        }
+
         async function populateLessonMaterials(materials, lessonContainer) {
             try {
                 if (!materials || materials.length === 0) {
@@ -6054,11 +6351,24 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                         if (!preview) {
                                                             preview = document.createElement('div');
                                                             preview.className = 'image-loaded-preview mt-2';
-                                                            preview.innerHTML = `<img class="max-h-40 rounded border" alt="Image preview">`;
+                                                            preview.innerHTML = `<img class="max-h-40 rounded border" alt="Image preview" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">`;
                                                             fieldsContainer.appendChild(preview);
                                                         }
                                                         const imgEl = preview.querySelector('img');
                                                         if (imgEl) imgEl.src = material.url;
+                                                    } else {
+                                                        // If no URL in database, check Supabase storage for existing image
+                                                        setTimeout(async () => {
+                                                            try {
+                                                                const lessonItem = lastContentItem.closest('.lesson-item');
+                                                                const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                                                                if (lessonId) {
+                                                                    await checkAndLoadExistingImage(lessonId, index, lastContentItem);
+                                                                }
+                                                            } catch (error) {
+                                                                console.error('Error loading existing image from storage:', error);
+                                                            }
+                                                        }, 300);
                                                     }
                                                     break;
                                             }
@@ -6163,58 +6473,12 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                             const videoDesc = fieldsContainer.querySelector('.content-description');
                                                             if (videoDuration) videoDuration.value = contentData.duration || '';
                                                             if (videoDesc) videoDesc.value = contentData.description || '';
-                                                            // Show preview of existing video if we have a url
-                                                            if (material.url) {
-                                                                let preview = fieldsContainer.querySelector('.video-loaded-preview');
-                                                                if (!preview) {
-                                                                    preview = document.createElement('div');
-                                                                    preview.className = 'video-loaded-preview mt-2';
-                                                                    preview.innerHTML = `
-                                                                        <video class="max-h-40 rounded border shadow-sm" controls>
-                                                                            <source src="${material.url}">
-                                                                        </video>
-                                                                        <div class="text-xs text-gray-500 mt-1">
-                                                                            <a href="${material.url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline inline-flex items-center">
-                                                                                <i data-lucide="eye" class="w-3 h-3 mr-1"></i> View video in new tab
-                                                                            </a>
-                                                                        </div>
-                                                                    `;
-                                                                    fieldsContainer.appendChild(preview);
-                                                                    if (window.lucide) window.lucide.createIcons();
-                                                                } else {
-                                                                    const sourceEl = preview.querySelector('video source');
-                                                                    const videoEl = preview.querySelector('video');
-                                                                    if (sourceEl) sourceEl.src = material.url;
-                                                                    if (videoEl) videoEl.src = material.url;
-                                                                }
-                                                            }
                                                             break;
                                                         case 'audio':
                                                             const audioDuration = fieldsContainer.querySelector('.content-duration');
                                                             const transcript = fieldsContainer.querySelector('.content-transcript');
                                                             if (audioDuration) audioDuration.value = contentData.duration || '';
                                                             if (transcript) transcript.value = contentData.transcript || '';
-                                                            // Show preview/link of existing audio if we have a url
-                                                            if (material.url) {
-                                                                let preview = fieldsContainer.querySelector('.audio-loaded-preview');
-                                                                if (!preview) {
-                                                                    preview = document.createElement('div');
-                                                                    preview.className = 'audio-loaded-preview mt-2';
-                                                                    preview.innerHTML = `
-                                                                        <audio class="w-full" controls src="${material.url}"></audio>
-                                                                        <div class="text-xs text-gray-500 mt-1">
-                                                                            <a href="${material.url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline inline-flex items-center">
-                                                                                <i data-lucide="external-link" class="w-3 h-3 mr-1"></i> Open audio in new tab
-                                                                            </a>
-                                                                        </div>
-                                                                    `;
-                                                                    fieldsContainer.appendChild(preview);
-                                                                    if (window.lucide) window.lucide.createIcons();
-                                                                } else {
-                                                                    const audioEl = preview.querySelector('audio');
-                                                                    if (audioEl) audioEl.src = material.url;
-                                                                }
-                                                            }
                                                             break;
                                                         case 'pdf':
                                                             const pages = fieldsContainer.querySelector('.content-pages');
@@ -6223,25 +6487,6 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                             if (pages) pages.value = contentData.page_range || '';
                                                             if (synonym) synonym.value = contentData.synonym || '';
                                                             if (instructions) instructions.value = contentData.instructions || '';
-                                                            // Show link/preview of existing PDF if we have a url
-                                                            if (material.url) {
-                                                                let preview = fieldsContainer.querySelector('.pdf-loaded-preview');
-                                                                if (!preview) {
-                                                                    preview = document.createElement('div');
-                                                                    preview.className = 'pdf-loaded-preview mt-2';
-                                                                    preview.innerHTML = `
-                                                                        <div class="flex items-center gap-2 text-sm">
-                                                                            <i data-lucide="file-text" class="w-4 h-4 text-gray-600"></i>
-                                                                            <a href="${material.url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Open PDF in new tab</a>
-                                                                        </div>
-                                                                    `;
-                                                                    fieldsContainer.appendChild(preview);
-                                                                    if (window.lucide) window.lucide.createIcons();
-                                                                } else {
-                                                                    const linkEl = preview.querySelector('a');
-                                                                    if (linkEl) linkEl.href = material.url;
-                                                                }
-                                                            }
                                                             break;
                                                         case 'quiz':
                                                             const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
@@ -6260,7 +6505,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                 if (!preview) {
                                                     preview = document.createElement('div');
                                                     preview.className = 'image-loaded-preview mt-2';
-                                                    preview.innerHTML = `<img class=\"max-h-40 rounded border\" alt=\"Image preview\">`;
+                                                    preview.innerHTML = `<img class=\"max-h-40 rounded border\" alt=\"Image preview\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\" crossorigin=\"anonymous\" fetchpriority=\"low\" onerror=\"this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';\">`;
                                                     fieldsContainer.appendChild(preview);
                                                 }
                                                 const imgEl = preview.querySelector('img');
@@ -6341,6 +6586,163 @@ After running this SQL, refresh the admin dashboard to see the user management w
             await loadStorageStats();
         }
 
+        // Verify uploaded files in lessons
+        async function verifyLessonFiles() {
+            try {
+                // Get course name from DOM
+                let courseName = '';
+                const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+                if (courseTitleInput && courseTitleInput.value) {
+                    courseName = courseTitleInput.value.trim().replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
+                } else {
+                    showError('Please enter a course title first');
+                    return;
+                }
+
+                // Get all lessons from the current course
+                const lessons = document.querySelectorAll('.lesson-item');
+                const verificationResults = [];
+
+                for (let i = 0; i < lessons.length; i++) {
+                    const lessonNumber = i + 1;
+                    const lessonPath = `${courseName}/lesson_${lessonNumber}`;
+                    
+                    try {
+                        // List files in this lesson folder
+                        const { data: files, error } = await supabase.storage
+                            .from('course-materials')
+                            .list(lessonPath, {
+                                limit: 100,
+                                offset: 0
+                            });
+
+                        if (error) {
+                            console.warn(`Error accessing lesson ${lessonNumber}:`, error);
+                            verificationResults.push({
+                                lessonNumber,
+                                lessonPath,
+                                files: [],
+                                error: error.message
+                            });
+                            continue;
+                        }
+
+                        // Get public URLs for each file
+                        const filesWithUrls = [];
+                        if (files && files.length > 0) {
+                            for (const file of files) {
+                                if (file.name && !file.name.includes('.emptyFolderPlaceholder')) {
+                                    const { data: { publicUrl } } = supabase.storage
+                                        .from('course-materials')
+                                        .getPublicUrl(`${lessonPath}/${file.name}`);
+                                    
+                                    filesWithUrls.push({
+                                        name: file.name,
+                                        url: publicUrl,
+                                        size: file.metadata?.size || 0,
+                                        created: file.created_at || file.updated_at
+                                    });
+                                }
+                            }
+                        }
+
+                        verificationResults.push({
+                            lessonNumber,
+                            lessonPath,
+                            files: filesWithUrls,
+                            error: null
+                        });
+
+                    } catch (lessonError) {
+                        console.error(`Error checking lesson ${lessonNumber}:`, lessonError);
+                        verificationResults.push({
+                            lessonNumber,
+                            lessonPath,
+                            files: [],
+                            error: lessonError.message
+                        });
+                    }
+                }
+
+                // Display verification results
+                displayVerificationResults(courseName, verificationResults);
+                
+            } catch (error) {
+                console.error('Error verifying lesson files:', error);
+                showError('Failed to verify lesson files: ' + error.message);
+            }
+        }
+
+        // Display verification results
+        function displayVerificationResults(courseName, results) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            <i data-lucide="folder-check" class="w-5 h-5 inline mr-2"></i>
+                            File Verification - ${courseName.replace(/_/g, ' ').toUpperCase()}
+                        </h3>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 overflow-y-auto max-h-[70vh]">
+                        ${results.map(result => `
+                            <div class="mb-6 border border-gray-200 rounded-lg">
+                                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                    <h4 class="font-medium text-gray-900">
+                                        <i data-lucide="book-open" class="w-4 h-4 inline mr-2"></i>
+                                        Lesson ${result.lessonNumber}
+                                    </h4>
+                                    <p class="text-sm text-gray-600 mt-1">Storage Path: ${result.lessonPath}</p>
+                                </div>
+                                <div class="p-4">
+                                    ${result.error ? `
+                                        <div class="text-red-600 text-sm">
+                                            <i data-lucide="alert-circle" class="w-4 h-4 inline mr-1"></i>
+                                            Error: ${result.error}
+                                        </div>
+                                    ` : ''}
+                                    ${result.files.length === 0 ? `
+                                        <div class="text-gray-500 text-sm">
+                                            <i data-lucide="folder-open" class="w-4 h-4 inline mr-1"></i>
+                                            No files found in this lesson
+                                        </div>
+                                    ` : `
+                                        <div class="space-y-2">
+                                            ${result.files.map(file => `
+                                                <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                                    <div class="flex items-center">
+                                                        <i data-lucide="${getFileIcon(file.name)}" class="w-4 h-4 text-gray-400 mr-2"></i>
+                                                        <span class="text-sm font-medium text-gray-900">${file.name}</span>
+                                                        <span class="text-xs text-gray-500 ml-2">(${formatFileSize(file.size)})</span>
+                                                    </div>
+                                                    <a href="${file.url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm">
+                                                        <i data-lucide="external-link" class="w-4 h-4 inline mr-1"></i>
+                                                        View
+                                                    </a>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="flex justify-end p-6 border-t border-gray-200">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            lucide.createIcons();
+        }
+
         // Load files from Supabase Storage
         async function loadFiles() {
             try {
@@ -6410,7 +6812,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <i data-lucide="${getFileIcon(file.name)}" class="w-5 h-5 text-gray-400 mr-3"></i>
-                                <button onclick="viewFile('${file.bucket}', '${file.name}')" class="text-sm font-medium text-blue-600 hover:text-blue-800 underline decoration-dotted">${file.name}</button>
+                                <span class="text-sm font-medium text-gray-900">${file.name}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${file.category}</td>
@@ -6418,13 +6820,10 @@ After running this SQL, refresh the admin dashboard to see the user management w
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${fileSize}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${uploadDate}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button onclick="viewFile('${file.bucket}', '${file.name}')" class="text-gray-600 hover:text-gray-900 mr-3" title="Preview">
-                                <i data-lucide="eye" class="w-4 h-4"></i>
-                            </button>
-                            <button onclick="downloadFile('${file.bucket}', '${file.name}')" class="text-blue-600 hover:text-blue-900 mr-3" title="Download">
+                            <button onclick="downloadFile('${file.bucket}', '${file.name}')" class="text-blue-600 hover:text-blue-900 mr-3">
                                 <i data-lucide="download" class="w-4 h-4"></i>
                             </button>
-                            <button onclick="deleteFile('${file.bucket}', '${file.name}')" class="text-red-600 hover:text-red-900" title="Delete">
+                            <button onclick="deleteFile('${file.bucket}', '${file.name}')" class="text-red-600 hover:text-red-900">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </td>
@@ -6519,88 +6918,13 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
         // File upload modal functions
         function openFileUploadModal() {
-            const modal = document.getElementById('fileUploadModal');
-            modal.classList.remove('hidden');
-
-            const fileInput = document.getElementById('fileInput');
-            const preview = document.getElementById('filePreviewContainer');
-            if (fileInput) fileInput.value = '';
-            if (preview) {
-                preview.classList.add('hidden');
-                preview.innerHTML = '<p class="text-sm text-gray-500">No files selected.</p>';
-            }
-            if (fileInput && !fileInput._previewListenerAttached) {
-                fileInput.addEventListener('change', (e) => renderFilePreviews(e.target.files));
-                fileInput._previewListenerAttached = true;
-            }
+            document.getElementById('fileUploadModal').classList.remove('hidden');
         }
 
         function closeFileUploadModal() {
             document.getElementById('fileUploadModal').classList.add('hidden');
             document.getElementById('fileUploadForm').reset();
             document.getElementById('uploadProgress').classList.add('hidden');
-            const preview = document.getElementById('filePreviewContainer');
-            if (preview) {
-                preview.classList.add('hidden');
-                preview.innerHTML = '<p class="text-sm text-gray-500">No files selected.</p>';
-            }
-        }
-
-        function renderFilePreviews(fileList) {
-            const preview = document.getElementById('filePreviewContainer');
-            if (!preview) return;
-            const files = Array.from(fileList || []);
-
-            if (files.length === 0) {
-                preview.classList.add('hidden');
-                preview.innerHTML = '<p class="text-sm text-gray-500">No files selected.</p>';
-                return;
-            }
-
-            preview.classList.remove('hidden');
-
-            const itemsHtml = files.map((file, idx) => {
-                const type = file.type || '';
-                const name = file.name || `file_${idx+1}`;
-                const safeName = name.replace(/\s+/g, ' ');
-
-                if (type.startsWith('image/')) {
-                    const url = URL.createObjectURL(file);
-                    return `
-                        <div class="flex items-center space-x-3 p-2 bg-gray-50 rounded-md border">
-                            <img src="${url}" alt="${safeName}" class="w-12 h-12 object-cover rounded" onload="this.onload=null; /*URL.revokeObjectURL('${url}')*/">
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium text-gray-900 truncate">${safeName}</p>
-                                <p class="text-xs text-gray-500 truncate">${type || 'image'}</p>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                let icon = 'file';
-                if (type.startsWith('video/')) icon = 'video';
-                else if (type.startsWith('audio/')) icon = 'music';
-                else if (type === 'application/pdf') icon = 'file-text';
-                else if (/(zip|compressed)/i.test(type) || /\.(zip|rar|7z)$/i.test(safeName)) icon = 'archive';
-
-                return `
-                    <div class="flex items-center space-x-3 p-2 bg-gray-50 rounded-md border">
-                        <i data-lucide="${icon}" class="w-6 h-6 text-gray-500"></i>
-                        <div class="min-w-0">
-                            <p class="text-sm font-medium text-gray-900 truncate">${safeName}</p>
-                            <p class="text-xs text-gray-500 truncate">${type || 'file'}</p>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            preview.innerHTML = `
-                <div class="grid grid-cols-1 gap-2">${itemsHtml}</div>
-            `;
-
-            if (window.lucide && typeof lucide.createIcons === 'function') {
-                try { lucide.createIcons(); } catch (e) { /* ignore */ }
-            }
         }
 
         // Handle file upload
@@ -6673,27 +6997,6 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to upload files: ' + error.message);
             } finally {
                 document.getElementById('uploadButton').disabled = false;
-            }
-        }
-
-        // Preview / view file in new tab
-        async function viewFile(bucket, fileName) {
-            try {
-                // Try to get a public URL first
-                const { data: pub } = supabase.storage.from(bucket).getPublicUrl(fileName);
-                if (pub && pub.publicUrl) {
-                    window.open(pub.publicUrl, '_blank', 'noopener');
-                    return;
-                }
-                // If bucket is not public, generate a signed URL
-                const { data: signed, error: signedErr } = await supabase.storage
-                    .from(bucket)
-                    .createSignedUrl(fileName, 60 * 10); // 10 minutes
-                if (signedErr) throw signedErr;
-                window.open(signed.signedUrl, '_blank', 'noopener');
-            } catch (error) {
-                console.error('Error opening file:', error);
-                showError('Unable to open file preview.');
             }
         }
 
@@ -8134,7 +8437,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                 </button>
                             </div>
                         </div>
-                        <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                        <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview" loading="lazy" decoding="async" referrerpolicy="no-referrer" crossorigin="anonymous" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">
                         <input type="hidden" class="current-image-url" value="">
                         <input type="hidden" class="material-id" value="">
                     </div>
@@ -8183,7 +8486,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                     </button>
                                 </div>
                             </div>
-                            <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                            <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">
                             <input type="hidden" class="current-image-url" value="">
                             <input type="hidden" class="material-id" value="">
                         </div>
@@ -8224,13 +8527,19 @@ After running this SQL, refresh the admin dashboard to see the user management w
             const preview = fieldsContainer.querySelector('.image-loaded-preview');
 
             try {
-                // Get lesson index for upload path
+                // Determine lessonId and contentIndex
                 const lessonItem = contentItem.closest('.lesson-item');
-                const allLessons = document.querySelectorAll('.lesson-item');
-                const lessonIndex = Array.from(allLessons).indexOf(lessonItem);
+                const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                if (!lessonId) {
+                    showError('Cannot replace image: lesson ID not found');
+                    return;
+                }
+                const contentContainer = lessonItem.querySelector('.lesson-content-container');
+                const contentItems = contentContainer.querySelectorAll('.content-item');
+                const contentIndex = Array.from(contentItems).indexOf(contentItem);
 
-                // Upload new file
-                const newUrl = await uploadSingleFile(newFile, 'lessons', 'Course Content', `lesson_${lessonIndex + 1}`, lessonIndex);
+                // Upload new file with standardized options
+                const newUrl = await uploadSingleFile(newFile, 'lessons', '', '', 0, { lessonId, contentIndex });
 
                 // Delete old file if it exists
                 const oldUrl = currentUrlInput.value;

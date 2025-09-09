@@ -241,25 +241,118 @@ class DatabaseService {
     try {
       console.log('🚀 Creating lessons with materials in database...', { courseId, lessonCount: lessonsData.length });
       
-      // Use the enhanced database function for multimedia support
+      // Try RPC first (if available in the DB)
       const { data, error } = await this.supabaseAdmin
-        .rpc('create_lessons_with_materials', {
+        .rpc('upsert_lessons_with_materials', {
           p_course_id: courseId,
           p_lessons: lessonsData
         });
         
-      if (error) {
-        console.error('❌ Supabase error creating lessons with materials:', error);
-        throw new Error(`Database error: ${error.message}`);
+      if (!error) {
+        console.log('✅ Lessons with materials created successfully:', data?.length || 0);
+        return data;
       }
       
-      console.log('✅ Lessons with materials created successfully:', data.length);
-      return data;
-      
+      console.warn('[createLessons] upsert_lessons_with_materials failed, falling back:', error.message);
     } catch (error) {
-      console.error('❌ Error creating lessons with materials:', error);
-      throw error;
+      console.warn('[createLessons] RPC threw, falling back to direct inserts:', error.message);
     }
+
+    // Fallback path using term-based schema only
+    try {
+      const termId = await this.getOrCreateDefaultTerm(courseId);
+      const results = [];
+
+      for (const lesson of lessonsData) {
+        const orderNumber = Number(lesson.order_number ?? lesson.order_index ?? 0) || 0;
+        const baseLesson = {
+          term_id: termId,
+          name: lesson.title || 'Lesson',
+          title: lesson.title || 'Lesson',
+          description: lesson.description || '',
+          order_number: orderNumber,
+          content: lesson
+        };
+
+        const { data: ins, error: insErr } = await this.supabaseAdmin
+          .from('lessons')
+          .insert([baseLesson])
+          .select('id')
+          .single();
+        
+        if (insErr) {
+          throw new Error(`Insert lesson failed: ${insErr.message}`);
+        }
+        
+        const newLessonId = ins.id;
+
+        // Insert materials if present (best effort)
+        if (Array.isArray(lesson.materials) && lesson.materials.length) {
+          const materialsRows = lesson.materials.map(m => ({
+            lesson_id: newLessonId,
+            type: m.type || null,
+            url: m.file_url || m.url || null,
+            content: m.content || null,
+            metadata: m.metadata || {}
+          }));
+
+          const { error: matErr } = await this.supabaseAdmin
+            .from('lesson_materials')
+            .insert(materialsRows);
+          
+          if (matErr) {
+            console.warn('[createLessons] Materials insert warning:', matErr.message);
+          }
+        }
+
+        results.push({
+          lesson_id: newLessonId,
+          lesson_title: baseLesson.title,
+          materials_count: Array.isArray(lesson.materials) ? lesson.materials.length : 0,
+          operation: 'created'
+        });
+      }
+
+      console.log('✅ Lessons created via fallback inserts:', results.length);
+      return results;
+    } catch (fallbackErr) {
+      console.error('❌ Error creating lessons with materials (fallback):', fallbackErr);
+      throw fallbackErr;
+    }
+  }
+
+  // Helper: ensure a default term exists for the course (no reliance on terms.name)
+  async getOrCreateDefaultTerm(courseId) {
+    await this.ensureInitialized();
+
+    // Try to find an existing term
+    const { data: termRows, error: termErr } = await this.supabaseAdmin
+      .from('terms')
+      .select('id')
+      .eq('course_id', courseId)
+      .order('order_number', { ascending: true })
+      .limit(1);
+
+    if (termErr) {
+      throw new Error(`Term lookup failed: ${termErr.message}`);
+    }
+
+    if (termRows && termRows.length) {
+      return termRows[0].id;
+    }
+
+    // Create a minimal default term (avoid referencing a possibly missing name column)
+    const { data: created, error: createErr } = await this.supabaseAdmin
+      .from('terms')
+      .insert([{ course_id: courseId, description: 'Default term for course lessons', order_number: 1 }])
+      .select('id')
+      .single();
+
+    if (createErr) {
+      throw new Error(`Term creation failed: ${createErr.message}`);
+    }
+
+    return created.id;
   }
 
   /**
@@ -271,62 +364,142 @@ class DatabaseService {
     await this.ensureInitialized();
     
     try {
-      // Use the enhanced function to get lessons with all materials
+      // Try the enhanced function first
       const { data, error } = await this.supabase
         .rpc('get_course_lessons_with_materials', {
           p_course_id: courseId
         });
         
-      if (error) {
-        throw new Error(`Database error: ${error.message}`);
-      }
-      
-      // Group materials by lesson
-      const lessonsMap = new Map();
-      data.forEach(row => {
-        if (!lessonsMap.has(row.lesson_id)) {
-          lessonsMap.set(row.lesson_id, {
-            id: row.lesson_id,
-            title: row.lesson_title,
-            description: row.lesson_description,
-            order_index: row.lesson_order,
-            lesson_type: row.lesson_type,
-            duration_minutes: row.duration_minutes,
-            difficulty_level: row.difficulty_level,
-            learning_objectives: row.learning_objectives,
-            is_published: row.is_published,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-            materials: []
-          });
-        }
+      if (!error) {
+        // Group materials by lesson
+        const lessonsMap = new Map();
+        (data || []).forEach(row => {
+          if (!lessonsMap.has(row.lesson_id)) {
+            lessonsMap.set(row.lesson_id, {
+              id: row.lesson_id,
+              title: row.lesson_title,
+              description: row.lesson_description,
+              order_index: row.lesson_order,
+              lesson_type: row.lesson_type,
+              duration_minutes: row.duration_minutes,
+              difficulty_level: row.difficulty_level,
+              learning_objectives: row.learning_objectives,
+              is_published: row.is_published,
+              created_at: row.created_at,
+              updated_at: row.updated_at,
+              materials: []
+            });
+          }
+          
+          if (row.material_id) {
+            lessonsMap.get(row.lesson_id).materials.push({
+              id: row.material_id,
+              type: row.material_type,
+              content: row.material_content,
+              order_number: row.material_order,
+              file_url: row.file_url || row.url,
+              file_size: row.file_size,
+              file_type: row.file_type,
+              duration: row.duration,
+              metadata: row.metadata
+            });
+          }
+        });
         
-        if (row.material_id) {
-          lessonsMap.get(row.lesson_id).materials.push({
-            id: row.material_id,
-            type: row.material_type,
-            content: row.material_content,
-            order_number: row.material_order,
-            file_url: row.file_url,
-            file_size: row.file_size,
-            file_type: row.file_type,
-            duration: row.duration,
-            metadata: row.metadata
-          });
-        }
-      });
-      
-      const lessons = Array.from(lessonsMap.values())
-        .sort((a, b) => a.order_index - b.order_index)
-        .map(lesson => ({
-          ...lesson,
-          materials: lesson.materials.sort((a, b) => a.order_number - b.order_number)
-        }));
-      
-      return lessons;
+        const lessons = Array.from(lessonsMap.values())
+          .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+          .map(lesson => ({
+            ...lesson,
+            materials: lesson.materials.sort((a, b) => (a.order_number ?? 0) - (b.order_number ?? 0))
+          }));
+        
+        return lessons;
+      }
+
+      console.warn('[getLessons] get_course_lessons_with_materials failed, using fallback:', error.message);
     } catch (error) {
-      console.error('❌ Error fetching lessons with materials:', error);
-      throw error;
+      console.warn('[getLessons] RPC threw, using fallback:', error.message);
+    }
+
+    // Fallback path: term-based fetches only
+    try {
+      // 1) Find terms for this course
+      const { data: terms, error: termErr } = await this.supabase
+        .from('terms')
+        .select('id')
+        .eq('course_id', courseId);
+
+      if (termErr) {
+        throw new Error(`Database error: ${termErr.message}`);
+      }
+
+      if (!terms || !terms.length) {
+        return [];
+      }
+
+      const termIds = terms.map(t => t.id);
+
+      // 2) Fetch lessons under these terms
+      const { data: lessonRows, error: lessonsErr } = await this.supabase
+        .from('lessons')
+        .select('id, title, description, order_number, content, created_at, updated_at')
+        .in('term_id', termIds)
+        .order('order_number', { ascending: true });
+
+      if (lessonsErr) {
+        throw new Error(`Database error: ${lessonsErr.message}`);
+      }
+
+      if (!lessonRows || !lessonRows.length) {
+        return [];
+      }
+
+      const lessonIds = lessonRows.map(l => l.id);
+
+      // 3) Fetch materials for these lessons
+      const { data: materialRows, error: materialsErr } = await this.supabase
+        .from('lesson_materials')
+        .select('id, lesson_id, type, url, content, metadata')
+        .in('lesson_id', lessonIds);
+
+      if (materialsErr) {
+        console.warn('[getLessons] Materials fetch warning:', materialsErr.message);
+      }
+
+      const materialsByLesson = new Map();
+      (materialRows || []).forEach(m => {
+        if (!materialsByLesson.has(m.lesson_id)) materialsByLesson.set(m.lesson_id, []);
+        materialsByLesson.get(m.lesson_id).push({
+          id: m.id,
+          type: m.type,
+          content: m.content,
+          order_number: 0,
+          file_url: m.url,
+          metadata: m.metadata
+        });
+      });
+
+      const lessons = lessonRows
+        .map(row => ({
+          id: row.id,
+          title: row.title || (row.content?.title) || '',
+          description: row.description || '',
+          order_index: row.order_number ?? 0,
+          lesson_type: row.content?.type || 'content',
+          duration_minutes: row.content?.duration || null,
+          difficulty_level: row.content?.level || null,
+          learning_objectives: row.content?.objectives || [],
+          is_published: row.content?.is_published ?? null,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          materials: materialsByLesson.get(row.id) || []
+        }))
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+
+      return lessons;
+    } catch (fallbackErr) {
+      console.error('❌ Error fetching lessons with materials (fallback):', fallbackErr);
+      throw fallbackErr;
     }
   }
 

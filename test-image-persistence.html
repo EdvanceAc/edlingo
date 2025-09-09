@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Persistence</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .info {
+            color: blue;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        img {
+            max-width: 200px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Persistence Test</h1>
+    
+    <div class="test-section">
+        <h2>Step 1: Upload Test Image</h2>
+        <input type="file" id="imageInput" accept="image/*">
+        <button onclick="uploadTestImage()">Upload Image</button>
+        <div id="uploadResult"></div>
+        <div id="uploadedImage"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 2: Test Image Loading</h2>
+        <p>Lesson ID: <input type="text" id="lessonId" placeholder="Enter lesson ID" value="test-lesson-1"></p>
+        <p>Content Index: <input type="number" id="contentIndex" placeholder="Content index" value="0"></p>
+        <button onclick="testImageLoading()">Test Load Image</button>
+        <div id="loadResult"></div>
+        <div id="loadedImage"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 3: Test Storage Structure</h2>
+        <button onclick="listStorageFiles()">List Storage Files</button>
+        <div id="storageList"></div>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://ixpixlfewtqyqnbnbzpv.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4cGl4bGZld3RxeXFuYm5ienB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjU4MjU2NzQsImV4cCI6MjA0MTQwMTY3NH0.TaEoOkee7nZzP8kJJuv-l_Rh6jmVQ7HgUcmKGJrDrwg';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        
+        let uploadedImageUrl = null;
+        
+        async function uploadTestImage() {
+            const fileInput = document.getElementById('imageInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                document.getElementById('uploadResult').innerHTML = '<p class="error">Please select a file first</p>';
+                return;
+            }
+            
+            try {
+                const lessonId = document.getElementById('lessonId').value || 'test-lesson-1';
+                const contentIndex = document.getElementById('contentIndex').value || '0';
+                const fileName = `lesson-${lessonId}-content-${contentIndex}-${Date.now()}.${file.name.split('.').pop()}`;
+                const filePath = `lessons/${lessonId}/content/${fileName}`;
+                
+                document.getElementById('uploadResult').innerHTML = '<p class="info">Uploading...</p>';
+                
+                const { data, error } = await supabase.storage
+                    .from('course-materials')
+                    .upload(filePath, file);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                // Get public URL
+                const { data: urlData } = supabase.storage
+                    .from('course-materials')
+                    .getPublicUrl(filePath);
+                
+                uploadedImageUrl = urlData.publicUrl;
+                
+                document.getElementById('uploadResult').innerHTML = `
+                    <p class="success">Upload successful!</p>
+                    <p><strong>File path:</strong> ${filePath}</p>
+                    <p><strong>Public URL:</strong> ${uploadedImageUrl}</p>
+                `;
+                
+                document.getElementById('uploadedImage').innerHTML = `
+                    <img src="${uploadedImageUrl}" alt="Uploaded image">
+                `;
+                
+            } catch (error) {
+                document.getElementById('uploadResult').innerHTML = `<p class="error">Upload failed: ${error.message}</p>`;
+            }
+        }
+        
+        async function testImageLoading() {
+            const lessonId = document.getElementById('lessonId').value || 'test-lesson-1';
+            const contentIndex = document.getElementById('contentIndex').value || '0';
+            
+            try {
+                document.getElementById('loadResult').innerHTML = '<p class="info">Searching for images...</p>';
+                
+                // List files in the lesson content directory
+                const { data, error } = await supabase.storage
+                    .from('course-materials')
+                    .list(`lessons/${lessonId}/content`, {
+                        limit: 100,
+                        offset: 0
+                    });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                // Filter for images that match the content index
+                const imageFiles = data.filter(file => 
+                    file.name.includes(`content-${contentIndex}`) && 
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+                );
+                
+                if (imageFiles.length === 0) {
+                    document.getElementById('loadResult').innerHTML = `
+                        <p class="error">No images found for lesson ${lessonId}, content index ${contentIndex}</p>
+                        <p>Available files: ${data.map(f => f.name).join(', ')}</p>
+                    `;
+                    return;
+                }
+                
+                // Get the most recent image (by name which includes timestamp)
+                const latestImage = imageFiles.sort((a, b) => b.name.localeCompare(a.name))[0];
+                const imagePath = `lessons/${lessonId}/content/${latestImage.name}`;
+                
+                // Get public URL
+                const { data: urlData } = supabase.storage
+                    .from('course-materials')
+                    .getPublicUrl(imagePath);
+                
+                document.getElementById('loadResult').innerHTML = `
+                    <p class="success">Image found and loaded!</p>
+                    <p><strong>File:</strong> ${latestImage.name}</p>
+                    <p><strong>Path:</strong> ${imagePath}</p>
+                    <p><strong>URL:</strong> ${urlData.publicUrl}</p>
+                `;
+                
+                document.getElementById('loadedImage').innerHTML = `
+                    <img src="${urlData.publicUrl}" alt="Loaded image">
+                `;
+                
+            } catch (error) {
+                document.getElementById('loadResult').innerHTML = `<p class="error">Load failed: ${error.message}</p>`;
+            }
+        }
+        
+        async function listStorageFiles() {
+            try {
+                document.getElementById('storageList').innerHTML = '<p class="info">Loading storage structure...</p>';
+                
+                // List all files in course-materials bucket
+                const { data, error } = await supabase.storage
+                    .from('course-materials')
+                    .list('lessons', {
+                        limit: 100,
+                        offset: 0
+                    });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                let html = '<h3>Storage Structure:</h3><ul>';
+                
+                for (const item of data) {
+                    if (item.name) {
+                        html += `<li><strong>${item.name}/</strong>`;
+                        
+                        // List contents of each lesson folder
+                        const { data: subData, error: subError } = await supabase.storage
+                            .from('course-materials')
+                            .list(`lessons/${item.name}`, {
+                                limit: 100,
+                                offset: 0
+                            });
+                        
+                        if (!subError && subData) {
+                            html += '<ul>';
+                            for (const subItem of subData) {
+                                if (subItem.name) {
+                                    html += `<li>${subItem.name}/</li>`;
+                                    
+                                    // List content files
+                                    const { data: contentData, error: contentError } = await supabase.storage
+                                        .from('course-materials')
+                                        .list(`lessons/${item.name}/${subItem.name}`, {
+                                            limit: 100,
+                                            offset: 0
+                                        });
+                                    
+                                    if (!contentError && contentData) {
+                                        html += '<ul>';
+                                        for (const contentItem of contentData) {
+                                            html += `<li>${contentItem.name}</li>`;
+                                        }
+                                        html += '</ul>';
+                                    }
+                                }
+                            }
+                            html += '</ul>';
+                        }
+                        html += '</li>';
+                    }
+                }
+                
+                html += '</ul>';
+                document.getElementById('storageList').innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('storageList').innerHTML = `<p class="error">Failed to list storage: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
