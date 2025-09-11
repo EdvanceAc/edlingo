@@ -8648,43 +8648,46 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
         // Show course sub-tab function
         function showCourseSubTab(tabName) {
-            // Hide all sub-tab content
-            const subTabs = document.querySelectorAll('[id^="course-"]');
-            subTabs.forEach(tab => {
-                if (tab.id.includes('-content') || tab.id.includes('-tab')) {
-                    tab.style.display = 'none';
-                    tab.classList.remove('active');
+            // 1) Hide ONLY the sub-tab contents (don't hide the nav buttons)
+            document.querySelectorAll('.course-subtab-content').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('active');
+            });
+
+            // 2) Show the requested sub-tab content by its correct id pattern: course-${name}-content
+            const targetContent = document.getElementById(`course-${tabName}-content`);
+            if (targetContent) {
+                targetContent.classList.remove('hidden');
+                targetContent.classList.add('active');
+            }
+
+            // 3) Update sub-tab navigation button styles (border-based active state)
+            const map = {
+                overview: 'course-overview-tab',
+                ai: 'course-ai-tab',
+                templates: 'course-templates-tab',
+                versions: 'course-versions-tab'
+            };
+
+            Object.entries(map).forEach(([name, id]) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                if (name === tabName) {
+                    btn.classList.add('border-blue-500', 'text-blue-600');
+                    btn.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                } else {
+                    btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                    btn.classList.remove('border-blue-500', 'text-blue-600');
                 }
             });
-            
-            // Show the selected sub-tab
-            const targetTab = document.getElementById(`course-${tabName}`);
-            if (targetTab) {
-                targetTab.style.display = 'block';
-                targetTab.classList.add('active');
-            }
-            
-            // Update sub-tab navigation buttons
-            const navButtons = document.querySelectorAll('button[onclick*="showCourseSubTab"]');
-            navButtons.forEach(btn => {
-                btn.classList.remove('bg-blue-600', 'text-white');
-                btn.classList.add('bg-gray-100', 'text-gray-700');
-            });
-            
-            // Highlight active button
-            const activeButton = document.querySelector(`button[onclick="showCourseSubTab('${tabName}')"]`);
-            if (activeButton) {
-                activeButton.classList.remove('bg-gray-100', 'text-gray-700');
-                activeButton.classList.add('bg-blue-600', 'text-white');
-            }
-            
+
             console.log('Switched to course sub-tab:', tabName);
         }
 
         // Initialize course management
         function initializeCourseManagement() {
-            // Set default active tab
-            switchCourseTab('course-overview');
+            // Set default active sub-tab and ensure nav visible
+            showCourseSubTab('overview');
             
             // Initialize event listeners
             document.addEventListener('change', function(e) {
