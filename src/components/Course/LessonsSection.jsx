@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Play, Lock, CheckCircle, Star, Trophy, ArrowRight, Zap, Mic, Edit } from 'lucide-react';
+import { BookOpen, Play, Lock, CheckCircle, Star, Trophy, ArrowRight, Zap, Mic, Edit, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../renderer/components/ui/Card';
 import { Progress } from '../../renderer/components/ui/Progress';
-import { Badge } from '../../renderer/components/ui/Badge';
 import Button from '../../renderer/components/ui/Button';
+import { Badge } from '../../renderer/components/ui/Badge';
 import { supabase } from '../../renderer/config/supabaseConfig';
 import AuthContext from '../../renderer/contexts/AuthContext';
 import unifiedLevelService from '../../services/unifiedLevelService';
@@ -19,122 +19,166 @@ const LessonsSection = ({ courseId: propCourseId }) => {
   const [terms, setTerms] = useState([]);
   const [selectedTerm, setSelectedTerm] = useState(null);
   const [lessons, setLessons] = useState([]);
-  const [userLevel, setUserLevel] = useState(user?.placement_level || 'A1');
-  // Add missing state
+  const [isLoadingTerms, setIsLoadingTerms] = useState(false);
+  const [isLoadingLessons, setIsLoadingLessons] = useState(false);
+  const [termsError, setTermsError] = useState(null);
+  const [lessonsError, setLessonsError] = useState(null);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [highlights, setHighlights] = useState([]);
-  const [writingFeedback, setWritingFeedback] = useState(null);
+  const [writingFeedback, setWritingFeedback] = useState('');
   const [pronunciationFeedback, setPronunciationFeedback] = useState(null);
-  const { userProgress } = useProgression();
-  
+  const { updateProgress, checkUnlock } = useProgression();
+  const navigate = useNavigate();
+  const userLevel = user?.cefr_level || 'A1';
+
+  // Auto-select first term when terms are loaded
   useEffect(() => {
-    if (!courseId) return;
-    fetchTerms();
+    if (terms.length > 0 && !selectedTerm) {
+      const firstTerm = terms[0];
+      setSelectedTerm(firstTerm);
+    }
+  }, [terms, selectedTerm]);
+
+  // Auto-fetch lessons when selectedTerm changes
+  useEffect(() => {
+    if (selectedTerm) {
+      fetchLessons(selectedTerm.id);
+    }
+  }, [selectedTerm]);
+
+  // Fetch terms/sections on component mount
+  useEffect(() => {
+    if (courseId) {
+      fetchTerms();
+    }
   }, [courseId]);
 
-  // Helper: try a select with a filter and return first non-empty successful result
-  const trySelect = async (table, filter) => {
-    try {
-      const { data, error } = await supabase.from(table).select('*').match(filter);
-      if (error) {
-        console.warn(`[LessonsSection] Query error on ${table}:`, error.message);
-        return null;
-      }
-      if (Array.isArray(data) && data.length > 0) return data;
-      return null;
-    } catch (e) {
-      console.warn(`[LessonsSection] Exception querying ${table}:`, e);
-      return null;
-    }
-  };
-
-  // Helper: client-side sort by common order fields
-  const sortByOrder = (rows) => {
-    const orderKey = (row) => (
-      row.order_number ?? row.order ?? row.position ?? row.index ?? 0
-    );
-    return [...rows].sort((a, b) => orderKey(a) - orderKey(b));
-  };
-
   const fetchTerms = async () => {
-    // Avoid server-side order to prevent failures on missing columns; sort client-side
-    const tablesToTry = ['terms', 'sections', 'course_sections'];
-    let found = null;
-    for (const table of tablesToTry) {
-      const data = await trySelect(table, { course_id: courseId });
-      if (data) {
-        if (table !== 'terms') {
-          console.warn(`[LessonsSection] Falling back to ${table} for course sections.`);
-        }
-        found = data;
-        break;
-      }
-    }
-    if (!found) {
-      console.error('[LessonsSection] No terms/sections found for course:', courseId);
-      setTerms([]);
+    if (!courseId) {
+      setTermsError('No course ID provided');
       return;
     }
 
-    // Warn if name field missing
-    if (found.length && (found[0].name == null && found[0].title != null)) {
-      console.warn('[LessonsSection] Terms/sections lack name column; using title');
-    }
+    try {
+      setIsLoadingTerms(true);
+      setTermsError(null);
 
-    setTerms(sortByOrder(found));
+      // Try course_sections first
+      let { data: sectionsData, error: sectionsError } = await supabase
+        .from('course_sections')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('order_number', { ascending: true });
+
+      if (sectionsError) {
+        console.warn('[LessonsSection] course_sections query failed:', sectionsError.message);
+        // Fallback to course_terms
+        const { data: termsData, error: termsError } = await supabase
+          .from('course_terms')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('order', { ascending: true });
+
+        if (termsError) {
+          throw new Error(`Both course_sections and course_terms failed: ${termsError.message}`);
+        }
+        sectionsData = termsData;
+      }
+
+      const sortedTerms = sectionsData || [];
+      setTerms(sortedTerms);
+
+      // Check for missing name column
+      const found = sortedTerms.filter(t => t.name != null || t.title != null);
+      if (found.length && (found[0].name == null && found[0].title != null)) {
+        console.warn('[LessonsSection] Terms/sections lack name column; using title');
+      }
+
+      // Auto-select first term if none selected
+      if (sortedTerms.length > 0 && !selectedTerm) {
+        setSelectedTerm(sortedTerms[0]);
+      }
+
+    } catch (error) {
+      console.error('[LessonsSection] Error fetching terms:', error);
+      setTermsError(error.message || 'Failed to load course sections');
+    } finally {
+      setIsLoadingTerms(false);
+    }
   };
 
   const fetchLessons = async (termId) => {
-    // Try multiple mappings: lessons.term_id, lessons.section_id, course_lessons.*
-    const candidates = [
-      { table: 'lessons', key: 'term_id' },
-      { table: 'lessons', key: 'section_id' },
-      { table: 'course_lessons', key: 'term_id' },
-      { table: 'course_lessons', key: 'section_id' }
-    ];
+    if (!termId) return;
 
-    let lessonsData = null;
-    for (const c of candidates) {
-      const data = await trySelect(c.table, { [c.key]: termId });
-      if (data) {
-        if (!(c.table === 'lessons' && c.key === 'term_id')) {
-          console.warn(`[LessonsSection] Falling back to ${c.table}.${c.key} for lesson lookup.`);
+    try {
+      setIsLoadingLessons(true);
+      setLessonsError(null);
+
+      // Try multiple approaches for lesson lookup
+      const queries = [
+        { table: 'course_lessons', key: 'section_id' },
+        { table: 'course_lessons', key: 'term_id' },
+        { table: 'lessons', key: 'section_id' },
+        { table: 'lessons', key: 'term_id' }
+      ];
+
+      let lessonsData = null;
+      for (const { table, key } of queries) {
+        const { data, error } = await supabase
+          .from(table)
+          .select('*')
+          .eq(key, termId)
+          .order('order_number', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          lessonsData = data;
+          break;
         }
-        lessonsData = data;
-        break;
       }
-    }
 
-    // Fallback: some schemas link lessons directly to courses via lessons.course_id
-    if (!lessonsData) {
-      const byCourse = await trySelect('lessons', { course_id: courseId });
-      if (byCourse) {
-        console.warn('[LessonsSection] Falling back to lessons.course_id for lesson lookup.');
-        lessonsData = byCourse;
+      // Final fallback: try by course_id
+      if (!lessonsData) {
+        const { data: byCourse } = await supabase
+          .from('course_lessons')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('order_number', { ascending: true });
+
+        if (byCourse) {
+          console.warn('[LessonsSection] Falling back to lessons.course_id for lesson lookup.');
+          lessonsData = byCourse;
+        }
       }
+
+      if (!lessonsData || lessonsData.length === 0) {
+        setLessons([]);
+        return;
+      }
+
+      // Sort and process lessons
+      const sorted = lessonsData.sort((a, b) => {
+        const orderA = a.order_number ?? a.order ?? 999;
+        const orderB = b.order_number ?? b.order ?? 999;
+        return orderA - orderB;
+      });
+
+      // Apply level-based content simplification and unlock logic
+      const processedLessons = await Promise.all(
+        sorted.map(async (lesson) => ({
+           ...lesson,
+           content: lesson?.content ? await unifiedLevelService.simplifyText(lesson.content, userLevel) : lesson?.content,
+           isUnlocked: checkUnlock(lesson)
+         }))
+      );
+
+      setLessons(processedLessons);
+
+    } catch (error) {
+      console.error('[LessonsSection] Error fetching lessons:', error);
+      setLessonsError(error.message || 'Failed to load lessons');
+    } finally {
+      setIsLoadingLessons(false);
     }
-
-    if (!lessonsData) {
-      console.error('[LessonsSection] No lessons found for term/section or course:', termId, courseId);
-      setLessons([]);
-      return;
-    }
-
-    const sorted = sortByOrder(lessonsData);
-
-    const personalizedLessons = await Promise.all(
-      sorted.map(async (lesson) => ({
-        ...lesson,
-        content: lesson?.content ? await unifiedLevelService.simplifyText(lesson.content, userLevel) : lesson?.content,
-        isUnlocked: checkUnlock(lesson)
-      }))
-    );
-    setLessons(personalizedLessons);
-  };
-
-  const checkUnlock = (lesson) => {
-    // TODO: Implement real progression/XP checking
-    return true;
   };
 
   const fetchLessonDetails = async (lessonId) => {
@@ -142,22 +186,21 @@ const LessonsSection = ({ courseId: propCourseId }) => {
       // Materials (best-effort)
       const { data: materialsData, error: materialsError } = await supabase
         .from('lesson_materials')
-        .select('id,lesson_id,type,url')
+        .select('*')
         .eq('lesson_id', lessonId);
+
       if (materialsError) {
         console.warn('[LessonsSection] Error fetching lesson_materials:', materialsError.message);
       }
 
-      // Books: avoid .single() and be resilient to schemas lacking updated_at
-      let booksData = null;
-      let bookQuery = supabase
+      // Books with fallback ordering
+      let bookResp = await supabase
         .from('books')
-        .select('id,lesson_id,pdf_url,updated_at,created_at')
+        .select('id,lesson_id,pdf_url,updated_at')
         .eq('lesson_id', lessonId)
         .order('updated_at', { ascending: false })
         .limit(1);
 
-      let bookResp = await bookQuery;
       if (bookResp.error) {
         // Retry ordering by created_at if updated_at not present
         console.warn('[LessonsSection] Books query with updated_at failed, retrying with created_at:', bookResp.error.message);
@@ -169,6 +212,7 @@ const LessonsSection = ({ courseId: propCourseId }) => {
           .limit(1);
       }
 
+      let booksData = bookResp.data;
       if (bookResp.error) {
         // Final fallback: no ordering, just take first
         console.warn('[LessonsSection] Books query without ordering fallback due to error:', bookResp.error.message);
@@ -182,13 +226,13 @@ const LessonsSection = ({ courseId: propCourseId }) => {
         booksData = bookResp.data;
       }
 
-      const book = Array.isArray(booksData) && booksData.length > 0 ? booksData[0] : null;
-
+      // Set PDF and highlights
+      const book = booksData?.[0];
       if (book) {
         setPdfUrl(book.pdf_url);
         const { data: fetchedHl, error: hlError } = await supabase
           .from('word_highlights')
-          .select('id,book_id,word,page,x,y,width,height,color')
+          .select('*')
           .eq('book_id', book.id);
         if (hlError) {
           console.warn('[LessonsSection] Error fetching word_highlights:', hlError.message);
@@ -198,6 +242,7 @@ const LessonsSection = ({ courseId: propCourseId }) => {
         setPdfUrl(null);
         setHighlights([]);
       }
+
     } catch (e) {
       console.warn('[LessonsSection] Exception in fetchLessonDetails:', e);
       setPdfUrl(null);
@@ -205,60 +250,163 @@ const LessonsSection = ({ courseId: propCourseId }) => {
     }
   };
 
-  const handleLessonStart = async (lesson) => {
-    if (!lesson.isUnlocked) return;
-    await fetchLessonDetails(lesson.id);
-    // TODO: integrate TTS later if needed
-  };
-
-  const handleAssessment = async (lessonId) => {
-    // Run quiz, save results, provide feedback
-    // If passed, update progress and unlock next
-  };
-
   const handleQuizSubmit = async (answers) => {
     // Submit to AI for grading, save to learning_sessions
     // If passed, updateProgress()
   };
+  
   const handleWritingSubmit = async (text) => {
     // Send to AI for feedback
     setWritingFeedback('AI feedback here');
   };
+  
   const handlePronunciationSubmit = async (transcript) => {
     const result = await pronunciationService.analyzePronunciation(transcript);
     setPronunciationFeedback(result);
   };
 
   return (
-    <motion.div className="space-y-6">
-      {/* Terms List */}
-      {terms.map(term => (
-        <Card key={term.id} onClick={() => { setSelectedTerm(term); fetchLessons(term.id); }}>
-          <CardHeader>
-            <CardTitle>{term.name ?? term.title ?? `Term ${term.order_number ?? term.order ?? ''}`}</CardTitle>
-          </CardHeader>
-        </Card>
-      ))}
-      {/* Lessons Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {lessons.map(lesson => (
-          <Card key={lesson.id}>
-            <CardHeader>
-              <CardTitle>
-                {(lesson.name ?? lesson.title ?? `Lesson ${lesson.order_number ?? lesson.order ?? ''}`)}
-                {lesson.level ? ` (${lesson.level})` : (lesson.difficulty ? ` (${lesson.difficulty})` : '')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Progress value={/* lesson progress */ 0} />
-              <Button disabled={!lesson.isUnlocked} onClick={() => handleLessonStart(lesson)}>
-                {lesson.isUnlocked ? 'Start' : <Lock />}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="space-y-8">
+      {/* Course Sections/Terms */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+          <BookOpen className="w-5 h-5 text-blue-500" />
+          Course Sections
+        </h3>
+        
+        {isLoadingTerms && (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2 text-muted-foreground">Loading course sections...</span>
+          </div>
+        )}
+
+        {termsError && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive font-medium">Error loading course sections</p>
+            <p className="text-destructive/80 text-sm mt-1">{termsError}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-3"
+              onClick={() => fetchTerms()}
+            >
+              Try Again
+            </Button>
+          </div>
+        )}
+
+        {!isLoadingTerms && !termsError && terms.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+          >
+            {terms.map((term, index) => {
+              const isSelected = selectedTerm?.id === term.id;
+              return (
+                <motion.div
+                  key={term.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Card 
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                      isSelected 
+                        ? 'ring-2 ring-primary bg-primary/10 border-primary/20' 
+                        : 'hover:border-primary/30 hover:bg-primary/5'
+                    }`}
+                    onClick={() => { 
+                      setSelectedTerm(term); 
+                      fetchLessons(term.id); 
+                    }}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-foreground mb-1">
+                            {term.name ?? term.title ?? `Section ${term.order_number ?? term.order ?? index + 1}`}
+                          </h4>
+                          {term.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {term.description}
+                            </p>
+                          )}
+                        </div>
+                        <ArrowRight className={`w-4 h-4 transition-colors ${
+                          isSelected ? 'text-primary' : 'text-muted-foreground'
+                        }`} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
       </div>
-    </motion.div>
+
+      {/* Lessons Grid */}
+      {selectedTerm && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Play className="w-5 h-5 text-green-500" />
+            Lessons
+            {selectedTerm && (
+              <Badge variant="outline" className="ml-2">
+                {selectedTerm.name ?? selectedTerm.title ?? 'Selected Section'}
+              </Badge>
+            )}
+          </h3>
+          
+          {isLoadingLessons && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-2 text-muted-foreground">Loading lessons...</span>
+            </div>
+          )}
+
+          {lessonsError && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+              <p className="text-destructive font-medium">Error loading lessons</p>
+              <p className="text-destructive/80 text-sm mt-1">{lessonsError}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-3"
+                onClick={() => selectedTerm && fetchLessons(selectedTerm.id)}
+              >
+                Try Again
+              </Button>
+            </div>
+          )}
+
+          {!isLoadingLessons && !lessonsError && lessons.length === 0 && (
+            <div className="text-center py-8">
+              <Play className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+              <h4 className="text-md font-medium text-foreground mb-2">No Lessons Found</h4>
+              <p className="text-muted-foreground text-sm">
+                The selected section doesn't contain any lessons yet.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Overall Empty State */}
+      {!isLoadingTerms && !termsError && terms.length === 0 && !isLoadingLessons && !lessonsError && lessons.length === 0 && (
+        <div className="text-center py-12">
+          <BookOpen className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">No Content Available</h3>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            This course doesn't have any lessons or sections yet. Check back later or contact your instructor.
+          </p>
+        </div>
+      )}
+    </div>
   );
 };
 

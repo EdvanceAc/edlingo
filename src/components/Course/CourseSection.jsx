@@ -207,7 +207,7 @@ const CourseSection = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1">
                   <Zap className={`w-4 h-4 ${
-                    isLocked ? 'text-gray-400' : 'text-yellow-500'
+                    isLocked ? 'text-muted-foreground' : 'text-yellow-500'
                   }`} />
                   <span className={`text-sm font-medium ${
                     isLocked ? 'text-muted-foreground/70' : 'text-foreground'

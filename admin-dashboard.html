@@ -3694,6 +3694,7 @@
             // If lesson has a database ID, delete from database
             if (databaseId && databaseId.trim() !== '') {
                 try {
+                    const client = supabaseAdmin || supabase;
                     const { error } = await client
                         .from('lessons')
                         .delete()
@@ -6261,127 +6262,128 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     return;
                 }
                 
-                // Add each material as content
-                materials.forEach((material, index) => {
+                // Add each material as content synchronously
+                for (let index = 0; index < materials.length; index++) {
+                    const material = materials[index];
+                    
                     // Click the existing Add Content button in this lesson item
                     const addMaterialBtn = lessonContainer.querySelector('button[onclick^="addLessonContent"]');
                     if (addMaterialBtn) {
                         addMaterialBtn.click();
                         
+                        // Wait for DOM to update
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                        
                         // Get the last added content item
-                        setTimeout(() => {
-                            const contentItems = contentContainer.querySelectorAll('.content-item');
-                            const lastContentItem = contentItems[contentItems.length - 1];
+                        const contentItems = contentContainer.querySelectorAll('.content-item');
+                        const lastContentItem = contentItems[contentItems.length - 1];
+                        
+                        if (lastContentItem) {
+                            console.log(`📝 Populating material ${index + 1}:`, material);
                             
-                            if (lastContentItem) {
-                                // Populate material data
-                                const titleInput = lastContentItem.querySelector('.content-title');
-                                const typeSelect = lastContentItem.querySelector('.content-type');
+                            // Populate material data
+                            const titleInput = lastContentItem.querySelector('.content-title');
+                            const typeSelect = lastContentItem.querySelector('.content-type');
+                            
+                            if (titleInput) titleInput.value = `Material ${index + 1}`;
+                            if (typeSelect) {
+                                const materialType = (material.type || 'text').toLowerCase();
+                                typeSelect.value = materialType;
                                 
-                                if (titleInput) titleInput.value = `Material ${index + 1}`;
-                                if (typeSelect) {
-                                    const materialType = (material.type || 'text').toLowerCase();
-                                    typeSelect.value = materialType;
-                                    updateContentFields(typeSelect);
-                                    
-                                    // Populate type-specific fields
-                                    setTimeout(() => {
-                                        const fieldsContainer = lastContentItem.querySelector('.content-fields');
-                                        if (fieldsContainer) {
-                                            // Parse content data
-                                            let contentData = {};
-                                            if (material.content) {
-                                                if (typeof material.content === 'string') {
-                                                    try {
-                                                        contentData = JSON.parse(material.content);
-                                                    } catch (e) {
-                                                        if (materialType === 'text') {
-                                                            contentData = { text: material.content };
-                                                        }
-                                                    }
-                                                } else {
-                                                    contentData = material.content;
+                                // Trigger the change event to update fields
+                                const changeEvent = new Event('change', { bubbles: true });
+                                typeSelect.dispatchEvent(changeEvent);
+                                
+                                // Wait for fields to update
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                
+                                // Populate type-specific fields
+                                const fieldsContainer = lastContentItem.querySelector('.content-fields');
+                                if (fieldsContainer) {
+                                    // Parse content data
+                                    let contentData = {};
+                                    if (material.content) {
+                                        if (typeof material.content === 'string') {
+                                            try {
+                                                contentData = JSON.parse(material.content);
+                                            } catch (e) {
+                                                if (materialType === 'text') {
+                                                    contentData = { text: material.content };
                                                 }
                                             }
-                                            if (!contentData || Object.keys(contentData).length === 0) {
-                                                contentData = material.metadata || {};
-                                            }
-                                            
-                                            // Populate based on material type
-                                            switch (materialType) {
-                                                case 'text':
-                                                    const textArea = fieldsContainer.querySelector('textarea');
-                                                    if (textArea) textArea.value = typeof material.content === 'string' ? material.content : (contentData.text || contentData.content || '');
-                                                    break;
-                                                case 'video':
-                                                    const videoDuration = fieldsContainer.querySelector('.content-duration');
-                                                    const videoDesc = fieldsContainer.querySelector('.content-description');
-                                                    if (videoDuration) videoDuration.value = contentData.duration || '';
-                                                    if (videoDesc) videoDesc.value = contentData.description || '';
-                                                    break;
-                                                case 'audio':
-                                                    const audioDuration = fieldsContainer.querySelector('.content-duration');
-                                                    const transcript = fieldsContainer.querySelector('.content-transcript');
-                                                    if (audioDuration) audioDuration.value = contentData.duration || '';
-                                                    if (transcript) transcript.value = contentData.transcript || '';
-                                                    break;
-                                                case 'pdf':
-                                                    const pages = fieldsContainer.querySelector('.content-pages');
-                                                    const synonym = fieldsContainer.querySelector('.content-synonym');
-                                                    const instructions = fieldsContainer.querySelector('.content-instructions');
-                                                    if (pages) pages.value = contentData.page_range || '';
-                                                    if (synonym) synonym.value = contentData.synonym || '';
-                                                    if (instructions) instructions.value = contentData.instructions || '';
-                                                    break;
-                                                case 'quiz':
-                                                    const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
-                                                    const questions = fieldsContainer.querySelector('input[placeholder*="questions"]');
-                                                    if (quizTitle) quizTitle.value = contentData.title || '';
-                                                    if (questions) questions.value = contentData.questions || '';
-                                                    break;
-                                                case 'image':
-                                                    const altInput = fieldsContainer.querySelector('.content-alt');
-                                                    const captionInput = fieldsContainer.querySelector('.content-caption');
-                                                    if (altInput) altInput.value = contentData.alt_text || '';
-                                                    if (captionInput) captionInput.value = contentData.caption || '';
-                                                    
-                                                    // Show preview of existing image if we have a url
-                                                    if (material.url) {
-                                                        let preview = fieldsContainer.querySelector('.image-loaded-preview');
-                                                        if (!preview) {
-                                                            preview = document.createElement('div');
-                                                            preview.className = 'image-loaded-preview mt-2';
-                                                            preview.innerHTML = `<img class="max-h-40 rounded border" alt="Image preview" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">`;
-                                                            fieldsContainer.appendChild(preview);
-                                                        }
-                                                        const imgEl = preview.querySelector('img');
-                                                        if (imgEl) imgEl.src = material.url;
-                                                    } else {
-                                                        // If no URL in database, check Supabase storage for existing image
-                                                        setTimeout(async () => {
-                                                            try {
-                                                                const lessonItem = lastContentItem.closest('.lesson-item');
-                                                                const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
-                                                                if (lessonId) {
-                                                                    await checkAndLoadExistingImage(lessonId, index, lastContentItem);
-                                                                }
-                                                            } catch (error) {
-                                                                console.error('Error loading existing image from storage:', error);
-                                                            }
-                                                        }, 300);
-                                                    }
-                                                    break;
-                                            }
+                                        } else {
+                                            contentData = material.content;
                                         }
-                                    }, 200);
+                                    }
+                                    if (!contentData || Object.keys(contentData).length === 0) {
+                                        contentData = material.metadata || {};
+                                    }
+                                    
+                                    console.log(`📄 Content data for material ${index + 1}:`, contentData);
+                                    
+                                    // Populate based on material type
+                                    switch (materialType) {
+                                        case 'text':
+                                            const textArea = fieldsContainer.querySelector('textarea');
+                                            if (textArea) {
+                                                const textContent = typeof material.content === 'string' ? material.content : (contentData.text || contentData.content || '');
+                                                textArea.value = textContent;
+                                                console.log('✅ Text content populated:', textContent);
+                                            }
+                                            break;
+                                        case 'video':
+                                            const videoDuration = fieldsContainer.querySelector('.content-duration');
+                                            const videoDesc = fieldsContainer.querySelector('.content-description');
+                                            if (videoDuration) videoDuration.value = contentData.duration || '';
+                                            if (videoDesc) videoDesc.value = contentData.description || '';
+                                            break;
+                                        case 'audio':
+                                            const audioDuration = fieldsContainer.querySelector('.content-duration');
+                                            const transcript = fieldsContainer.querySelector('.content-transcript');
+                                            if (audioDuration) audioDuration.value = contentData.duration || '';
+                                            if (transcript) transcript.value = contentData.transcript || '';
+                                            break;
+                                        case 'pdf':
+                                            const pages = fieldsContainer.querySelector('.content-pages');
+                                            const synonym = fieldsContainer.querySelector('.content-synonym');
+                                            const instructions = fieldsContainer.querySelector('.content-instructions');
+                                            if (pages) pages.value = contentData.page_range || '';
+                                            if (synonym) synonym.value = contentData.synonym || '';
+                                            if (instructions) instructions.value = contentData.instructions || '';
+                                            break;
+                                        case 'quiz':
+                                            const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
+                                            const questions = fieldsContainer.querySelector('input[placeholder*="questions"]');
+                                            if (quizTitle) quizTitle.value = contentData.title || '';
+                                            if (questions) questions.value = contentData.questions || '';
+                                            break;
+                                        case 'image':
+                                            const altInput = fieldsContainer.querySelector('.content-alt');
+                                            const captionInput = fieldsContainer.querySelector('.content-caption');
+                                            if (altInput) altInput.value = contentData.alt_text || '';
+                                            if (captionInput) captionInput.value = contentData.caption || '';
+                                            
+                                            // Show preview of existing image if we have a url
+                                            if (material.url) {
+                                                let preview = fieldsContainer.querySelector('.image-loaded-preview');
+                                                if (!preview) {
+                                                    preview = document.createElement('div');
+                                                    preview.className = 'image-loaded-preview mt-2';
+                                                    preview.innerHTML = `<img class="max-h-40 rounded border" alt="Image preview" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">`;
+                                                    fieldsContainer.appendChild(preview);
+                                                }
+                                                const imgEl = preview.querySelector('img');
+                                                if (imgEl) imgEl.src = material.url;
+                                            }
+                                            break;
+                                    }
                                 }
                             }
-                        }, 100 * (index + 1)); // Stagger the population to avoid DOM conflicts
+                        }
                     }
-                });
-
-                // Wait for all materials to be populated
-                await new Promise(resolve => setTimeout(resolve, 350 + (materials.length * 100)));
+                }
+                
+                console.log('✅ All materials populated successfully');
                 return true;
                 
             } catch (error) {
