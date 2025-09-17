@@ -111,8 +111,7 @@ async function testUserProfileOperations() {
     const { data: insertData, error: insertError } = await supabase
       .from('user_profiles')
       .insert([testProfile])
-      .select()
-      .single();
+      .select();
     
     if (insertError) {
       console.error('❌ Insert operation failed:', insertError);
@@ -122,13 +121,14 @@ async function testUserProfileOperations() {
         console.log('✅ Insert failed due to RLS policy (expected for test user)');
       }
     } else {
+      const insertedRow = Array.isArray(insertData) ? insertData[0] : insertData;
       console.log('✅ Insert operation successful');
       
       // Clean up test record
       await supabase
         .from('user_profiles')
         .delete()
-        .eq('id', testProfile.id);
+        .eq('id', insertedRow?.id ?? testProfile.id);
       console.log('✅ Test record cleaned up');
     }
     

@@ -279,3 +279,45 @@ class DatabaseSyncService {
 // Create and export singleton instance
 const databaseSyncService = new DatabaseSyncService();
 export default databaseSyncService;
+
+export const getOrCreateUserProfileId = async (supabase) => {
+  console.log('🔎 [DBSync] Resolving user profile id...');
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr) {
+    console.warn('⚠️ [DBSync] getUser error:', authErr);
+  }
+  if (!user) {
+    console.log('ℹ️ [DBSync] No authenticated user');
+    return null;
+  }
+
+  const { data: rows, error } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.warn('⚠️ [DBSync] user_profiles lookup error:', error?.message || error);
+  }
+
+  const profile = Array.isArray(rows) ? rows[0] : rows;
+  if (profile?.id) {
+    console.log('✅ [DBSync] Found profile id:', profile.id);
+    return profile.id;
+  }
+
+  console.log('➕ [DBSync] Creating profile for user:', user.id);
+  const { data: createdRows, error: createErr } = await supabase
+    .from('user_profiles')
+    .insert([{ user_id: user.id, email: user.email || null }])
+    .select('id');
+  if (createErr) {
+    console.warn('⚠️ [DBSync] Failed to create profile:', createErr?.message || createErr);
+    return null;
+  }
+  const created = Array.isArray(createdRows) ? createdRows[0] : createdRows;
+  console.log('✅ [DBSync] Created profile id:', created?.id);
+  return created?.id ?? null;
+};

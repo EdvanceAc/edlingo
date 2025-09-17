@@ -1,19 +1,14 @@
 {
   "mcpServers": {
-    "supabase": {
+    "supabase_EdLingo": {
       "command": "npx",
       "args": [
         "-y",
         "@supabase/mcp-server-supabase@latest",
-        "--project-ref",
-        "${env:SUPABASE_PROJECT_REF}",
         "--access-token",
-        "${env:SUPABASE_ACCESS_TOKEN}"
+        "sbp_97957041030c8bfb7583c8b7114568a1c004e30c"
       ],
-      "env": {
-        "SUPABASE_ACCESS_TOKEN": "${env:SUPABASE_ACCESS_TOKEN}",
-        "SUPABASE_PROJECT_REF": "${env:SUPABASE_PROJECT_REF}"
-      }
+      "env": {}
     }
   }
 }

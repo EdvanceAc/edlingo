@@ -87,23 +87,22 @@ export function ProgressProvider({ children }) {
            .select('user_id,total_xp,current_level,daily_streak,daily_goal,daily_progress,last_study_date,lessons_completed,pronunciation_accuracy,chat_messages,achievements,language,created_at,updated_at')
            .eq('user_id', user.id)
            .order('updated_at', { ascending: false })
-           .limit(1)
-           .single();
+           .limit(1);
         
-        if (error && error.code !== 'PGRST116') throw error;
-        if (data) {
-          setUserProgress(prev => ({ ...prev, ...mapToJS(data) }));
+        if (error) throw error;
+        if (Array.isArray(data) && data.length > 0) {
+          setUserProgress(prev => ({ ...prev, ...mapToJS(data[0]) }));
         } else {
           // Get user's preferred language from profile
           let userLanguage = 'en'; // Default fallback
           try {
-            const { data: profileData } = await supabase
+            const { data: profileRows } = await supabase
               .from('user_profiles')
               .select('preferred_language')
               .eq('user_id', user.id)
-              .single();
-            if (profileData?.preferred_language) {
-              userLanguage = profileData.preferred_language;
+              .limit(1);
+            if (Array.isArray(profileRows) && profileRows[0]?.preferred_language) {
+              userLanguage = profileRows[0].preferred_language;
             }
           } catch (profileError) {
             console.warn('Could not fetch user language preference, using default:', profileError);
@@ -173,11 +172,10 @@ export function ProgressProvider({ children }) {
             .select('user_id,total_xp,current_level,daily_streak,daily_goal,daily_progress,last_study_date,lessons_completed,pronunciation_accuracy,chat_messages,achievements,language,created_at,updated_at')
             .eq('user_id', user.id)
             .order('updated_at', { ascending: false })
-            .limit(1)
-            .single();
+            .limit(1);
           
-          if (data && !error) {
-            setUserProgress(prev => ({ ...prev, ...mapToJS(data) }));
+          if (Array.isArray(data) && data.length > 0 && !error) {
+            setUserProgress(prev => ({ ...prev, ...mapToJS(data[0]) }));
           }
         } catch (error) {
           console.warn('Progress polling error:', error);

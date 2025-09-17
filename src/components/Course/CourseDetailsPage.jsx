@@ -29,6 +29,8 @@ import AuthContext from '../../renderer/contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const CourseDetailsPage = () => {
+  console.log('🚀 CourseDetailsPage component is being rendered!');
+  
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
@@ -37,15 +39,24 @@ const CourseDetailsPage = () => {
   const [error, setError] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [loadingLessons, setLoadingLessons] = useState(false);
+  const [activeLesson, setActiveLesson] = useState(null);
+  const [activeMaterials, setActiveMaterials] = useState([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
 
   useEffect(() => {
+    console.log('CourseDetailsPage useEffect triggered with courseId:', courseId);
+    console.log('Current URL params:', { courseId });
     if (courseId) {
+      document.title = `Course Details - ${courseId} | EdLingo`;
       fetchCourseDetails();
       fetchLessons();
+    } else {
+      console.log('No courseId found in URL params');
     }
   }, [courseId]);
 
   const fetchCourseDetails = async () => {
+    console.log('🎯 Fetching course details for courseId:', courseId);
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -53,6 +64,9 @@ const CourseDetailsPage = () => {
         .select('*')
         .eq('id', courseId)
         .single();
+
+      console.log('📖 Course data:', data);
+      console.log('❌ Course error:', error);
 
       if (error) {
         console.error('Error fetching course details:', error);
@@ -69,101 +83,328 @@ const CourseDetailsPage = () => {
     }
   };
 
-  const fetchLessons = async () => {
-    if (!courseId) return;
-    
-    setLoadingLessons(true);
+  // Ensure there is a user_profiles row for the current auth user and return its id
+  const ensureUserProfileId = async () => {
     try {
-      // Get current user profile
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('No authenticated user found');
-        return;
-      }
+      if (!user) return null;
 
-      // Get user profile ID
-      const { data: userProfile } = await supabase
+      // Try lookup (handle duplicates gracefully)
+      const { data: profiles, error: profileErr } = await supabase
         .from('user_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .order('created_at', { ascending: true })
+        .limit(1);
 
-      if (!userProfile) {
-        console.error('User profile not found');
-        return;
+      if (profileErr) {
+        console.warn('Failed to fetch user profile:', profileErr.message);
       }
 
-      // Fetch terms for this course
-      const { data: terms, error: termsError } = await supabase
-        .from('terms')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('order_number', { ascending: true });
+      const profile = Array.isArray(profiles) ? profiles[0] : profiles;
+      if (profile?.id) return profile.id;
 
-      if (termsError) {
-        console.error('Error fetching terms:', termsError);
-        return;
+      // Create a minimal profile if missing (RLS should allow insert for auth user)
+      const { data: createdRows, error: createErr } = await supabase
+        .from('user_profiles')
+        .insert([{ user_id: user.id, email: user.email || null }])
+        .select('id');
+
+      if (createErr) {
+        console.warn('Failed to create user profile:', createErr.message);
+        return null;
       }
+      const created = Array.isArray(createdRows) ? createdRows[0] : createdRows;
+      return created?.id ?? null;
+    } catch (e) {
+      console.warn('ensureUserProfileId error:', e?.message || e);
+      return null;
+    }
+  };
 
-      // Fetch lessons for each term with completion status
-      const allLessons = [];
-      for (const term of terms || []) {
-        const { data: termLessons, error: lessonsError } = await supabase
-          .from('lessons')
-          .select(`
-            *,
-            user_lesson_progress!inner(
-              completed_at,
-              xp_earned,
-              time_spent_minutes
-            )
-          `)
-          .eq('term_id', term.id)
-          .eq('user_lesson_progress.user_id', userProfile.id)
-          .order('order_number', { ascending: true });
+  const fetchLessons = async () => {
+    if (!courseId) {
+      console.log('❌ No courseId provided to fetchLessons');
+      return;
+    }
 
-        // Also fetch lessons without progress to show locked/incomplete lessons
-        const { data: allTermLessons, error: allLessonsError } = await supabase
-          .from('lessons')
-          .select('*')
-          .eq('term_id', term.id)
-          .order('order_number', { ascending: true });
+    console.log('🔍 Fetching lessons for course ID:', courseId);
+    console.log('🔍 Course ID type:', typeof courseId);
+    setLoadingLessons(true);
 
-        if (!allLessonsError && allTermLessons) {
-          // Get completed lesson IDs
-          const completedLessonIds = new Set(
-            (termLessons || []).map(lesson => lesson.id)
-          );
+    try {
+      // Helper to process lessons + progress into UI model
+      const buildLessonsWithProgress = (baseLessons, lessonProgress) => {
+        const built = [];
+        (baseLessons || []).forEach((lesson, index) => {
+          const progress = (lessonProgress || []).find(p => p.lesson_id === lesson.id);
+          const isCompleted = !!progress?.completed_at;
+          const globalOrder = index + 1;
+          const previousLesson = index > 0 ? built[index - 1] : null;
+          const isLocked = globalOrder > 1 && previousLesson && !previousLesson.isCompleted;
 
-          allTermLessons.forEach((lesson, index) => {
-            const completedLesson = termLessons?.find(cl => cl.id === lesson.id);
-            const isCompleted = completedLessonIds.has(lesson.id);
-            const globalOrder = allLessons.length + index + 1;
-            
-            // Simple logic: first lesson is unlocked, subsequent lessons unlock after previous is completed
-            const isLocked = globalOrder > 1 && !allLessons[globalOrder - 2]?.isCompleted;
-
-            allLessons.push({
-              ...lesson,
-              termName: term.name,
-              globalOrder,
-              isCompleted,
-              isLocked,
-              xpReward: completedLesson?.user_lesson_progress?.[0]?.xp_earned || 75,
-              estimatedTime: completedLesson?.user_lesson_progress?.[0]?.time_spent_minutes 
-                ? `${completedLesson.user_lesson_progress[0].time_spent_minutes} min`
-                : `${8 + Math.floor(Math.random() * 12)} min`
-            });
+          built.push({
+            id: lesson.id,
+            name: lesson.name || lesson.title || `Lesson ${globalOrder}`,
+            title: lesson.title || lesson.name,
+            description: lesson.description || lesson.content?.description || '',
+            termName: lesson.termName || lesson.term_name || '',
+            level: lesson.level || lesson.content?.level || '',
+            globalOrder,
+            isCompleted,
+            isLocked,
+            xpReward: progress?.xp_earned || 75,
+            estimatedTime: progress?.time_spent_minutes 
+              ? `${progress.time_spent_minutes} min`
+              : `${8 + Math.floor(Math.random() * 12)} min`
           });
-        }
+        });
+        return built;
+      };
+
+      // Get or create user profile id (for progress mapping)
+      const userProfileId = await ensureUserProfileId();
+
+      // Fetch lessons using Supabase client (env-configured)
+      let courseLessons = [];
+      let lessonProgress = [];
+
+      const { data: terms, error: termErr } = await supabase
+        .from('terms')
+        .select('id, description, order_number')
+        .eq('course_id', courseId);
+
+      if (termErr) {
+        console.error('Error fetching terms for course:', termErr);
       }
 
+      const termIds = (terms || []).map(t => t.id);
+      if (termIds.length) {
+        const { data: lessonRows, error: lessonsErr } = await supabase
+          .from('lessons')
+          .select('id, term_id, title, description, order_number, content')
+          .in('term_id', termIds)
+          .order('order_number', { ascending: true });
+
+        if (lessonsErr) {
+          console.error('Error fetching lessons:', lessonsErr);
+        }
+        courseLessons = lessonRows || [];
+      }
+
+      if (userProfileId && courseLessons.length) {
+        const { data: progressRows, error: progressError } = await supabase
+          .from('user_lesson_progress')
+          .select('*')
+          .eq('user_id', userProfileId)
+          .in('lesson_id', courseLessons.map(l => l.id));
+        if (progressError) {
+          console.error('Error fetching lesson progress:', progressError);
+        }
+        lessonProgress = progressRows || [];
+      }
+
+      console.log('📚 Raw lessons data (normalized):', courseLessons);
+      const allLessons = buildLessonsWithProgress(courseLessons, lessonProgress);
       setLessons(allLessons);
+      return allLessons;
     } catch (err) {
       console.error('Exception fetching lessons:', err);
     } finally {
       setLoadingLessons(false);
     }
+  };
+
+  // Try to resolve a usable URL for a material that may reference Supabase Storage
+  const resolveMaterialUrl = async (material, lessonCtx) => {
+    try {
+      const rawUrl = material?.url || '';
+      let metadata = material?.metadata || {};
+      if (typeof metadata === 'string') {
+        try { metadata = JSON.parse(metadata); } catch (_) { metadata = {}; }
+      }
+      
+      // 1) Already absolute URL
+      if (typeof rawUrl === 'string' && /^(https?:)?\/\//i.test(rawUrl)) {
+        return rawUrl;
+      }
+
+      // 2) Data URL (e.g., base64 image)
+      if (typeof rawUrl === 'string' && rawUrl.startsWith('data:')) {
+        return rawUrl;
+      }
+
+      // 3) Supabase storage hint in metadata { bucket, path } OR url like "storage://bucket/path" or "bucket/path"
+      let bucket = metadata.bucket || null;
+      let path = metadata.path || null;
+
+      if (!bucket || !path) {
+        const storageLike = typeof rawUrl === 'string' ? rawUrl.replace(/^storage:\/\//, '') : '';
+        if (storageLike && storageLike.includes('/')) {
+          const parts = storageLike.split('/');
+          bucket = bucket || parts.shift();
+          path = path || parts.join('/');
+        }
+      }
+
+      if (bucket && path) {
+        // Prefer public URL if available
+        try {
+          const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
+          if (pub?.publicUrl) return pub.publicUrl;
+        } catch (_) { /* ignore */ }
+
+        // Fallback to signed URL
+        try {
+          const { data: signed, error: signErr } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+          if (!signErr && signed?.signedUrl) return signed.signedUrl;
+        } catch (e) {
+          console.warn('Failed to create signed URL:', e?.message || e);
+        }
+      }
+
+       // 3b) PRIORITIZE directory scanning over guessing - scan all course folders first
+       const lessonId = lessonCtx?.id;
+       const lessonOrder = lessonCtx?.globalOrder || lessonCtx?.order_number;
+       const lessonSlug = lessonOrder ? `lesson_${lessonOrder}` : 'lesson_1';
+       
+       // Try to find the image by scanning all directories for lesson folders
+       try {
+         console.log('🔍 Scanning course-materials for lesson:', lessonSlug);
+         const { data: roots, error: rootErr } = await supabase.storage.from('course-materials').list('', { limit: 100 });
+         if (!rootErr && Array.isArray(roots)) {
+           for (const dir of roots) {
+             if (!dir || !dir.name) continue;
+             const probePrefix = `${dir.name}/${lessonSlug}`;
+             console.log('🔍 Checking directory:', probePrefix);
+             const { data: files, error: filesErr } = await supabase.storage.from('course-materials').list(probePrefix, { limit: 100 });
+             if (!filesErr && Array.isArray(files) && files.length) {
+               console.log('📁 Found files in', probePrefix, ':', files.map(f => f.name));
+               const file = files.find(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f.name)) || files[0];
+               if (file) {
+                 const p = `${probePrefix}/${file.name}`;
+                 console.log('✅ Using image path:', p);
+                 const { data: pub } = await supabase.storage.from('course-materials').getPublicUrl(p);
+                 if (pub?.publicUrl) return pub.publicUrl;
+                 const { data: signed } = await supabase.storage.from('course-materials').createSignedUrl(p, 3600);
+                 if (signed?.signedUrl) return signed.signedUrl;
+               }
+             }
+           }
+         }
+       } catch (e) {
+         console.warn('Directory scan failed:', e);
+       }
+
+       // 3c) Fallback to guessing paths if directory scan didn't work
+       const candidateBuckets = ['course-materials','lesson-materials','lesson_materials','lesson-assets','lesson_assets','lessons','public','assets','edlingo','images','content','uploads'];
+       const filenames = [metadata.filename, metadata.name, metadata.file, metadata.key].filter(Boolean);
+       const exts = ['png','jpg','jpeg','webp','gif'];
+       const candidatePaths = [];
+       // rawUrl might actually be a relative path like folder/file.ext
+       if (rawUrl && typeof rawUrl === 'string' && !rawUrl.startsWith('data:')) candidatePaths.push(rawUrl.replace(/^\/?/, ''));
+       const courseSlug = (lessonCtx?.courseTitle || lessonCtx?.courseName || lessonCtx?.courseSlug || '').toString().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+
+       filenames.forEach((f)=>{
+         if (typeof f === 'string') {
+           candidatePaths.push(`${lessonId}/${f}`);
+           if (courseSlug) candidatePaths.push(`${courseSlug}/${lessonSlug}/${f}`);
+         }
+       });
+       exts.forEach((ext)=>{
+         candidatePaths.push(`${lessonId}.${ext}`);
+         candidatePaths.push(`${lessonId}/image.${ext}`);
+         candidatePaths.push(`images/${lessonId}.${ext}`);
+         candidatePaths.push(`lesson-images/${lessonId}.${ext}`);
+         if (courseSlug) {
+           candidatePaths.push(`${courseSlug}/${lessonSlug}/image.${ext}`);
+           candidatePaths.push(`${courseSlug}/${lessonSlug}/${lessonSlug}.${ext}`);
+           candidatePaths.push(`${courseSlug}/${lessonSlug}/${lessonId}.${ext}`);
+         }
+       });
+
+       for (const b of candidateBuckets) {
+         for (const p of candidatePaths) {
+           try {
+             const { data: pub } = supabase.storage.from(b).getPublicUrl(p);
+             if (pub?.publicUrl) return pub.publicUrl;
+           } catch (_) {}
+           try {
+             const { data: signed, error: signErr } = await supabase.storage.from(b).createSignedUrl(p, 3600);
+             if (!signErr && signed?.signedUrl) return signed.signedUrl;
+           } catch (_) {}
+         }
+       }
+
+
+      // 4) Last resort: return as-is; renderer will show fallback link/placeholder
+      return rawUrl || '';
+    } catch (e) {
+      console.warn('resolveMaterialUrl error:', e?.message || e);
+      return material?.url || '';
+    }
+  };
+
+  const fetchLessonMaterials = async (lessonId) => {
+    setLoadingMaterials(true);
+    try {
+      let materials = [];
+      console.log('🔍 Fetching materials for lesson:', lessonId);
+      
+      const { data, error } = await supabase
+        .from('lesson_materials')
+        .select('id,type,url,content,metadata')
+        .eq('lesson_id', lessonId);
+      
+      if (error) {
+        console.error('Error fetching lesson materials:', error);
+      } else {
+        materials = data || [];
+        // Resolve URLs for any storage-backed assets
+        const resolved = await Promise.all(
+          materials.map(async (m) => ({
+            ...m,
+            resolvedUrl: await resolveMaterialUrl(m, {
+              id: lessonId,
+              globalOrder: activeLesson?.globalOrder,
+              order_number: activeLesson?.order_number,
+              courseTitle: course?.title || course?.name,
+              courseSlug: (course?.title || course?.name || '').toLowerCase()
+            })
+          }))
+        );
+        materials = resolved;
+        console.log('📚 Fetched materials:', materials);
+        
+        // Log each material for debugging
+        materials.forEach((m, idx) => {
+          console.log(`Material ${idx + 1}:`, {
+            id: m.id,
+            type: m.type,
+            url: m.url,
+            resolvedUrl: m.resolvedUrl,
+            hasContent: !!m.content,
+            metadata: m.metadata
+          });
+        });
+      }
+      
+      setActiveMaterials(materials);
+    } catch (err) {
+      console.error('Exception fetching materials:', err);
+    } finally {
+      setLoadingMaterials(false);
+    }
+  };
+
+  const startLesson = async (lesson) => {
+    setActiveLesson(lesson);
+    await fetchLessonMaterials(lesson.id);
+    // Smooth scroll to the viewer section
+    setTimeout(() => {
+      const el = document.getElementById('current-lesson-viewer');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   };
 
   const formatDuration = (weeks, hoursPerWeek) => {
@@ -185,23 +426,41 @@ const CourseDetailsPage = () => {
 
   const completeLesson = async (lessonId, xpEarned = 75, timeSpent = 10) => {
     try {
-      // Get current user profile
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Ensure we have a profile id
+      const userProfileId = await ensureUserProfileId();
+      
+      // Optimistically update local state to unlock the next lesson even if DB write fails (due to RLS etc.)
+      setLessons(prev => {
+        const copy = [...prev];
+        // mark completed
+        for (let i = 0; i < copy.length; i++) {
+          if (copy[i].id === lessonId) {
+            copy[i] = { ...copy[i], isCompleted: true };
+            break;
+          }
+        }
+        // recompute locks sequentially - fix the logic here
+        return copy.map((lesson, idx) => {
+          // First lesson is never locked
+          if (idx === 0) {
+            return { ...lesson, isLocked: false };
+          }
+          
+          // For subsequent lessons, check if the previous lesson is completed
+          const previousLesson = copy[idx - 1];
+          const isLocked = !previousLesson.isCompleted;
+          
+          return { ...lesson, isLocked };
+        });
+      });
 
-      const { data: userProfile } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!userProfile) return;
+      if (!userProfileId) return true;
 
       // Insert or update lesson progress
       const { error } = await supabase
         .from('user_lesson_progress')
         .upsert({
-          user_id: userProfile.id,
+          user_id: userProfileId,
           lesson_id: lessonId,
           xp_earned: xpEarned,
           time_spent_minutes: timeSpent,
@@ -213,13 +472,15 @@ const CourseDetailsPage = () => {
 
       if (error) {
         console.error('Error completing lesson:', error);
-        return;
+        return true;
       }
 
       // Refresh lessons to show updated progress
-      await fetchLessons();
+      const refreshedLessons = await fetchLessons();
+      return refreshedLessons; // Return the updated lessons array
     } catch (err) {
       console.error('Exception completing lesson:', err);
+      return false;
     }
   };
 
@@ -353,7 +614,13 @@ const CourseDetailsPage = () => {
                       )}
                     </div>
                     
-                    <Button className="w-full mb-4">
+                    <Button
+                      className="w-full mb-4"
+                      onClick={() => {
+                        const firstAvailable = lessons.find(l => !l.isLocked) || lessons[0];
+                        if (firstAvailable) startLesson(firstAvailable);
+                      }}
+                    >
                       {course.price > 0 ? 'Enroll Now' : 'Start Learning'}
                     </Button>
                     
@@ -548,7 +815,7 @@ const CourseDetailsPage = () => {
                                               size="sm" 
                                               variant={isCurrent ? "default" : "outline"}
                                               className="flex items-center gap-1"
-                                              onClick={() => completeLesson(lesson.id, lesson.xpReward, Math.floor(Math.random() * 15) + 5)}
+                                              onClick={() => startLesson(lesson)}
                                             >
                                               {isCompleted ? 'Review' : 'Start'}
                                               <ChevronRight className="w-4 h-4" />
@@ -577,6 +844,100 @@ const CourseDetailsPage = () => {
                 </CardContent>
               </Card>
             </motion.div>
+            {/* Active Lesson Viewer */}
+            {activeLesson && (
+              <motion.div
+                id="current-lesson-viewer"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Play className="w-5 h-5 text-blue-500" />
+                      {activeLesson.title || activeLesson.name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingMaterials ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <span className="ml-2 text-muted-foreground">Loading materials...</span>
+                      </div>
+                    ) : activeMaterials.length ? (
+                      <div className="space-y-4">
+                        {activeMaterials.map((m) => (
+                          <div key={m.id} className="border rounded-lg p-4">
+                            <div className="text-sm text-muted-foreground mb-2">{m.type || 'material'}</div>
+                            {(m.resolvedUrl || m.url) ? (
+                              m.type === 'video' ? (
+                                <video controls className="w-full max-h-[420px]"><source src={m.resolvedUrl || m.url} /></video>
+                              ) : m.type === 'audio' ? (
+                                <audio controls className="w-full"><source src={m.resolvedUrl || m.url} /></audio>
+                              ) : m.type === 'image' ? (
+                                <img 
+                                  src={m.resolvedUrl || m.url} 
+                                  alt={m.metadata?.alt || 'Lesson image'} 
+                                  className="w-full max-h-[420px] object-contain rounded"
+                                  onError={(e) => {
+                                    console.error('Failed to load image:', m.resolvedUrl || m.url);
+                                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHRleHQtYW5jaG9yPSJtaWRkbGUiIHg9IjIwMCIgeT0iMTUwIiBzdHlsZT0iZmlsbDojYWFhO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1zaXplOjE5cHg7Zm9udC1mYW1pbHk6QXJpYWwsSGVsdmV0aWNhLHNhbnMtc2VyaWY7ZG9taW5hbnQtYmFzZWxpbmU6Y2VudHJhbCI+SW1hZ2UgTm90IEZvdW5kPC90ZXh0Pjwvc3ZnPg==';
+                                  }}
+                                />
+                              ) : (
+                                <a href={m.resolvedUrl || m.url} target="_blank" rel="noreferrer" className="text-primary underline">Open file</a>
+                              )
+                            ) : null}
+                            {m.content && (
+                              <div className="prose dark:prose-invert mt-2 text-foreground text-sm whitespace-pre-wrap">{typeof m.content === 'string' ? m.content : JSON.stringify(m.content, null, 2)}</div>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Completion Controls */}
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="text-sm text-muted-foreground">
+                            Lesson {activeLesson.globalOrder} of {lessons.length}
+                          </div>
+                          <Button
+                            onClick={async () => {
+                              // award random small xp/time to simulate for now
+                              const updated = await completeLesson(activeLesson.id, activeLesson.xpReward, Math.floor(Math.random() * 15) + 5);
+                              
+                              // If completeLesson returned false (error), don't continue
+                              if (!updated || !Array.isArray(updated)) {
+                                console.error('Failed to complete lesson or get updated lessons');
+                                return;
+                              }
+                              
+                              // Find the next unlocked lesson
+                              const currentIdx = updated.findIndex(l => l.id === activeLesson.id);
+                              const next = currentIdx >= 0 ? updated.slice(currentIdx + 1).find(l => !l.isLocked) : null;
+                              
+                              if (next) {
+                                await startLesson(next);
+                              } else {
+                                // no next lesson; collapse viewer
+                                setActiveLesson(null);
+                              }
+                            }}
+                          >
+                            Mark Complete
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <BookOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+                        <h4 className="text-md font-medium text-foreground mb-2">No Materials</h4>
+                        <p className="text-muted-foreground text-sm">This lesson has no attached materials yet.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
 
           {/* Sidebar */}

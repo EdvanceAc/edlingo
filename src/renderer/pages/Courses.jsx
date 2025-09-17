@@ -244,12 +244,16 @@ const Courses = () => {
           isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
         }`}
         onClick={() => {
-          if (!isLocked) {
-            navigate(`/courses/${course.id}`);
+          console.log('CourseCard clicked for course:', course.id);
+          if (!course.isUnlocked) {
+            console.log('Course is locked:', course.id);
+            return;
           }
+          console.log('Navigating to course:', `/courses/${course.id}`);
+          navigate(`/courses/${course.id}`);
         }}
-        role={isLocked ? undefined : 'button'}
-        aria-disabled={isLocked}
+        role={!course.isUnlocked ? undefined : 'button'}
+        aria-disabled={!course.isUnlocked}
       >
         <Card className={`h-full transition-all duration-300 ${
           isLocked 

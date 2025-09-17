@@ -8,7 +8,7 @@
  * @param {Object} args - Arguments for the tool
  * @returns {Promise<any>} Tool execution result
  */
-export async function run_mcp(serverName, toolName, args) {
+async function run_mcp(serverName, toolName, args) {
   try {
     // For PostgREST operations, we'll use direct HTTP requests
     if (serverName === 'mcp.config.usrlocalmcp.Postgrest') {
@@ -677,7 +677,7 @@ function getAuthToken() {
  * Set authentication token for API requests
  * @param {string} token - Auth token
  */
-export function setAuthToken(token) {
+function setAuthToken(token) {
   if (token) {
     localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: token }));
   } else {
@@ -688,7 +688,7 @@ export function setAuthToken(token) {
 /**
  * Clear authentication token
  */
-export function clearAuthToken() {
+function clearAuthToken() {
   localStorage.removeItem('supabase.auth.token');
 }
 
@@ -1065,7 +1065,7 @@ async function getPageInfo(baseUrl) {
   return result.result.value;
 }
 
-export default {
+module.exports = {
   run_mcp,
   setAuthToken,
   clearAuthToken

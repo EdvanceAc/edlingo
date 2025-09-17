@@ -220,11 +220,11 @@ class SupabaseService {
         .select('*')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
       
       if (error && error.code !== 'PGRST116' && error.code !== 'PGRST204') throw error;
-      return { success: true, data: data || null };
+      const row = Array.isArray(data) ? data[0] : data;
+      return { success: true, data: row || null };
     } catch (error) {
       console.error('Get progress error:', error);
       return { success: false, error: error.message };
