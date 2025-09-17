@@ -94,7 +94,9 @@ class SupabaseStorageService {
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false,
-          metadata: metadata
+          metadata: metadata,
+          // Critical: ensure correct MIME type stored, prevents ORB on initial cross-origin load
+          contentType: file.type || undefined,
         });
 
       if (error) {

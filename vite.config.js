@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 
 // Plugin to serve admin-dashboard.html at /admin route
-const adminRoutePlugin = () => {
+const adminStaticRoutePlugin = () => {
   return {
     name: 'admin-route',
     configureServer(server) {
@@ -40,8 +40,23 @@ const adminRoutePlugin = () => {
   };
 };
 
+// Custom plugin to serve admin routes to index.html during dev
+function adminRoutePlugin() {
+  return {
+    name: 'admin-route-plugin',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url.startsWith('/admin')) {
+          req.url = '/index.html';
+        }
+        next();
+      });
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), adminRoutePlugin()],
+  plugins: [react(), adminStaticRoutePlugin(), adminRoutePlugin()],
   base: '/',
   publicDir: 'public',
   build: {
@@ -101,12 +116,9 @@ export default defineConfig({
   },
   server: {
     port: 3002,
-    strictPort: true,
-    host: '127.0.0.1',
-    hmr: {
-      host: 'localhost',
-      port: 3002
-    },
+    strictPort: false,
+    host: true,
+    // Removed hardcoded HMR host/port to let Vite infer correct websocket settings
     cors: {
       origin: ['http://localhost:3002', 'http://127.0.0.1:3002', 'file://', 'app://'],
       credentials: true

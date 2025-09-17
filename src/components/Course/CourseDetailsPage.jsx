@@ -89,33 +89,74 @@ const CourseDetailsPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      // Try lookup (handle duplicates gracefully)
-      const { data: profiles, error: profileErr } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1);
-
-      if (profileErr) {
-        console.warn('Failed to fetch user profile:', profileErr.message);
+      // 1) Try lookup by primary key id == auth uid (most reliable)
+      try {
+        const { data: byIdRows, error: byIdErr } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('id', user.id)
+          .limit(1);
+        if (!byIdErr) {
+          const byId = Array.isArray(byIdRows) ? byIdRows[0] : byIdRows;
+          if (byId?.id) return byId.id;
+        }
+      } catch (e) {
+        console.warn('Profile lookup by id failed:', e?.message || e);
       }
 
-      const profile = Array.isArray(profiles) ? profiles[0] : profiles;
-      if (profile?.id) return profile.id;
-
-      // Create a minimal profile if missing (RLS should allow insert for auth user)
-      const { data: createdRows, error: createErr } = await supabase
-        .from('user_profiles')
-        .insert([{ user_id: user.id, email: user.email || null }])
-        .select('id');
-
-      if (createErr) {
-        console.warn('Failed to create user profile:', createErr.message);
-        return null;
+      // 2) Try lookup by user_id column if schema has it
+      try {
+        const { data: byUserIdRows } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        const profile = Array.isArray(byUserIdRows) ? byUserIdRows[0] : byUserIdRows;
+        if (profile?.id) return profile.id;
+      } catch (e) {
+        // If column doesn't exist or is blocked by RLS, continue to RPC path
+        console.warn('Profile lookup by user_id failed (likely harmless):', e?.message || e);
       }
-      const created = Array.isArray(createdRows) ? createdRows[0] : createdRows;
-      return created?.id ?? null;
+
+      // 3) Create profile via SECURITY DEFINER RPC (bypasses RLS)
+      try {
+        const fullName = user.user_metadata?.full_name || user.user_metadata?.name || null;
+        const { error: rpcError } = await supabase.rpc('create_missing_user_profile', {
+          user_id: user.id,
+          user_email: user.email || null,
+          user_name: fullName,
+        });
+        if (rpcError) {
+          console.warn('RPC create_missing_user_profile failed:', rpcError.message);
+        }
+      } catch (e) {
+        console.warn('RPC call threw:', e?.message || e);
+      }
+
+      // 4) Re-check by id first, then by user_id
+      try {
+        const { data: byIdRows2 } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('id', user.id)
+          .limit(1);
+        const byId2 = Array.isArray(byIdRows2) ? byIdRows2[0] : byIdRows2;
+        if (byId2?.id) return byId2.id;
+      } catch {}
+
+      try {
+        const { data: byUserIdRows2 } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        const profile2 = Array.isArray(byUserIdRows2) ? byUserIdRows2[0] : byUserIdRows2;
+        if (profile2?.id) return profile2.id;
+      } catch {}
+
+      return null;
     } catch (e) {
       console.warn('ensureUserProfileId error:', e?.message || e);
       return null;
@@ -226,6 +267,22 @@ const CourseDetailsPage = () => {
       
       // 1) Already absolute URL
       if (typeof rawUrl === 'string' && /^(https?:)?\/\//i.test(rawUrl)) {
+        // If this is a Supabase Storage public URL, try to derive bucket/path and get a stable URL
+        try {
+          const match = rawUrl.match(/https?:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\/([^/]+)\/(.+)/i);
+          if (match) {
+            const bucketFromUrl = match[1];
+            const pathFromUrl = decodeURIComponent(match[2]);
+            try {
+              const { data: pub } = supabase.storage.from(bucketFromUrl).getPublicUrl(pathFromUrl);
+              if (pub?.publicUrl) return pub.publicUrl;
+            } catch (_) { /* ignore */ }
+            try {
+              const { data: signed } = await supabase.storage.from(bucketFromUrl).createSignedUrl(pathFromUrl, 3600);
+              if (signed?.signedUrl) return signed.signedUrl;
+            } catch (_) { /* ignore */ }
+          }
+        } catch (_) { /* ignore */ }
         return rawUrl;
       }
 
@@ -345,7 +402,7 @@ const CourseDetailsPage = () => {
     }
   };
 
-  const fetchLessonMaterials = async (lessonId) => {
+  const fetchLessonMaterials = async (lessonId, lessonCtxOverride = null) => {
     setLoadingMaterials(true);
     try {
       let materials = [];
@@ -366,10 +423,10 @@ const CourseDetailsPage = () => {
             ...m,
             resolvedUrl: await resolveMaterialUrl(m, {
               id: lessonId,
-              globalOrder: activeLesson?.globalOrder,
-              order_number: activeLesson?.order_number,
-              courseTitle: course?.title || course?.name,
-              courseSlug: (course?.title || course?.name || '').toLowerCase()
+              globalOrder: (lessonCtxOverride?.globalOrder ?? activeLesson?.globalOrder),
+              order_number: (lessonCtxOverride?.order_number ?? activeLesson?.order_number),
+              courseTitle: (lessonCtxOverride?.courseTitle ?? course?.title ?? course?.name),
+              courseSlug: ((lessonCtxOverride?.courseTitle ?? course?.title ?? course?.name ?? '')).toLowerCase()
             })
           }))
         );
@@ -399,7 +456,12 @@ const CourseDetailsPage = () => {
 
   const startLesson = async (lesson) => {
     setActiveLesson(lesson);
-    await fetchLessonMaterials(lesson.id);
+    await fetchLessonMaterials(lesson.id, {
+      id: lesson.id,
+      globalOrder: lesson.globalOrder,
+      order_number: lesson.order_number,
+      courseTitle: course?.title || course?.name
+    });
     // Smooth scroll to the viewer section
     setTimeout(() => {
       const el = document.getElementById('current-lesson-viewer');
@@ -426,58 +488,38 @@ const CourseDetailsPage = () => {
 
   const completeLesson = async (lessonId, xpEarned = 75, timeSpent = 10) => {
     try {
-      // Ensure we have a profile id
+      // Ensure we have a profile id (required for DB write)
       const userProfileId = await ensureUserProfileId();
-      
-      // Optimistically update local state to unlock the next lesson even if DB write fails (due to RLS etc.)
-      setLessons(prev => {
-        const copy = [...prev];
-        // mark completed
-        for (let i = 0; i < copy.length; i++) {
-          if (copy[i].id === lessonId) {
-            copy[i] = { ...copy[i], isCompleted: true };
-            break;
-          }
-        }
-        // recompute locks sequentially - fix the logic here
-        return copy.map((lesson, idx) => {
-          // First lesson is never locked
-          if (idx === 0) {
-            return { ...lesson, isLocked: false };
-          }
-          
-          // For subsequent lessons, check if the previous lesson is completed
-          const previousLesson = copy[idx - 1];
-          const isLocked = !previousLesson.isCompleted;
-          
-          return { ...lesson, isLocked };
-        });
-      });
+      if (!userProfileId) {
+        console.error('No user profile found; cannot record completion');
+        return false;
+      }
 
-      if (!userProfileId) return true;
-
-      // Insert or update lesson progress
+      // Write completion to Supabase synchronously (await the DB write before updating UI)
       const { error } = await supabase
         .from('user_lesson_progress')
-        .upsert({
-          user_id: userProfileId,
-          lesson_id: lessonId,
-          xp_earned: xpEarned,
-          time_spent_minutes: timeSpent,
-          score: 85.0,
-          completed_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,lesson_id'
-        });
+        .upsert(
+          {
+            user_id: userProfileId,
+            lesson_id: lessonId,
+            xp_earned: xpEarned,
+            time_spent_minutes: timeSpent,
+            score: 85.0,
+            completed_at: new Date().toISOString()
+          },
+          {
+            onConflict: 'user_id,lesson_id'
+          }
+        );
 
       if (error) {
         console.error('Error completing lesson:', error);
-        return true;
+        return false;
       }
 
-      // Refresh lessons to show updated progress
+      // Refresh lessons from DB to reflect the updated completion status
       const refreshedLessons = await fetchLessons();
-      return refreshedLessons; // Return the updated lessons array
+      return refreshedLessons && Array.isArray(refreshedLessons) ? refreshedLessons : false;
     } catch (err) {
       console.error('Exception completing lesson:', err);
       return false;
@@ -880,14 +922,48 @@ const CourseDetailsPage = () => {
                                   src={m.resolvedUrl || m.url} 
                                   alt={m.metadata?.alt || 'Lesson image'} 
                                   className="w-full max-h-[420px] object-contain rounded"
-                                  onError={(e) => {
-                                    console.error('Failed to load image:', m.resolvedUrl || m.url);
-                                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHRleHQtYW5jaG9yPSJtaWRkbGUiIHg9IjIwMCIgeT0iMTUwIiBzdHlsZT0iZmlsbDojYWFhO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1zaXplOjE5cHg7Zm9udC1mYW1pbHk6QXJpYWwsSGVsdmV0aWNhLHNhbnMtc2VyaWY7ZG9taW5hbnQtYmFzZWxpbmU6Y2VudHJhbCI+SW1hZ2UgTm90IEZvdW5kPC90ZXh0Pjwvc3ZnPg==';
+                                  crossOrigin="anonymous"
+                                  referrerPolicy="no-referrer"
+                                  loading="lazy"
+                                  decoding="async"
+                                  onError={async (e) => {
+                                    try {
+                                      console.warn('Failed to load image, attempting retry with signed URL/cache-bust:', m.resolvedUrl || m.url);
+                                      const imgEl = e.currentTarget;
+                                      imgEl.onerror = null; // prevent infinite loops
+
+                                      const raw = (m.resolvedUrl || m.url || '').toString();
+                                      let bucket = (m.metadata && (m.metadata.bucket || m.metadata.storageBucket)) || null;
+                                      let path = (m.metadata && (m.metadata.path || m.metadata.storagePath)) || null;
+
+                                      if (!bucket || !path) {
+                                        const urlMatch = raw.match(/https?:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\/([^/]+)\/(.+)/i);
+                                        if (urlMatch) {
+                                          bucket = urlMatch[1];
+                                          path = decodeURIComponent(urlMatch[2]);
+                                        }
+                                      }
+
+                                      if (bucket && path) {
+                                        const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(path, 600);
+                                        if (signed?.signedUrl) {
+                                          imgEl.src = `${signed.signedUrl}&cb=${Date.now()}`;
+                                          return;
+                                        }
+                                      }
+
+                                      if (typeof raw === 'string' && raw.length) {
+                                        const sep = raw.includes('?') ? '&' : '?';
+                                        imgEl.src = `${raw}${sep}cb=${Date.now()}`;
+                                        return;
+                                      }
+                                    } catch (err) {
+                                      console.error('Image retry handling failed:', err);
+                                    }
+                                    e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="12" fill="#6b7280">Image unavailable</text></svg>';
                                   }}
                                 />
-                              ) : (
-                                <a href={m.resolvedUrl || m.url} target="_blank" rel="noreferrer" className="text-primary underline">Open file</a>
-                              )
+                              ) : null
                             ) : null}
                             {m.content && (
                               <div className="prose dark:prose-invert mt-2 text-foreground text-sm whitespace-pre-wrap">{typeof m.content === 'string' ? m.content : JSON.stringify(m.content, null, 2)}</div>
