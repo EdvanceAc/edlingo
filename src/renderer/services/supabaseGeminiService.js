@@ -430,6 +430,221 @@ class SupabaseGeminiService {
     const prompt = `Create a conversation practice scenario about ${topic} suitable for CEFR level ${cefrLevel}. Include dialogue examples and follow-up questions.`;
     return this.sendMessage(prompt, { focusArea: 'conversation' });
   }
+
+  /**
+   * Clear a chat session on the backend (best-effort, safe no-op if function missing)
+   */
+  async clearSession(sessionId) {
+    try {
+      if (!sessionId) return { success: true };
+      await this.initialize();
+      // Try to call an Edge Function if available; otherwise no-op
+      try {
+        const { data, error } = await this.supabase.functions.invoke('clear-chat-session', {
+          body: { session_id: sessionId }
+        });
+        if (error) {
+          console.warn('clearSession function error (ignored):', error.message || error);
+          return { success: false, error: error.message };
+        }
+        return { success: true, data };
+      } catch (fnError) {
+        console.warn('clearSession function missing or failed (ignored):', fnError.message || fnError);
+        return { success: true };
+      }
+    } catch (e) {
+      console.warn('clearSession unexpected error (ignored):', e.message || e);
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Send a message to the live conversation edge function
+   * This is specifically for real-time voice conversations
+   */
+  async sendLiveConversationMessage(message, options = {}) {
+    console.log('[SupabaseGeminiService] sendLiveConversationMessage called with:', { message, options });
+    
+    try {
+      await this.initialize();
+      
+      const sessionId = options.sessionId || this.currentSessionId || crypto.randomUUID();
+      
+      // Get current user
+      let user = options.user;
+      if (!user) {
+        const { data: { user: authUser }, error: userError } = await this.supabase.auth.getUser();
+        if (userError || !authUser) {
+          user = { id: '8584505a-79b2-4b39-a368-03045f8a4f6a' };
+        } else {
+          user = authUser;
+        }
+      }
+
+      const requestData = {
+        message,
+        session_id: sessionId,
+        user_id: user.id,
+        user_level: options.userLevel || 'intermediate',
+        focus_area: options.focusArea || 'conversation',
+        language: options.language || 'English',
+        streaming: options.streaming !== false
+      };
+
+      console.log('[SupabaseGeminiService] Calling process-live-conversation with:', requestData);
+
+      if (options.streaming !== false) {
+        // Use streaming endpoint for live conversation
+        const envSupabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
+        const baseUrl = envSupabaseUrl || supabaseConfig?.url || '';
+        const functionUrl = `${baseUrl}/functions/v1/process-live-conversation`;
+        
+        const { data: { session } } = await this.supabase.auth.getSession();
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        };
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        } else {
+          const anonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || supabaseConfig?.anonKey;
+          if (anonKey) {
+            headers['Authorization'] = `Bearer ${anonKey}`;
+          }
+        }
+
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        if (!response.body) {
+          throw new Error('No response body available for streaming');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullResponse = '';
+
+        return {
+          success: true,
+          sessionId: sessionId,
+          provider: 'supabase-live-conversation',
+          stream: {
+            async *[Symbol.asyncIterator]() {
+              try {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  
+                  if (done) {
+                    if (buffer.trim()) {
+                      const lines = buffer.split('\n');
+                      for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                          try {
+                            const data = JSON.parse(line.slice(6));
+                            if (data.content && !data.done) {
+                              fullResponse += data.content;
+                              yield {
+                                chunk: data.content,
+                                fullResponse,
+                                done: false
+                              };
+                            }
+                            if (data.done) {
+                              if (data.fullResponse) {
+                                fullResponse = data.fullResponse;
+                              }
+                              return { fullResponse, done: true };
+                            }
+                            if (data.error) {
+                              throw new Error(data.error);
+                            }
+                          } catch (e) {
+                            console.warn('Failed to parse streaming data:', e);
+                          }
+                        }
+                      }
+                    }
+                    return { fullResponse, done: true };
+                  }
+
+                  const chunk = decoder.decode(value, { stream: true });
+                  buffer += chunk;
+                  
+                  let newlineIndex;
+                  while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
+                    const line = buffer.slice(0, newlineIndex);
+                    buffer = buffer.slice(newlineIndex + 2);
+                    
+                    if (line.startsWith('data: ')) {
+                      try {
+                        const data = JSON.parse(line.slice(6));
+                        
+                        if (data.error) {
+                          throw new Error(data.error);
+                        }
+                        
+                        if (data.content && !data.done) {
+                          fullResponse += data.content;
+                          yield {
+                            chunk: data.content,
+                            fullResponse,
+                            done: false
+                          };
+                        }
+                        
+                        if (data.done) {
+                          if (data.fullResponse) {
+                            fullResponse = data.fullResponse;
+                          }
+                          return { fullResponse, done: true };
+                        }
+                      } catch (e) {
+                        console.warn('Failed to parse streaming data:', e);
+                      }
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('Streaming error:', error);
+                throw error;
+              } finally {
+                reader.releaseLock();
+              }
+            }
+          }
+        };
+      } else {
+        // Non-streaming request
+        const { data, error } = await this.supabase.functions.invoke('process-live-conversation', {
+          body: requestData
+        });
+
+        if (error) {
+          console.error('Live conversation function error:', error);
+          throw error;
+        }
+
+        return {
+          success: true,
+          response: data.response,
+          sessionId: sessionId,
+          provider: 'supabase-live-conversation'
+        };
+      }
+    } catch (error) {
+      console.error('Error in sendLiveConversationMessage:', error);
+      throw error;
+    }
+  }
 }
 
 // Create and export singleton instance

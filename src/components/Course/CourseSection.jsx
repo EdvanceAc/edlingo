@@ -35,7 +35,7 @@ const CourseSection = () => {
       // Try to fetch from Supabase first
       const { data: supabaseCourses, error } = await supabase
         .from('courses')
-        .select('id,title,description,is_active,lesson_count,xp_reward,created_at')
+        .select('id,title,description,is_active,duration_weeks,price,created_at')
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -52,8 +52,8 @@ const CourseSection = () => {
           progress: course.progress || 0,
           isUnlocked: course.is_active !== false, // Use is_active field from database
           isCompleted: course.is_completed || false,
-          lessons: course.lesson_count || 0,
-          xp: course.xp_reward || 0
+          lessons: course.lesson_count || course.duration_weeks || 4, // Use duration_weeks as fallback for lessons
+          xp: course.xp_reward || course.price || 100 // Use price as fallback for xp, default to 100
         }));
         setUnits(transformedCourses.length > 0 ? transformedCourses : getMockCourses());
       }

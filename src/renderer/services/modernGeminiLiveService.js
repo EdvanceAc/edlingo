@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import supabaseGeminiService from './supabaseGeminiService.js';
 import networkUtils from '../utils/networkUtils.js';
 
 class ModernGeminiLiveService {
@@ -27,39 +27,21 @@ class ModernGeminiLiveService {
     this.recognition = null;
     this.isRecording = false;
     this.isRestarting = false;
+    this.isManualStop = false;
+    this.shouldAutoRestart = true;
     this.isSpeaking = false;
     this.conversationHistory = [];
     this.isInitialized = false;
     this.isConnected = false;
+    this._sttLastEmit = {};
   }
 
-  // Initialize the service with API key
+  // Initialize the service (API key optional when using Supabase)
   async initialize(apiKey) {
     try {
-      if (!apiKey) {
-        throw new Error('Gemini API key is required');
-      }
-
-      this.apiKey = apiKey;
-      this.genAI = new GoogleGenerativeAI(apiKey);
+      // Store API key if provided (Supabase Edge Functions handle auth server-side)
+      this.apiKey = apiKey || null;
       
-      // Use Gemini 1.5 Flash for real-time conversations
-      this.model = this.genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-        },
-        systemInstruction: {
-          role: 'system',
-          parts: [{
-            text: 'You are a helpful language learning assistant. Provide conversational responses that help users practice their target language. Keep responses natural, engaging, and educational. Correct mistakes gently and offer alternatives when appropriate.'
-          }]
-        }
-      });
-
       this.isInitialized = true;
       console.log('Modern Gemini Live Service initialized successfully');
       return { success: true };
@@ -72,37 +54,14 @@ class ModernGeminiLiveService {
   // Start a live conversation session with STT/TTS
   async startLiveSession(options = {}) {
     try {
-      if (!this.model) {
-        throw new Error('Service not initialized. Call initialize() first.');
+      // Ensure initialized (but allow without API key when using Supabase)
+      if (!this.isInitialized) {
+        await this.initialize(this.apiKey);
       }
 
       if (this.isActive) {
         throw new Error('Live session already active');
       }
-
-      // Start a new chat session with conversation-optimized settings
-      this.chat = this.model.startChat({
-        history: [],
-        generationConfig: {
-          temperature: options.temperature || 0.7,
-          maxOutputTokens: options.maxOutputTokens || 1024,
-          topK: 40,
-          topP: 0.95,
-        },
-        systemInstruction: {
-          role: 'system',
-          parts: [{
-            text: `You are a helpful language learning assistant engaged in a live voice conversation. Keep your responses:
-- Conversational and natural
-- Concise but informative (1-3 sentences typically)
-- Encouraging and supportive
-- Focused on helping the user practice ${options.targetLanguage || 'English'}
-- Appropriate for ${options.userLevel || 'intermediate'} level
-- Gently correct mistakes when needed
-- Ask follow-up questions to keep the conversation flowing`
-          }]
-        }
-      });
 
       this.isActive = true;
       this.isConnected = true;
@@ -126,26 +85,37 @@ class ModernGeminiLiveService {
     }
   }
 
-  // Send a message and get streaming response with automatic TTS
+  // Send a message via Supabase Edge Function and get streaming response with automatic TTS
   async sendMessage(message, options = {}) {
     try {
-      if (!this.isActive || !this.chat) {
+      if (!this.isActive) {
         throw new Error('No active live session');
       }
 
-      console.log('Sending message to Gemini:', message);
+      console.log('Sending message via Supabase Live Conversation:', message);
 
-      // Send message and get streaming response
-      const result = await this.chat.sendMessageStream(message);
+      // Send message through Supabase live conversation Edge Function
+      const result = await supabaseGeminiService.sendLiveConversationMessage(message, {
+        sessionId: this.sessionId,
+        userLevel: options.userLevel || options.level,
+        focusArea: options.focusArea || 'conversation',
+        language: options.language || 'English',
+        streaming: true
+      });
+      
+      if (!result || !result.success || !result.stream) {
+        throw new Error('Supabase live conversation streaming failed');
+      }
       
       let fullResponse = '';
       
       // Process streaming chunks
       for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
-        fullResponse += chunkText;
+        const chunkText = chunk?.chunk || chunk?.text || '';
+        if (!chunkText && !chunk?.fullResponse) continue;
+        fullResponse = chunk?.fullResponse || (fullResponse + (chunkText || ''));
         
-        // Emit streaming message
+        // Emit streaming message progressively
         this.emit('message', {
           type: 'text',
           content: fullResponse,
@@ -170,7 +140,7 @@ class ModernGeminiLiveService {
         }, 100); // Small delay to ensure UI updates first
       }
 
-      console.log('Message sent successfully, response received');
+      console.log('Message sent successfully via Supabase, response received');
       return { success: true, response: fullResponse, message: 'Message sent successfully' };
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -194,6 +164,8 @@ class ModernGeminiLiveService {
 
       this.isActive = false;
       this.isConnected = false;
+      this.shouldAutoRestart = false;
+      this.isManualStop = true;
       this.chat = null;
       const sessionId = this.sessionId;
       this.sessionId = null;
@@ -332,6 +304,11 @@ class ModernGeminiLiveService {
 
   async startSpeechRecognition(options = {}) {
     try {
+      if (this.isRecording) {
+        return { success: true, message: 'Speech recognition already started' };
+      }
+      this.isManualStop = false;
+      this.shouldAutoRestart = true;
       // Check browser compatibility
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         throw new Error('Speech recognition not supported in this browser');
@@ -403,40 +380,45 @@ class ModernGeminiLiveService {
       };
       
       this.recognition.onerror = async (event) => {
-        console.error('Speech recognition error:', event.error);
-        this.emit('stt-error', { error: event.error });
-        
-        // Enhanced network error handling
+        // Ignore 'aborted' if triggered by manual stop or internal restart
+        if (event.error === 'aborted' && (this.isManualStop || this.isRestarting)) {
+          return;
+        }
+
+        // Enhanced network error handling: flag restart and defer to backoff
         if (event.error === 'network') {
+          this.isRestarting = true;
+          this.shouldAutoRestart = false; // prevent onend auto-restart
+          try {
+            if (this.recognition) this.recognition.stop();
+          } catch {}
           await this._handleNetworkError();
           return;
         }
-        
-        // Auto-restart on recoverable errors (except during manual restart)
+
+        // Auto-restart on recoverable errors by stopping and letting onend restart
         const recoverableErrors = ['no-speech', 'audio-capture', 'aborted'];
-        if (recoverableErrors.includes(event.error) && !this.isRestarting) {
-          this.isRestarting = true;
-          setTimeout(() => {
-            if (this.isActive) {
-              try {
-                // Clean shutdown of current recognition
-                if (this.recognition) {
-                  this.recognition.abort();
-                  this.recognition = null;
-                }
-                // Create fresh recognition instance
-                this._createNewRecognition();
-                console.log('Speech recognition restarted after error:', event.error);
-              } catch (restartError) {
-                console.error('Failed to restart speech recognition:', restartError);
-              } finally {
-                this.isRestarting = false;
+        if (this.shouldAutoRestart && recoverableErrors.includes(event.error)) {
+          if (!this.isRestarting) {
+            this.isRestarting = true;
+            try {
+              if (this.recognition) {
+                this.recognition.stop();
               }
-            } else {
+            } catch (restartError) {
+              console.error('Failed to stop recognition for restart:', restartError);
               this.isRestarting = false;
             }
-          }, 1500);
+          }
+          // Do not emit error for recoverable 'aborted' to avoid noisy UI
+          if (event.error === 'aborted') return;
         }
+
+        const severity = (event.error === 'no-speech' || event.error === 'audio-capture') ? 'warning' : 'error';
+        const message = event.error === 'no-speech'
+          ? 'No speech detected. Still listening...'
+          : (event.error === 'audio-capture' ? 'No microphone input detected.' : undefined);
+        this._emitSttEvent(event.error, message, severity);
       };
       
       this.recognition.onend = () => {
@@ -445,7 +427,7 @@ class ModernGeminiLiveService {
         this.emit('stt-end', { status: 'stopped' });
         
         // Auto-restart if session is still active and not already restarting
-        if (this.isActive && !this.isRestarting) {
+        if (this.isActive && !this.isRestarting && this.shouldAutoRestart && !this.isManualStop) {
           setTimeout(() => {
             try {
               // Use proper restart method to avoid state conflicts
@@ -521,40 +503,44 @@ class ModernGeminiLiveService {
     };
     
     this.recognition.onerror = async (event) => {
-      console.error('Speech recognition error:', event.error);
-      this.emit('stt-error', { error: event.error });
-      
-      // Enhanced network error handling
+      // Ignore 'aborted' if triggered by manual stop or internal restart
+      if (event.error === 'aborted' && (this.isManualStop || this.isRestarting)) {
+        return;
+      }
+
+      // Enhanced network error handling: flag restart and defer to backoff
       if (event.error === 'network') {
+        this.isRestarting = true;
+        this.shouldAutoRestart = false; // prevent onend auto-restart
+        try {
+          if (this.recognition) this.recognition.stop();
+        } catch {}
         await this._handleNetworkError();
         return;
       }
-      
-      // Auto-restart on recoverable errors (except during manual restart)
+
+      // Auto-restart on recoverable errors by stopping and letting onend restart
       const recoverableErrors = ['no-speech', 'audio-capture', 'aborted'];
-      if (recoverableErrors.includes(event.error) && !this.isRestarting) {
-        this.isRestarting = true;
-        setTimeout(() => {
-          if (this.isActive) {
-            try {
-              // Clean shutdown of current recognition
-              if (this.recognition) {
-                this.recognition.abort();
-                this.recognition = null;
-              }
-              // Create fresh recognition instance
-              this._createNewRecognition();
-              console.log('Speech recognition restarted after error:', event.error);
-            } catch (restartError) {
-              console.error('Failed to restart speech recognition:', restartError);
-            } finally {
-              this.isRestarting = false;
+      if (this.shouldAutoRestart && recoverableErrors.includes(event.error)) {
+        if (!this.isRestarting) {
+          this.isRestarting = true;
+          try {
+            if (this.recognition) {
+              this.recognition.stop();
             }
-          } else {
+          } catch (restartError) {
+            console.error('Failed to stop recognition for restart:', restartError);
             this.isRestarting = false;
           }
-        }, 1500);
+        }
+        if (event.error === 'aborted') return;
       }
+
+      const severity = (event.error === 'no-speech' || event.error === 'audio-capture') ? 'warning' : 'error';
+      const message = event.error === 'no-speech'
+        ? 'No speech detected. Still listening...'
+        : (event.error === 'audio-capture' ? 'No microphone input detected.' : undefined);
+      this._emitSttEvent(event.error, message, severity);
     };
     
     this.recognition.onend = () => {
@@ -562,7 +548,7 @@ class ModernGeminiLiveService {
        this.isRecording = false;
        this.emit('stt-end', { status: 'stopped' });
        
-       if (this.isActive && !this.isRestarting) {
+       if (this.isActive && !this.isRestarting && this.shouldAutoRestart && !this.isManualStop) {
          setTimeout(() => {
            try {
              this.startSpeechRecognition();
@@ -587,37 +573,31 @@ class ModernGeminiLiveService {
     console.log('Network status:', networkStatus);
     
     if (!networkStatus.online) {
-      // Device is offline - emit specific error and wait for reconnection
-      this.emit('stt-error', { 
-        error: 'offline', 
-        message: 'Device is offline. Speech recognition will resume when connection is restored.',
-        networkStatus 
-      });
-      
+      // Device is offline - emit specific warning and wait for reconnection
+      this._emitSttEvent('offline',
+        'Device is offline. Speech recognition will resume when connection is restored.',
+        'warning');
+
       // Set up network reconnection listener
       this._setupNetworkReconnectionListener();
       return;
     }
-    
+
     // Device appears online but speech recognition failed
     // This could be due to poor connection quality or service issues
     if (networkStatus.quality === 'poor' || networkStatus.details.responseTime > 3000) {
-      this.emit('stt-error', { 
-        error: 'poor-connection', 
-        message: 'Poor network connection detected. Speech recognition may be unreliable.',
-        networkStatus 
-      });
-      
+      this._emitSttEvent('poor-connection',
+        'Poor network connection detected. Speech recognition may be unreliable.',
+        'warning');
+
       // Implement exponential backoff for poor connections
       await this._retryWithBackoff();
     } else {
       // Good connection but service might be unavailable
-      this.emit('stt-error', { 
-        error: 'service-unavailable', 
-        message: 'Speech recognition service temporarily unavailable. Retrying...',
-        networkStatus 
-      });
-      
+      this._emitSttEvent('service-unavailable',
+        'Speech recognition service temporarily unavailable. Retrying...',
+        'warning');
+
       // Standard retry for service issues
       await this._retryWithBackoff();
     }
@@ -638,20 +618,24 @@ class ModernGeminiLiveService {
           try {
             if (!this.isRestarting && this.isActive) {
               this.isRestarting = true;
-              
+
               // Clean shutdown of current recognition
               if (this.recognition) {
                 this.recognition.abort();
                 this.recognition = null;
               }
-              
-              // Create fresh recognition instance
-              this._createNewRecognition();
-              console.log('Speech recognition resumed after network reconnection');
-              
-              // Remove the listener as it's no longer needed
-              networkUtils.removeListener(this._networkListener);
-              this._networkListener = null;
+
+              // Create fresh recognition instance using proper start method
+              try {
+                await this.startSpeechRecognition();
+                console.log('Speech recognition resumed after network reconnection');
+
+                // Remove the listener as it's no longer needed
+                networkUtils.removeListener(this._networkListener);
+                this._networkListener = null;
+              } catch (startError) {
+                console.error('Failed to resume speech recognition after reconnection:', startError);
+              }
             }
           } catch (error) {
             console.error('Failed to resume speech recognition after reconnection:', error);
@@ -691,16 +675,20 @@ class ModernGeminiLiveService {
         
         if (!this.isRestarting && this.isActive) {
           this.isRestarting = true;
-          
+
           // Clean shutdown of current recognition
           if (this.recognition) {
             this.recognition.abort();
             this.recognition = null;
           }
-          
-          // Create fresh recognition instance
-          this._createNewRecognition();
-          console.log(`Speech recognition restarted after network error (attempt ${attempt})`);
+
+          // Create fresh recognition instance using proper start method
+          try {
+            await this.startSpeechRecognition();
+            console.log(`Speech recognition restarted after network error (attempt ${attempt})`);
+          } catch (startError) {
+            console.error('Failed to restart speech recognition:', startError);
+          }
         }
       } catch (error) {
         console.error(`Retry attempt ${attempt} failed:`, error);
@@ -716,11 +704,24 @@ class ModernGeminiLiveService {
   // Stop speech recognition
   stopSpeechRecognition() {
     if (this.recognition) {
+      this.isManualStop = true;
+      this.shouldAutoRestart = false;
       this.recognition.stop();
       this.recognition = null;
       this.isRecording = false;
       this.emit('stt-stopped', {});
     }
+  }
+
+  // Internal helper to emit stt-error with throttling/coalescing
+  _emitSttEvent(error, message, severity = 'error') {
+    const key = `${error}`;
+    const now = Date.now();
+    const last = this._sttLastEmit[key] || 0;
+    // Throttle to once per 3s per error type
+    if (now - last < 3000) return;
+    this._sttLastEmit[key] = now;
+    this.emit('stt-error', { error, message, severity });
   }
 
   // Event listener management

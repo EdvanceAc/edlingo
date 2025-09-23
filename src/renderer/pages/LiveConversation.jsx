@@ -20,6 +20,7 @@ import { useToast } from '../hooks/use-toast';
 import { useAI } from '../providers/AIProvider';
 import supabaseGeminiService from '../services/supabaseGeminiService';
 import ModernGeminiLiveService from '../services/modernGeminiLiveService';
+import { createClient } from '@supabase/supabase-js';
 
 const LiveConversation = () => {
   // Session state
@@ -103,7 +104,7 @@ const LiveConversation = () => {
       setCurrentMessage(data.transcript);
     };
 
-    const handleSTTFinal = (data) => {
+    const handleSTTFinal = async (data) => {
       console.log('STT final:', data.transcript);
       setCurrentMessage('');
       
@@ -121,6 +122,22 @@ const LiveConversation = () => {
         messagesExchanged: prev.messagesExchanged + 1,
         wordsSpoken: prev.wordsSpoken + data.transcript.split(' ').length
       }));
+      
+      // Store message in database
+      if (sessionId) {
+        try {
+          await supabaseGeminiService.supabase
+            .from('live_conversation_messages')
+            .insert({
+              session_id: sessionId,
+              message_type: 'user',
+              content: data.transcript,
+              transcript: data.transcript
+            });
+        } catch (dbError) {
+          console.warn('Failed to store message in database:', dbError);
+        }
+      }
     };
 
     const handleSTTEnd = () => {
@@ -129,13 +146,16 @@ const LiveConversation = () => {
     };
 
     const handleSTTError = (data) => {
-      console.error('STT error:', data.error);
+      const level = data?.severity || 'error';
+      const desc = data?.message || `Failed to recognize speech: ${data?.error || 'unknown'}`;
+      if (level === 'warning') {
+        console.warn('STT warning:', data?.error);
+        toast({ title: 'Speech Warning', description: desc, variant: 'default' });
+        return; // do not flip recording state for warnings
+      }
+      console.error('STT error:', data?.error);
       setIsRecording(false);
-      toast({
-        title: "Speech Recognition Error",
-        description: `Failed to recognize speech: ${data.error}`,
-        variant: "destructive"
-      });
+      toast({ title: 'Speech Recognition Error', description: desc, variant: 'destructive' });
     };
 
     // TTS Event Handlers
@@ -212,34 +232,35 @@ const LiveConversation = () => {
     };
 
     // Set up live service event listeners
-    liveService.on('sttStart', handleSTTStart);
-    liveService.on('sttInterim', handleSTTInterim);
-    liveService.on('sttFinal', handleSTTFinal);
-    liveService.on('sttEnd', handleSTTEnd);
-    liveService.on('sttError', handleSTTError);
-    liveService.on('ttsStart', handleTTSStart);
-    liveService.on('ttsEnd', handleTTSEnd);
-    liveService.on('ttsError', handleTTSError);
-    liveService.on('liveMessage', handleLiveMessage);
-    liveService.on('liveError', handleLiveError);
-    liveService.on('liveClose', handleLiveClose);
+    // Align with service event names using kebab-case
+    liveService.on('stt-start', handleSTTStart);
+    liveService.on('stt-interim', handleSTTInterim);
+    liveService.on('stt-final', handleSTTFinal);
+    liveService.on('stt-end', handleSTTEnd);
+    liveService.on('stt-error', handleSTTError);
+    liveService.on('tts-start', handleTTSStart);
+    liveService.on('tts-end', handleTTSEnd);
+    liveService.on('tts-error', handleTTSError);
+    liveService.on('message', handleLiveMessage);
+    liveService.on('error', handleLiveError);
+    liveService.on('close', handleLiveClose);
     liveService.on('audioQueued', handleAudioQueued);
     liveService.on('audioError', handleAudioError);
     liveService.on('audioEnabled', handleAudioEnabled);
 
     return () => {
       // Remove event listeners
-      liveService.off('sttStart', handleSTTStart);
-      liveService.off('sttInterim', handleSTTInterim);
-      liveService.off('sttFinal', handleSTTFinal);
-      liveService.off('sttEnd', handleSTTEnd);
-      liveService.off('sttError', handleSTTError);
-      liveService.off('ttsStart', handleTTSStart);
-      liveService.off('ttsEnd', handleTTSEnd);
-      liveService.off('ttsError', handleTTSError);
-      liveService.off('liveMessage', handleLiveMessage);
-      liveService.off('liveError', handleLiveError);
-      liveService.off('liveClose', handleLiveClose);
+      liveService.off('stt-start', handleSTTStart);
+      liveService.off('stt-interim', handleSTTInterim);
+      liveService.off('stt-final', handleSTTFinal);
+      liveService.off('stt-end', handleSTTEnd);
+      liveService.off('stt-error', handleSTTError);
+      liveService.off('tts-start', handleTTSStart);
+      liveService.off('tts-end', handleTTSEnd);
+      liveService.off('tts-error', handleTTSError);
+      liveService.off('message', handleLiveMessage);
+      liveService.off('error', handleLiveError);
+      liveService.off('close', handleLiveClose);
       liveService.off('audioQueued', handleAudioQueued);
       liveService.off('audioError', handleAudioError);
       liveService.off('audioEnabled', handleAudioEnabled);
@@ -255,7 +276,7 @@ const LiveConversation = () => {
   }, [addXP, toast]);
 
   // Handle live message from Gemini
-  const handleLiveMessage = useCallback((message) => {
+  const handleLiveMessage = useCallback(async (message) => {
     if (message.type === 'text') {
       if (message.isComplete) {
         setMessages(prev => {
@@ -280,6 +301,21 @@ const LiveConversation = () => {
         setIsStreaming(false);
         setStreamingMessage('');
         addXP(10, 'conversation');
+        
+        // Store AI message in database
+        if (sessionId && message.content) {
+          try {
+            await supabaseGeminiService.supabase
+              .from('live_conversation_messages')
+              .insert({
+                session_id: sessionId,
+                message_type: 'assistant',
+                content: message.content
+              });
+          } catch (dbError) {
+            console.warn('Failed to store AI message in database:', dbError);
+          }
+        }
         
         // Play TTS if speaker is enabled using browser's speech synthesis
         if (isSpeakerEnabled && message.content) {
@@ -307,7 +343,7 @@ const LiveConversation = () => {
         });
       }
     }
-  }, [addXP, isSpeakerEnabled]);
+  }, [addXP, isSpeakerEnabled, sessionId]);
 
   // Handle audio response
   const handleAudioResponse = useCallback((audioData) => {
@@ -379,8 +415,29 @@ const LiveConversation = () => {
       console.log('Live session started successfully');
       
       // Create a new session for live conversation
-      const newSessionId = crypto.randomUUID();
+      const newSessionId = sessionResult.sessionId || crypto.randomUUID();
       console.log('Created new session:', newSessionId);
+      
+      // Track session in database
+      try {
+        // Ensure supabaseGeminiService is initialized
+        await supabaseGeminiService.initialize();
+        
+        const { data: { user } } = await supabaseGeminiService.supabase.auth.getUser();
+        if (user) {
+          await supabaseGeminiService.supabase
+            .from('live_conversation_sessions')
+            .insert({
+              user_id: user.id,
+              session_id: newSessionId,
+              language: voiceSettings.language,
+              user_level: level || 'intermediate',
+              focus_area: 'conversation'
+            });
+        }
+      } catch (dbError) {
+        console.warn('Failed to track session in database:', dbError);
+      }
       
       setSessionId(newSessionId);
       setConnectionStatus('connected');
@@ -436,11 +493,29 @@ const LiveConversation = () => {
         setSessionStats(prev => ({ ...prev, duration }));
       }
       
-      // Clear Supabase session if needed
+      // Clear Supabase session and update database
       if (sessionId) {
         try {
+          // Ensure supabaseGeminiService is initialized
+          await supabaseGeminiService.initialize();
+          
+          // Update session end time and stats in database
+          const { data: { user } } = await supabaseGeminiService.supabase.auth.getUser();
+          if (user) {
+            await supabaseGeminiService.supabase
+              .from('live_conversation_sessions')
+              .update({
+                ended_at: new Date().toISOString(),
+                messages_exchanged: sessionStats.messagesExchanged,
+                words_spoken: sessionStats.wordsSpoken,
+                is_active: false
+              })
+              .eq('session_id', sessionId)
+              .eq('user_id', user.id);
+          }
+          
           await supabaseGeminiService.clearSession(sessionId);
-          console.log('Supabase session cleared');
+          console.log('Supabase session cleared and database updated');
         } catch (error) {
           console.warn('Failed to clear Supabase session:', error);
         }
