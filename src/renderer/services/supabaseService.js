@@ -12,6 +12,71 @@ class SupabaseService {
     this.init();
   }
 
+  // Resolve or create the current user's user_profiles.id (may differ from auth uid)
+  async getOrCreateUserProfileId() {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return null;
+
+      // 1) Try primary key equality (id === auth uid)
+      try {
+        const { data } = await this.client
+          .from('user_profiles')
+          .select('id')
+          .eq('id', user.id)
+          .limit(1);
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row?.id) return row.id;
+      } catch (_) {}
+
+      // 2) Try lookup by user_id foreign key
+      try {
+        const { data } = await this.client
+          .from('user_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row?.id) return row.id;
+      } catch (_) {}
+
+      // 3) Attempt to create via RPC then retry
+      try {
+        await this.client.rpc('create_missing_user_profile', {
+          user_id: user.id,
+          user_email: user.email || null,
+          user_name: user.user_metadata?.full_name || user.user_metadata?.name || null
+        });
+      } catch (_) {}
+
+      try {
+        const { data } = await this.client
+          .from('user_profiles')
+          .select('id')
+          .eq('id', user.id)
+          .limit(1);
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row?.id) return row.id;
+      } catch (_) {}
+
+      try {
+        const { data } = await this.client
+          .from('user_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row?.id) return row.id;
+      } catch (_) {}
+
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   async init() {
     try {
       const connectionStatus = await checkSupabaseConnection();
@@ -769,6 +834,96 @@ class SupabaseService {
     }
   }
 
+  // Course Enrollment
+  async getEnrollment(courseId) {
+    try {
+      const { data: { user }, error: userErr } = await this.client.auth.getUser();
+      if (userErr) throw userErr;
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      const { data, error } = await this.client
+        .from('user_course_enrollments')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('course_id', courseId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return { success: true, data: data || null };
+    } catch (error) {
+      // If table doesn't exist or RLS blocks, return null enrollment gracefully
+      if (error.code === '42P01' || (typeof error.message === 'string' && error.message.includes('relation'))) {
+        return { success: true, data: null };
+      }
+      console.error('Get enrollment error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async enrollInCourse(courseId) {
+    try {
+      const { data: { user }, error: userErr } = await this.client.auth.getUser();
+      if (userErr) throw userErr;
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      // Attempt insert; if FK fails due to missing user_profiles, try to create it via RPC
+      const attemptInsert = async () => {
+        return await this.client
+          .from('user_course_enrollments')
+          .upsert({
+            user_id: user.id,
+            course_id: courseId,
+            status: 'enrolled',
+            started_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id,course_id' })
+          .select()
+          .single();
+      };
+
+      let { data, error } = await attemptInsert();
+      if (error && (error.code === '23503' || /foreign key/i.test(error.message))) {
+        // Ensure profile exists, then retry
+        try {
+          await this.client.rpc('create_missing_user_profile', {
+            user_id: user.id,
+            user_email: user.email || null,
+            user_name: user.user_metadata?.full_name || user.user_metadata?.name || null
+          });
+        } catch (_) {}
+        const retry = await attemptInsert();
+        data = retry.data; error = retry.error;
+      }
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Enroll in course error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateEnrollment(courseId, updates) {
+    try {
+      const { data: { user }, error: userErr } = await this.client.auth.getUser();
+      if (userErr) throw userErr;
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      const { data, error } = await this.client
+        .from('user_course_enrollments')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('course_id', courseId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Update enrollment error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async uploadPDFWithHighlights(file, highlights) {
     try {
       const metadata = { highlights: JSON.stringify(highlights) };
@@ -782,6 +937,361 @@ class SupabaseService {
     } catch (error) {
       console.error('Upload PDF with highlights error:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // Notifications & Study Reminders
+  async getNotifications(limit = 5) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: true, data: [] };
+      const { data, error } = await this.client
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: [] };
+      console.error('Get notifications error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async createStudyReminder({ courseId = null, frequency = 'daily', timeUTC = null, weekday = null }) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+      const { data, error } = await this.client
+        .from('study_reminders')
+        .insert({
+          user_id: user.id,
+          course_id: courseId,
+          frequency,
+          time_utc: timeUTC,
+          weekday,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Create study reminder error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getStudyReminders() {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: true, data: [] };
+      const { data, error } = await this.client
+        .from('study_reminders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: [] };
+      console.error('Get study reminders error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async toggleStudyReminder(reminderId, isActive) {
+    try {
+      const { data, error } = await this.client
+        .from('study_reminders')
+        .update({ is_active: !!isActive, updated_at: new Date().toISOString() })
+        .eq('id', reminderId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Toggle study reminder error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Certificates
+  async getCertificateTemplate(courseId) {
+    try {
+      const { data, error } = await this.client
+        .from('certificates')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return { success: true, data: data || null };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: null };
+      console.error('Get certificate template error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getUserCertificates(courseId) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: true, data: [] };
+      let query = this.client
+        .from('user_certificates')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('issued_at', { ascending: false });
+      if (courseId) query = query.eq('course_id', courseId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: [] };
+      console.error('Get user certificates error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async awardCertificate(courseId) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+      const tmplRes = await this.getCertificateTemplate(courseId);
+      const template = tmplRes.data;
+      if (!template) {
+        return { success: false, error: 'No certificate template for this course' };
+      }
+
+      // Avoid duplicates
+      const existing = await this.getUserCertificates(courseId);
+      if (existing.success && existing.data?.length) {
+        return { success: true, data: existing.data[0], alreadyHad: true };
+      }
+
+      const verification = Math.random().toString(36).slice(2, 10).toUpperCase();
+      const { data, error } = await this.client
+        .from('user_certificates')
+        .insert({
+          user_id: user.id,
+          certificate_id: template.id,
+          course_id: courseId,
+          verification_code: verification,
+          share_url: null,
+          issued_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Award certificate error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Wishlist
+  async getWishlistCourseIds() {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: true, data: [] };
+      const { data, error } = await this.client
+        .from('user_course_wishlist')
+        .select('course_id')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      const ids = (data || []).map(r => r.course_id);
+      return { success: true, data: ids };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: [] };
+      console.error('Get wishlist error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async addToWishlist(courseId) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+      const { data, error } = await this.client
+        .from('user_course_wishlist')
+        .upsert({ user_id: user.id, course_id: courseId })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Add to wishlist error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async removeFromWishlist(courseId) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+      const { error } = await this.client
+        .from('user_course_wishlist')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('course_id', courseId);
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Remove from wishlist error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Course Reviews
+  async getCourseReviews(courseId, { limit = 20 } = {}) {
+    try {
+      const { data, error } = await this.client
+        .from('course_reviews')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: [] };
+      console.error('Get course reviews error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Lesson Submissions (Answers)
+  async upsertLessonSubmission({ courseId, lessonId, textAnswer = null, attachments = [] }) {
+    try {
+      const userProfileId = await this.getOrCreateUserProfileId();
+      if (!userProfileId) return { success: false, error: 'No user profile id' };
+
+      const payload = {
+        user_id: userProfileId,
+        course_id: courseId || null,
+        lesson_id: lessonId,
+        text_answer: textAnswer,
+        attachments: Array.isArray(attachments) ? attachments : [],
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await this.client
+        .from('lesson_submissions')
+        .upsert(payload, { onConflict: 'user_id,lesson_id' })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Upsert lesson submission error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getLessonSubmission(lessonId) {
+    try {
+      const userProfileId = await this.getOrCreateUserProfileId();
+      if (!userProfileId) return { success: true, data: null };
+      const { data, error } = await this.client
+        .from('lesson_submissions')
+        .select('*')
+        .eq('user_id', userProfileId)
+        .eq('lesson_id', lessonId)
+        .maybeSingle();
+      if (error) throw error;
+      return { success: true, data: data || null };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: null };
+      console.error('Get lesson submission error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getCourseAverageRating(courseId) {
+    try {
+      const { data, error } = await this.client
+        .from('course_reviews')
+        .select('rating')
+        .eq('course_id', courseId);
+      if (error) throw error;
+      const ratings = (data || []).map(r => Number(r.rating) || 0);
+      const avg = ratings.length ? ratings.reduce((a,b)=>a+b,0) / ratings.length : 0;
+      return { success: true, data: { average: avg, count: ratings.length } };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: { average: 0, count: 0 } };
+      console.error('Get course average rating error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async addCourseReview(courseId, { rating, title, content }) {
+    try {
+      const { data: { user }, error: userErr } = await this.client.auth.getUser();
+      if (userErr) throw userErr;
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      // Ensure user profile exists
+      try {
+        await this.client.rpc('create_missing_user_profile', {
+          user_id: user.id,
+          user_email: user.email || null,
+          user_name: user.user_metadata?.full_name || user.user_metadata?.name || null
+        });
+      } catch (_) {}
+
+      const { data, error } = await this.client
+        .from('course_reviews')
+        .upsert({
+          course_id: courseId,
+          user_id: user.id,
+          rating: Math.max(1, Math.min(5, Number(rating) || 0)),
+          title: title || null,
+          content: content || null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'course_id,user_id' })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Add course review error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async markReviewHelpful(reviewId) {
+    try {
+      const { data, error } = await this.client.rpc('increment_helpful_count', { review_id: reviewId });
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      // fallback without RPC
+      try {
+        const { data: row } = await this.client
+          .from('course_reviews')
+          .select('helpful_count')
+          .eq('id', reviewId)
+          .single();
+        const next = (row?.helpful_count || 0) + 1;
+        const { data } = await this.client
+          .from('course_reviews')
+          .update({ helpful_count: next, updated_at: new Date().toISOString() })
+          .eq('id', reviewId)
+          .select()
+          .single();
+        return { success: true, data };
+      } catch (err) {
+        console.error('Mark review helpful error:', err);
+        return { success: false, error: err.message };
+      }
     }
   }
 }

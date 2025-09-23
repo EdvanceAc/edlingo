@@ -22,7 +22,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Progress } from '../components/ui/Progress';
 import { Badge } from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../components/ui/Select';
 import { supabase } from '../config/supabaseConfig';
+import supabaseService from '../services/supabaseService';
 import { useNavigate } from 'react-router-dom';
 
 const Courses = () => {
@@ -30,8 +33,20 @@ const Courses = () => {
   const [courses, setCourses] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [levelFilter, setLevelFilter] = useState('all'); // 'all' | 'A1' | ...
+  const [availabilityFilter, setAvailabilityFilter] = useState('all'); // 'all' | 'unlocked' | 'completed'
+  const [sortBy, setSortBy] = useState('recommended'); // 'recommended' | 'newest' | 'lessons' | 'xp' | 'title' | 'progress'
   const [selectedVocabWord, setSelectedVocabWord] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const raw = localStorage.getItem('wishlistCourseIds');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [userProgress, setUserProgress] = useState({
     currentStreak: 7,
     totalXP: 270,
@@ -51,6 +66,14 @@ const Courses = () => {
   useEffect(() => {
     loadCourses();
     loadNotifications();
+    // Attempt to load persisted wishlist from server
+    (async () => {
+      const res = await supabaseService.getWishlistCourseIds();
+      if (res.success && Array.isArray(res.data) && res.data.length) {
+        setWishlist(res.data);
+        try { localStorage.setItem('wishlistCourseIds', JSON.stringify(res.data)); } catch {}
+      }
+    })();
   }, []);
 
   const loadCourses = async () => {
@@ -80,7 +103,8 @@ const Courses = () => {
           lessons: course.lesson_count || 0,
           xp: course.xp_reward || 0,
           level: course.cefr_level || 'A1',
-          estimatedTime: course.estimated_time || '2-3 weeks'
+          estimatedTime: course.estimated_time || '2-3 weeks',
+          createdAt: course.created_at ? new Date(course.created_at) : new Date(0)
         }));
         setCourses(transformedCourses.length > 0 ? transformedCourses : getMockCourses());
       }
@@ -94,11 +118,20 @@ const Courses = () => {
 
   const loadNotifications = async () => {
     try {
-      // Try to fetch from Supabase
+      // Resolve the current user's profile id (user_profiles.id) if possible
+      let currentProfileId = null;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // user_profiles primary key is auth user id in our schema
+          currentProfileId = user.id;
+        }
+      } catch (_) {}
+
       const { data, error } = await supabase
         .from('notifications')
-        .select('id,type,title,message,icon,created_at,is_read')
-        .eq('user_id', 'current_user') // Replace with actual user ID
+        .select('id,type,content,created_at,is_read')
+        .eq('user_id', currentProfileId || '')
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -109,9 +142,9 @@ const Courses = () => {
         const transformed = (data || []).map(n => ({
           id: n.id,
           type: n.type,
-          title: n.title,
-          message: n.message,
-          icon: n.icon || '🔔',
+          title: 'Notification',
+          message: n.content,
+          icon: '🔔',
           timestamp: n.created_at ? new Date(n.created_at) : new Date(),
           isRead: n.is_read === true
         }));
@@ -487,6 +520,73 @@ const Courses = () => {
     );
   };
 
+  const toggleWishlist = async (courseId) => {
+    const exists = wishlist.includes(courseId);
+    const next = exists ? wishlist.filter(id => id !== courseId) : [...wishlist, courseId];
+    setWishlist(next);
+    try { localStorage.setItem('wishlistCourseIds', JSON.stringify(next)); } catch {}
+    // Best-effort server sync
+    try {
+      if (exists) {
+        await supabaseService.removeFromWishlist(courseId);
+      } else {
+        await supabaseService.addToWishlist(courseId);
+      }
+    } catch (_) {}
+  };
+
+  // Derived filtered + sorted courses
+  const filteredAndSortedCourses = React.useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    const filtered = courses.filter(c => {
+      const matchesSearch = term === '' ||
+        c.title?.toLowerCase().includes(term) ||
+        c.description?.toLowerCase().includes(term);
+      const matchesLevel = levelFilter === 'all' || c.level === levelFilter;
+      const matchesAvailability =
+        availabilityFilter === 'all' ||
+        (availabilityFilter === 'unlocked' && c.isUnlocked) ||
+        (availabilityFilter === 'completed' && c.isCompleted);
+      return matchesSearch && matchesLevel && matchesAvailability;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0);
+        case 'lessons':
+          return (b.lessons || 0) - (a.lessons || 0);
+        case 'xp':
+          return (b.xp || 0) - (a.xp || 0);
+        case 'title':
+          return (a.title || '').localeCompare(b.title || '');
+        case 'progress':
+          return (b.progress || 0) - (a.progress || 0);
+        case 'recommended':
+        default:
+          // Prefer in-progress, then unlocked, then others; tie-break by lessons desc
+          const score = (c) => (c.progress > 0 ? 2 : c.isUnlocked ? 1 : 0);
+          const byScore = score(b) - score(a);
+          if (byScore !== 0) return byScore;
+          return (b.lessons || 0) - (a.lessons || 0);
+      }
+    });
+
+    return sorted;
+  }, [courses, searchTerm, levelFilter, availabilityFilter, sortBy]);
+
+  const continueLearningCourses = React.useMemo(() => {
+    return courses.filter(c => c.progress && c.progress > 0).slice(0, 10);
+  }, [courses]);
+
+  const recommendedCourses = React.useMemo(() => {
+    // Simple heuristic: unlocked, not completed, lowest progress first then more lessons
+    return courses
+      .filter(c => c.isUnlocked && !c.isCompleted)
+      .sort((a, b) => (a.progress || 0) - (b.progress || 0) || (b.lessons || 0) - (a.lessons || 0))
+      .slice(0, 10);
+  }, [courses]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -562,17 +662,137 @@ const Courses = () => {
       {/* Visual Vocabulary Preview */}
       <VocabularyPreview />
 
+      {/* Course Controls */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <Card className="border-border">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
+                <Input
+                  placeholder="Search courses..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div>
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All levels</SelectItem>
+                    <SelectItem value="A1">A1</SelectItem>
+                    <SelectItem value="A2">A2</SelectItem>
+                    <SelectItem value="B1">B1</SelectItem>
+                    <SelectItem value="B2">B2</SelectItem>
+                    <SelectItem value="C1">C1</SelectItem>
+                    <SelectItem value="C2">C2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Availability" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All courses</SelectItem>
+                    <SelectItem value="unlocked">Unlocked only</SelectItem>
+                    <SelectItem value="completed">Completed only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-1">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recommended">Recommended</SelectItem>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="lessons">Most lessons</SelectItem>
+                    <SelectItem value="xp">Highest XP</SelectItem>
+                    <SelectItem value="progress">Progress</SelectItem>
+                    <SelectItem value="title">Title A–Z</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-muted-foreground">
+              Showing {filteredAndSortedCourses.length} of {courses.length} courses
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
       {/* Courses Grid */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {courses.map((course, index) => (
-            <CourseCard key={course.id} course={course} index={index} />
-          ))}
-        </div>
+        {/* Continue Learning Rail */}
+        {continueLearningCourses.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">Continue Learning</h2>
+              <span className="text-sm text-muted-foreground">Pick up where you left off</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {continueLearningCourses.slice(0, 6).map((course, index) => (
+                <div key={`cont-${course.id}`} className="relative">
+                  <CourseCard course={course} index={index} />
+                  <button
+                    aria-label="Toggle wishlist"
+                    className="absolute top-3 right-3 text-sm rounded-full px-2 py-1 bg-background/80 border"
+                    onClick={(e) => { e.stopPropagation(); toggleWishlist(course.id); }}
+                  >
+                    {wishlist.includes(course.id) ? '★ Saved' : '☆ Save'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recommended Rail */}
+        {recommendedCourses.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">Recommended for You</h2>
+              <span className="text-sm text-muted-foreground">Based on your level and progress</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recommendedCourses.slice(0, 6).map((course, index) => (
+                <div key={`rec-${course.id}`} className="relative">
+                  <CourseCard course={course} index={index} />
+                  <button
+                    aria-label="Toggle wishlist"
+                    className="absolute top-3 right-3 text-sm rounded-full px-2 py-1 bg-background/80 border"
+                    onClick={(e) => { e.stopPropagation(); toggleWishlist(course.id); }}
+                  >
+                    {wishlist.includes(course.id) ? '★ Saved' : '☆ Save'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {filteredAndSortedCourses.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground border border-dashed rounded-lg">
+            No courses match your filters.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredAndSortedCourses.map((course, index) => (
+              <CourseCard key={course.id} course={course} index={index} />
+            ))}
+          </div>
+        )}
       </motion.div>
 
       {/* Quick Practice Section */}

@@ -1,5 +1,6 @@
 import supabaseGeminiService from './supabaseGeminiService.js';
 import networkUtils from '../utils/networkUtils.js';
+import supabaseConfig from '../config/supabaseConfig.js';
 
 class ModernGeminiLiveService {
   constructor() {
@@ -294,11 +295,22 @@ class ModernGeminiLiveService {
 
   // Enhanced Speech-to-Text functionality
   async startRecording() {
-    return this.startSpeechRecognition();
+    // Prefer Web Speech API; if unsupported or repeatedly failing, fall back to edge transcription
+    try {
+      const supportsWebSpeech = ('webkitSpeechRecognition' in window) || ('SpeechRecognition' in window);
+      if (!supportsWebSpeech) {
+        return await this._startEdgeTranscription();
+      }
+      return await this.startSpeechRecognition();
+    } catch (error) {
+      console.warn('Web Speech start failed, falling back to Edge transcription:', error);
+      return await this._startEdgeTranscription();
+    }
   }
 
   async stopRecording() {
-    this.stopSpeechRecognition();
+    try { this.stopSpeechRecognition(); } catch {}
+    this._stopEdgeTranscription?.();
     return { success: true };
   }
 
@@ -311,7 +323,8 @@ class ModernGeminiLiveService {
       this.shouldAutoRestart = true;
       // Check browser compatibility
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        throw new Error('Speech recognition not supported in this browser');
+        // Fall back to Edge transcription silently
+        return await this._startEdgeTranscription(options);
       }
       
       // Check microphone permissions first
@@ -386,13 +399,20 @@ class ModernGeminiLiveService {
         }
 
         // Enhanced network error handling: flag restart and defer to backoff
-        if (event.error === 'network') {
+        if (event.error === 'network' || event.error === 'service-not-allowed' || event.error === 'network-not-available') {
           this.isRestarting = true;
           this.shouldAutoRestart = false; // prevent onend auto-restart
           try {
             if (this.recognition) this.recognition.stop();
           } catch {}
           await this._handleNetworkError();
+          // If network is fine but service keeps failing, fall back
+          const status = await networkUtils.getNetworkStatus();
+          if (status.online && (status.quality === 'excellent' || status.quality === 'good')) {
+            console.log('Falling back to Edge transcription due to service error');
+            await this._startEdgeTranscription(options);
+            return;
+          }
           return;
         }
 
@@ -710,6 +730,100 @@ class ModernGeminiLiveService {
       this.recognition = null;
       this.isRecording = false;
       this.emit('stt-stopped', {});
+    }
+  }
+
+  /**
+   * Edge Function-based transcription fallback
+   * Records short chunks via MediaRecorder and sends to Supabase function `transcribe-audio`.
+   */
+  async _startEdgeTranscription(options = {}) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = 'audio/webm';
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      let chunks = [];
+      let debounceTimer = null;
+      let pendingText = '';
+      const FLUSH_DELAY_MS = 1200; // consider speech ended after 1.2s pause
+      const stopAll = () => {
+        try { mediaRecorder.stop(); } catch {}
+        stream.getTracks().forEach(t => t.stop());
+        this._stopEdgeTranscription = undefined;
+        this.emit('stt-end', { status: 'stopped' });
+      };
+      this._stopEdgeTranscription = stopAll;
+
+      mediaRecorder.onstart = () => {
+        this.emit('stt-start', { status: 'listening' });
+      };
+      mediaRecorder.ondataavailable = async (e) => {
+        chunks.push(e.data);
+        if (e.data && e.data.size > 0) {
+          const blob = new Blob(chunks, { type: mimeType });
+          chunks = [];
+          try {
+            const formData = new FormData();
+            formData.append('audio', blob, 'chunk.webm');
+            formData.append('language', options.language || 'en-US');
+            const envUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || (typeof window !== 'undefined' && (window.__ENV__?.VITE_SUPABASE_URL || window.ENV?.SUPABASE_URL));
+            const baseUrl = envUrl || (typeof window !== 'undefined' ? (window.supabaseUrl || '') : '');
+            // Ensure auth token (user session or anon key)
+            try { await supabaseGeminiService.initialize(); } catch {}
+            let authToken = '';
+            try {
+              const { data: { session } } = await supabaseGeminiService.supabase.auth.getSession();
+              authToken = session?.access_token || '';
+            } catch {}
+            if (!authToken) {
+              // fall back to anon key from env/config
+              authToken = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY)
+                || supabaseConfig?.anonKey
+                || (typeof window !== 'undefined' && (window.__ENV__?.VITE_SUPABASE_ANON_KEY || window.ENV?.SUPABASE_ANON_KEY || window.supabaseAnonKey))
+                || '';
+            }
+
+            const resp = await fetch(`${baseUrl}/functions/v1/transcribe-audio`, {
+              method: 'POST',
+              body: formData,
+              headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : undefined
+            });
+            if (resp.ok) {
+              const j = await resp.json();
+              const text = j.text?.trim();
+              if (text) {
+                // Coalesce incremental text; emit interim and debounce final send
+                pendingText = pendingText ? `${pendingText} ${text}` : text;
+                this.emit('stt-interim', { transcript: pendingText });
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(async () => {
+                  const finalText = pendingText.trim();
+                  pendingText = '';
+                  this.emit('stt-final', { transcript: finalText });
+                  try { await this.sendMessage(finalText); } catch {}
+                }, FLUSH_DELAY_MS);
+              }
+            }
+          } catch (err) {
+            console.warn('Edge transcription error:', err);
+          }
+        }
+      };
+      mediaRecorder.onerror = (e) => {
+        console.error('MediaRecorder error:', e.error || e);
+        this.emit('stt-error', { error: 'media-recorder', message: String(e.error || e), severity: 'warning' });
+      };
+      mediaRecorder.onstop = () => {
+        this.emit('stt-end', { status: 'stopped' });
+      };
+
+      mediaRecorder.start(2000); // 2s chunks
+      this.isRecording = true;
+      return { success: true, message: 'Edge transcription started' };
+    } catch (err) {
+      console.error('Failed to start Edge transcription:', err);
+      this.emit('stt-error', { error: 'edge-transcription-failed', message: String(err), severity: 'error' });
+      return { success: false, error: String(err) };
     }
   }
 

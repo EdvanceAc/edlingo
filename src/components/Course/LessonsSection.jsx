@@ -6,6 +6,7 @@ import { Progress } from '../../renderer/components/ui/Progress';
 import Button from '../../renderer/components/ui/Button';
 import { Badge } from '../../renderer/components/ui/Badge';
 import { supabase } from '../../renderer/config/supabaseConfig';
+import supabaseService from '../../renderer/services/supabaseService';
 import AuthContext from '../../renderer/contexts/AuthContext';
 import unifiedLevelService from '../../services/unifiedLevelService';
 import pronunciationService from '../../renderer/services/pronunciationService';
@@ -30,6 +31,7 @@ const LessonsSection = ({ courseId: propCourseId }) => {
   const { updateProgress, checkUnlock } = useProgression();
   const navigate = useNavigate();
   const userLevel = user?.cefr_level || 'A1';
+  const [enrollment, setEnrollment] = useState(null);
 
   // Auto-select first term when terms are loaded
   useEffect(() => {
@@ -49,6 +51,10 @@ const LessonsSection = ({ courseId: propCourseId }) => {
   // Fetch terms/sections on component mount
   useEffect(() => {
     if (courseId) {
+      (async () => {
+        const res = await supabaseService.getEnrollment(courseId);
+        if (res.success) setEnrollment(res.data);
+      })();
       fetchTerms();
     }
   }, [courseId]);
@@ -167,7 +173,7 @@ const LessonsSection = ({ courseId: propCourseId }) => {
         sorted.map(async (lesson) => ({
            ...lesson,
            content: lesson?.content ? await unifiedLevelService.simplifyText(lesson.content, userLevel) : lesson?.content,
-           isUnlocked: checkUnlock(lesson)
+           isUnlocked: checkUnlock(lesson) && !!enrollment
          }))
       );
 

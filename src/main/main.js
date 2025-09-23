@@ -2,7 +2,7 @@
 process.noDeprecation = true;
 process.env.NODE_NO_WARNINGS = '1';
 
-const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, session } = require('electron');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const isDev = process.env.NODE_ENV === 'development';
@@ -111,6 +111,15 @@ function createWindow() {
   // Show window when ready to prevent flickering
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+  });
+
+  // Ensure microphone permission is granted for getUserMedia in Electron
+  const ses = session.fromPartition('default');
+  ses.setPermissionRequestHandler((wc, permission, callback) => {
+    if (permission === 'media') {
+      return callback(true);
+    }
+    callback(false);
   });
 
   // Handle window closed

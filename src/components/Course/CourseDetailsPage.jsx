@@ -23,8 +23,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../../renderer/components/ui/Card';
 import { Badge } from '../../renderer/components/ui/Badge';
 import Button from '../../renderer/components/ui/Button';
+import { Input } from '../../renderer/components/ui/Input';
+import { Textarea } from '../../renderer/components/ui/textarea';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../../renderer/components/ui/Select';
 import { Progress } from '../../renderer/components/ui/Progress';
 import { supabase } from '../../renderer/config/supabaseConfig';
+import supabaseService from '../../renderer/services/supabaseService';
 import AuthContext from '../../renderer/contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -42,6 +46,18 @@ const CourseDetailsPage = () => {
   const [activeLesson, setActiveLesson] = useState(null);
   const [activeMaterials, setActiveMaterials] = useState([]);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [enrollment, setEnrollment] = useState(null);
+  const [enrolling, setEnrolling] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [avgRating, setAvgRating] = useState({ average: 0, count: 0 });
+  const [newReview, setNewReview] = useState({ rating: '5', title: '', content: '' });
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [userCertificates, setUserCertificates] = useState([]);
+  const [issuingCert, setIssuingCert] = useState(false);
+  const [creatingReminder, setCreatingReminder] = useState(false);
+  const [answerText, setAnswerText] = useState('');
+  const [answerFiles, setAnswerFiles] = useState([]);
+  const [savingAnswer, setSavingAnswer] = useState(false);
 
   useEffect(() => {
     console.log('CourseDetailsPage useEffect triggered with courseId:', courseId);
@@ -50,6 +66,9 @@ const CourseDetailsPage = () => {
       document.title = `Course Details - ${courseId} | EdLingo`;
       fetchCourseDetails();
       fetchLessons();
+      loadEnrollment();
+      loadReviews();
+      loadCertificates();
     } else {
       console.log('No courseId found in URL params');
     }
@@ -80,6 +99,37 @@ const CourseDetailsPage = () => {
       setError('Failed to load course details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCertificates = async () => {
+    try {
+      const res = await supabaseService.getUserCertificates(courseId);
+      if (res.success) setUserCertificates(res.data || []);
+    } catch (e) {
+      console.warn('loadCertificates error:', e?.message || e);
+    }
+  };
+
+  const loadEnrollment = async () => {
+    try {
+      const res = await supabaseService.getEnrollment(courseId);
+      if (res.success) setEnrollment(res.data);
+    } catch (e) {
+      console.warn('loadEnrollment error:', e?.message || e);
+    }
+  };
+
+  const loadReviews = async () => {
+    try {
+      const [listRes, avgRes] = await Promise.all([
+        supabaseService.getCourseReviews(courseId, { limit: 20 }),
+        supabaseService.getCourseAverageRating(courseId)
+      ]);
+      if (listRes.success) setReviews(listRes.data || []);
+      if (avgRes.success) setAvgRating(avgRes.data || { average: 0, count: 0 });
+    } catch (e) {
+      console.warn('loadReviews error:', e?.message || e);
     }
   };
 
@@ -402,7 +452,12 @@ const CourseDetailsPage = () => {
     }
   };
 
-  const fetchLessonMaterials = async (lessonId, lessonCtxOverride = null) => {
+  const fetchLessonMaterials = async (lessonId, lessonCtxOverride = null, options = {}) => {
+    if (!enrollment && !options.bypassEnrollment) {
+      console.warn('Blocked fetching materials: not enrolled');
+      setActiveMaterials([]);
+      return;
+    }
     setLoadingMaterials(true);
     try {
       let materials = [];
@@ -454,14 +509,28 @@ const CourseDetailsPage = () => {
     }
   };
 
-  const startLesson = async (lesson) => {
+  const startLesson = async (lesson, options = {}) => {
+    if (!enrollment && !options.bypassEnrollment) {
+      console.warn('Cannot start lesson: user not enrolled');
+      return;
+    }
     setActiveLesson(lesson);
+    // Load any existing submission for this lesson for convenience
+    try {
+      const res = await supabaseService.getLessonSubmission(lesson.id);
+      if (res?.success && res.data) {
+        setAnswerText(res.data.text_answer || '');
+      } else {
+        setAnswerText('');
+      }
+      setAnswerFiles([]);
+    } catch (_) {}
     await fetchLessonMaterials(lesson.id, {
       id: lesson.id,
       globalOrder: lesson.globalOrder,
       order_number: lesson.order_number,
       courseTitle: course?.title || course?.name
-    });
+    }, options);
     // Smooth scroll to the viewer section
     setTimeout(() => {
       const el = document.getElementById('current-lesson-viewer');
@@ -656,15 +725,37 @@ const CourseDetailsPage = () => {
                       )}
                     </div>
                     
-                    <Button
-                      className="w-full mb-4"
-                      onClick={() => {
-                        const firstAvailable = lessons.find(l => !l.isLocked) || lessons[0];
-                        if (firstAvailable) startLesson(firstAvailable);
-                      }}
-                    >
-                      {course.price > 0 ? 'Enroll Now' : 'Start Learning'}
-                    </Button>
+                    {enrollment ? (
+                      <Button
+                        className="w-full mb-4"
+                        onClick={() => {
+                          const firstAvailable = lessons.find(l => !l.isLocked) || lessons[0];
+                          if (firstAvailable) startLesson(firstAvailable);
+                        }}
+                      >
+                        {enrollment.status === 'completed' ? 'Review Course' : 'Continue Learning'}
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full mb-4"
+                        loading={enrolling}
+                        onClick={async () => {
+                          try {
+                            setEnrolling(true);
+                            const res = await supabaseService.enrollInCourse(courseId);
+                            if (res.success) {
+                              setEnrollment(res.data);
+                              const firstAvailable = lessons.find(l => !l.isLocked) || lessons[0];
+                              if (firstAvailable) startLesson(firstAvailable, { bypassEnrollment: true });
+                            }
+                          } finally {
+                            setEnrolling(false);
+                          }
+                        }}
+                      >
+                        {course.price > 0 ? 'Enroll Now' : 'Start Learning'}
+                      </Button>
+                    )}
                     
                     <div className="space-y-3 text-sm">
                       {course.instructor_name && (
@@ -679,6 +770,36 @@ const CourseDetailsPage = () => {
                           <span className="text-primary">{course.instructor_email}</span>
                         </div>
                       )}
+                      {course.prerequisites && (
+                        <div className="mt-2">
+                          <div className="font-medium mb-1">Prerequisites</div>
+                          <p className="text-muted-foreground">{course.prerequisites}</p>
+                        </div>
+                      )}
+                      {course.learning_objectives && (
+                        <div className="mt-2">
+                          <div className="font-medium mb-1">Learning Objectives</div>
+                          <p className="text-muted-foreground">{course.learning_objectives}</p>
+                        </div>
+                      )}
+                      {/* Study Reminder Quick Add */}
+                      <div className="pt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          loading={creatingReminder}
+                          onClick={async () => {
+                            try {
+                              setCreatingReminder(true);
+                              await supabaseService.createStudyReminder({ courseId, frequency: 'daily' });
+                            } finally {
+                              setCreatingReminder(false);
+                            }
+                          }}
+                        >
+                          Remind me daily to study
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -714,6 +835,116 @@ const CourseDetailsPage = () => {
               </Card>
             </motion.div>
 
+            {/* Ratings & Reviews */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.75 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    Ratings & Reviews
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Summary */}
+                  <div className="flex items-end justify-between mb-4">
+                    <div>
+                      <div className="text-3xl font-bold text-foreground">
+                        {avgRating.average.toFixed(1)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">{avgRating.count} reviews</div>
+                    </div>
+                  </div>
+
+                  {/* Add Review */}
+                  <div className="mb-6 p-4 border rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
+                      <div className="md:col-span-1">
+                        <Select value={newReview.rating} onValueChange={(v) => setNewReview(r => ({ ...r, rating: v }))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Rating" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">★★★★★</SelectItem>
+                            <SelectItem value="4">★★★★☆</SelectItem>
+                            <SelectItem value="3">★★★☆☆</SelectItem>
+                            <SelectItem value="2">★★☆☆☆</SelectItem>
+                            <SelectItem value="1">★☆☆☆☆</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <Input
+                          placeholder="Title (optional)"
+                          value={newReview.title}
+                          onChange={(e) => setNewReview(r => ({ ...r, title: e.target.value }))}
+                        />
+                      </div>
+                      <div className="md:col-span-3">
+                        <Input
+                          placeholder="Share your experience"
+                          value={newReview.content}
+                          onChange={(e) => setNewReview(r => ({ ...r, content: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-right">
+                      <Button
+                        size="sm"
+                        loading={submittingReview}
+                        onClick={async () => {
+                          try {
+                            setSubmittingReview(true);
+                            await supabaseService.addCourseReview(courseId, {
+                              rating: Number(newReview.rating),
+                              title: newReview.title,
+                              content: newReview.content
+                            });
+                            setNewReview({ rating: '5', title: '', content: '' });
+                            await loadReviews();
+                          } finally {
+                            setSubmittingReview(false);
+                          }
+                        }}
+                      >
+                        Submit Review
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Reviews List */}
+                  {reviews.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No reviews yet. Be the first to review!</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {reviews.map((rev) => (
+                        <div key={rev.id} className="p-4 border rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-sm font-medium text-foreground">
+                              {rev.title || 'Review'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(rev.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="text-yellow-500 text-sm mb-1">
+                            {'★'.repeat(Math.max(1, Math.min(5, Number(rev.rating) || 0)))}{'☆'.repeat(5 - Math.max(1, Math.min(5, Number(rev.rating) || 0)))}
+                          </div>
+                          {rev.content && (
+                            <div className="text-sm text-foreground mb-2">{rev.content}</div>
+                          )}
+                          <div className="text-xs text-muted-foreground">Helpful: {rev.helpful_count || 0}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
             {/* Learning Path Timeline */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -740,11 +971,11 @@ const CourseDetailsPage = () => {
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="font-medium text-foreground">Overall Progress</h4>
                           <Badge variant="outline" className="bg-white/50">
-                            {Math.floor((lessons.filter(l => l.isCompleted).length / lessons.length) * 100)}% Complete
+                            {Math.floor((lessons.filter(l => l.isCompleted).length / Math.max(lessons.length, 1)) * 100)}% Complete
                           </Badge>
                         </div>
                         <Progress 
-                          value={(lessons.filter(l => l.isCompleted).length / lessons.length) * 100} 
+                          value={(lessons.filter(l => l.isCompleted).length / Math.max(lessons.length, 1)) * 100} 
                           className="h-3"
                         />
                         <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
@@ -754,6 +985,25 @@ const CourseDetailsPage = () => {
                             {lessons.filter(l => l.isCompleted).reduce((sum, l) => sum + l.xpReward, 0)} XP earned
                           </span>
                         </div>
+                        {/* Certificate CTA */}
+                        {lessons.length > 0 && lessons.every(l => l.isCompleted) && (
+                          <div className="mt-3 flex items-center justify-between">
+                            <div className="text-sm text-foreground">Course completed</div>
+                            {userCertificates.length > 0 ? (
+                              <Button size="sm" variant="outline" onClick={() => window.open(userCertificates[0].share_url || '#', '_blank')}>View Certificate</Button>
+                            ) : (
+                              <Button size="sm" loading={issuingCert} onClick={async () => {
+                                try {
+                                  setIssuingCert(true);
+                                  const res = await supabaseService.awardCertificate(courseId);
+                                  if (res.success) await loadCertificates();
+                                } finally {
+                                  setIssuingCert(false);
+                                }
+                              }}>Get Certificate</Button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Interactive Timeline */}
@@ -765,7 +1015,9 @@ const CourseDetailsPage = () => {
                         <div className="space-y-4">
                           {lessons.map((lesson, index) => {
                             const isCompleted = lesson.isCompleted;
-                            const isLocked = lesson.isLocked && !isCompleted;
+                            const isLockedByProgress = lesson.isLocked && !isCompleted;
+                            const isLockedByEnrollment = !enrollment;
+                            const isLocked = isLockedByProgress || isLockedByEnrollment;
                             const isCurrent = !isCompleted && !isLocked;
                             
                             return (
@@ -851,7 +1103,6 @@ const CourseDetailsPage = () => {
                                               <Trophy className="w-5 h-5 text-yellow-500" />
                                             </motion.div>
                                           )}
-                                          
                                           {!isLocked && (
                                             <Button 
                                               size="sm" 
@@ -862,6 +1113,9 @@ const CourseDetailsPage = () => {
                                               {isCompleted ? 'Review' : 'Start'}
                                               <ChevronRight className="w-4 h-4" />
                                             </Button>
+                                          )}
+                                          {isLockedByEnrollment && (
+                                            <Badge variant="secondary" className="text-xs">Enroll to unlock</Badge>
                                           )}
                                         </div>
                                       </div>
@@ -971,6 +1225,61 @@ const CourseDetailsPage = () => {
                           </div>
                         ))}
 
+                        {/* Answers Section */}
+                        <div className="border rounded-lg p-4">
+                          <div className="font-medium mb-2">Your Answer</div>
+                          <Textarea
+                            placeholder="Type your answer here..."
+                            value={answerText}
+                            onChange={(e) => setAnswerText(e.target.value)}
+                            className="mb-3"
+                          />
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="file"
+                              multiple
+                              onChange={(e) => setAnswerFiles(Array.from(e.target.files || []))}
+                            />
+                            <Button
+                              size="sm"
+                              loading={savingAnswer}
+                              onClick={async () => {
+                                if (!activeLesson) return;
+                                try {
+                                  setSavingAnswer(true);
+                                  const { data: { user } } = await supabase.auth.getUser();
+                                  let uploads = [];
+                                  if (answerFiles && answerFiles.length && user?.id) {
+                                    try {
+                                      const res = await (await import('../../renderer/services/supabaseStorageService.js')).default.uploadAnswerFiles(answerFiles, activeLesson.id, user.id);
+                                      uploads = (res?.successful || []).map(f => ({
+                                        name: f.name,
+                                        path: f.path,
+                                        bucket: f.bucket,
+                                        url: f.url,
+                                        size: f.size,
+                                        type: f.type
+                                      }));
+                                    } catch (e) {
+                                      console.warn('Answer file upload failed:', e?.message || e);
+                                    }
+                                  }
+                                  await supabaseService.upsertLessonSubmission({
+                                    courseId,
+                                    lessonId: activeLesson.id,
+                                    textAnswer: answerText,
+                                    attachments: uploads
+                                  });
+                                } finally {
+                                  setSavingAnswer(false);
+                                }
+                              }}
+                            >
+                              Save Answer
+                            </Button>
+                          </div>
+                        </div>
+
                         {/* Completion Controls */}
                         <div className="flex items-center justify-between pt-2">
                           <div className="text-sm text-muted-foreground">
@@ -979,6 +1288,15 @@ const CourseDetailsPage = () => {
                           <Button
                             onClick={async () => {
                               // award random small xp/time to simulate for now
+                              // First, persist the current answer (best effort)
+                              try {
+                                await supabaseService.upsertLessonSubmission({
+                                  courseId,
+                                  lessonId: activeLesson.id,
+                                  textAnswer: answerText,
+                                  attachments: []
+                                });
+                              } catch (_) {}
                               const updated = await completeLesson(activeLesson.id, activeLesson.xpReward, Math.floor(Math.random() * 15) + 5);
                               
                               // If completeLesson returned false (error), don't continue

@@ -5,7 +5,8 @@ class SupabaseStorageService {
     this.buckets = {
       courses: 'course-materials',
       assignments: 'assignment-materials',
-      shared: 'shared-resources'
+      shared: 'shared-resources',
+      answers: 'lesson-answers'
     };
   }
 
@@ -170,6 +171,19 @@ class SupabaseStorageService {
   async uploadCourseFiles(files, courseId = null, subcategory = null) {
     const category = subcategory || 'general';
     return await this.uploadFiles(files, this.buckets.courses, category);
+  }
+
+  /**
+   * Upload lesson answer attachments
+   * @param {File[]} files 
+   * @param {string} lessonId 
+   * @param {string} userId
+   * @returns {Promise<Object>}
+   */
+  async uploadAnswerFiles(files, lessonId, userId) {
+    const folder = `lesson_${lessonId}/${userId}`;
+    // Prepend folder into filename via category
+    return await this.uploadFiles(files, this.buckets.answers, folder);
   }
 
   /**
