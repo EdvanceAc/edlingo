@@ -145,6 +145,7 @@ export const AIProvider = ({ children }) => {
     }
 
     try {
+      console.log('AIProvider: Generating response for message:', message);
       const result = await aiService.generateLanguageLearningResponse(message, {
         targetLanguage: options.targetLanguage || 'English',
         userLevel: options.userLevel || 'intermediate',
@@ -153,25 +154,42 @@ export const AIProvider = ({ children }) => {
         user: user
       });
 
+      console.log('AIProvider: Raw result from aiService:', result);
+
       // Handle different response formats
       let response;
       let sessionId = currentSessionId;
       
       if (result && typeof result === 'object') {
         if (result.success) {
-          response = result.response;
+          // Normalize to string in case an object slips through
+          response = typeof result.response === 'string' 
+            ? result.response 
+            : (result.response?.message || result.response?.text || String(result.response || ''));
+          console.log('AIProvider: Extracted response from success object:', response);
           // Update session ID if using Supabase Gemini service
           if (result.provider === 'supabase-gemini' && result.sessionId) {
             sessionId = result.sessionId;
             setCurrentSessionId(sessionId);
           }
         } else {
-          response = result.response || result.error || 'Sorry, I encountered an error.';
+          const raw = result.response || result.error || 'Sorry, I encountered an error.';
+          response = typeof raw === 'string' ? raw : (raw?.message || raw?.text || String(raw || ''));
+          console.log('AIProvider: Extracted response from error object:', response);
         }
       } else {
         // Handle string responses from other providers
         response = result;
+        console.log('AIProvider: Using direct string response:', response);
       }
+
+      // Ensure we have a valid response
+      if (!response || response === 'undefined' || typeof response === 'undefined') {
+        console.warn('AIProvider: Response is undefined, using fallback');
+        response = "I'm here to help you learn! Could you please rephrase your question or try asking something else?";
+      }
+
+      console.log('AIProvider: Final response to return:', response);
 
       // Update conversation history
       const newHistory = [
@@ -183,7 +201,7 @@ export const AIProvider = ({ children }) => {
 
       return response;
     } catch (error) {
-      console.error('Failed to generate AI response:', error);
+      console.error('AIProvider: Failed to generate AI response:', error);
       throw error;
     }
   };
@@ -314,6 +332,11 @@ export const AIProvider = ({ children }) => {
       // Fallback to aiService check
       return aiService.isGeminiAvailable();
     },
+    getApiKey: () => {
+      // Return Gemini API key from settings or environment
+      const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      return aiSettings.geminiApiKey || envApiKey || null;
+    },
     getAIStatus: () => aiService.getFullStatus()
   };
 
@@ -325,3 +348,32 @@ export const AIProvider = ({ children }) => {
 };
 
 export default AIProvider;
+
+
+  const initializeAIService = async (settings) => {
+    setAiStatus(prev => ({ ...prev, checkingGemini: true }));
+    try {
+      const apiKey = (
+        import.meta.env?.VITE_GEMINI_API_KEY ||
+        import.meta.env?.VITE_GOOGLE_GEMINI_API_KEY ||
+        (typeof window !== 'undefined' ? window?.__ENV__?.VITE_GEMINI_API_KEY : undefined) ||
+        (typeof window !== 'undefined' ? window?.__ENV__?.VITE_GOOGLE_GEMINI_API_KEY : undefined) ||
+        (typeof window !== 'undefined' ? window?.ENV?.GEMINI_API_KEY : undefined) ||
+        (typeof window !== 'undefined' ? window?.ENV?.VITE_GEMINI_API_KEY : undefined) ||
+        (typeof window !== 'undefined' ? window?.ENV?.VITE_GOOGLE_GEMINI_API_KEY : undefined)
+      );
+
+      const isBrowserMode = typeof window !== 'undefined';
+      setAiSettings(prev => ({ ...prev, apikey: apiKey }));
+
+      await aiService.initialize({
+        geminiApiKey: apiKey,
+        isBrowserMode
+      });
+
+      setAiStatus(prev => ({ ...prev, checkingGemini: false, geminiReady: !!apiKey }));
+    } catch (error) {
+      console.error('Failed to initialize AI service:', error);
+      setAiStatus(prev => ({ ...prev, checkingGemini: false, geminiReady: false }));
+    }
+  };

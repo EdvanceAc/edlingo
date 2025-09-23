@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Audio processing
   processAudio: (audioData) => ipcRenderer.invoke('process-audio', audioData),
+  analyzeAudio: (audioData, targetText) => ipcRenderer.invoke('audio:analyze', audioData, targetText),
   
   // File operations
   openFile: () => ipcRenderer.invoke('dialog:openFile'),

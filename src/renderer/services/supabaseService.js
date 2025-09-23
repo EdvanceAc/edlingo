@@ -203,6 +203,8 @@ class SupabaseService {
           user_id: userId,
           ...mappedProgress,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,language'
         });
       
       if (error) throw error;

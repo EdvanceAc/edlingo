@@ -114,7 +114,7 @@ class AIService {
         });
         
         if (supabaseResult.success) {
-          return supabaseResult.message;
+          return supabaseResult.response;
         } else {
           console.warn('Supabase Gemini service failed:', supabaseResult.error);
           // Check if it's an API key issue and provide enhanced fallback
@@ -175,7 +175,7 @@ class AIService {
 
     // Use Supabase Gemini service as primary method
     try {
-      console.log('Using Supabase Gemini service for language learning response');
+      console.log('aiService: Using Supabase Gemini service for language learning response');
       const supabaseResult = await supabaseGeminiService.sendMessage(userMessage, {
         userLevel,
         focusArea: chatMode,
@@ -183,24 +183,33 @@ class AIService {
         user: options.user
       });
       
+      console.log('aiService: Supabase result:', supabaseResult);
+
       if (supabaseResult.success) {
+        console.log('aiService: Supabase success, response:', supabaseResult.response);
         return {
           success: true,
-          response: supabaseResult.message,
+          response: supabaseResult.response,
           provider: 'supabase-gemini',
           sessionId: supabaseResult.sessionId
         };
+      } else {
+        console.warn('aiService: Supabase Gemini service failed:', supabaseResult.error);
+        // Check if it's an API key issue and provide enhanced fallback
+        if (supabaseResult.error && (supabaseResult.error.includes('CONSUMER_SUSPENDED') || supabaseResult.error.includes('Permission denied'))) {
+          console.log('aiService: Using enhanced fallback due to API key issues');
+          return this._wrapFallbackResponse(
+            this._generateEnhancedLanguageLearningFallback(userMessage, chatMode, userLevel, targetLanguage),
+            'enhanced-fallback'
+          );
+        }
       }
     } catch (supabaseError) {
-      console.warn('Supabase Gemini service failed:', supabaseError.message);
-      // Check if it's an API key issue and provide appropriate fallback
-      if (supabaseError.message && (supabaseError.message.includes('CONSUMER_SUSPENDED') || supabaseError.message.includes('Permission denied'))) {
-        console.log('Using enhanced fallback due to API key issues');
-        return this._wrapFallbackResponse(
-          this._generateEnhancedLanguageLearningFallback(userMessage, chatMode, userLevel, targetLanguage),
-          'enhanced-fallback'
-        );
-      }
+      console.error('aiService: Supabase Gemini service error:', supabaseError);
+      return this._wrapFallbackResponse(
+        this._generateEnhancedLanguageLearningFallback(userMessage, chatMode, userLevel, targetLanguage),
+        'enhanced-fallback'
+      );
     }
 
     // If in browser mode, return fallback response
@@ -423,9 +432,13 @@ class AIService {
 
   // Helper method to wrap fallback responses with consistent structure
   _wrapFallbackResponse(response, provider = 'fallback') {
+    const normalized =
+      typeof response === 'string'
+        ? response
+        : (response && (response.response || response.message || response.text)) || String(response ?? '');
     return {
       success: true,
-      response: response,
+      response: normalized,
       provider: provider
     };
   }

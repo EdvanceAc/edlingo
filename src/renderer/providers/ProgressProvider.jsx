@@ -117,7 +117,9 @@ export function ProgressProvider({ children }) {
           const dbData = mapToDB(initialData);
           const { error: upsertError } = await supabase
             .from('user_progress')
-            .upsert(dbData);
+            .upsert(dbData, {
+              onConflict: 'user_id,language'
+            });
           if (upsertError) throw upsertError;
           setUserProgress(initialData);
         }
@@ -139,7 +141,9 @@ export function ProgressProvider({ children }) {
             const dbData = mapToDB(fallbackData);
             const { error: retryError } = await supabase
               .from('user_progress')
-              .upsert(dbData);
+              .upsert(dbData, {
+              onConflict: 'user_id,language'
+              });
             if (!retryError) {
               setUserProgress(fallbackData);
               return;
@@ -341,13 +345,42 @@ export function ProgressProvider({ children }) {
     const updateProgressData = async (newProgress) => {
       // Save to Supabase with error handling
       try {
-        await supabase.from('user_progress').upsert({
+        const { error } = await supabase.from('user_progress').upsert({
           user_id: user.id,
           ...mapToDB(newProgress)
+        }, {
+          onConflict: 'user_id,language'
         });
+        
+        if (error) throw error;
       } catch (error) {
         if (error.code === '42501' || error.code === 'PGRST204') {
           console.warn('Database access restricted, progress saved locally only');
+        } else if (error.code === '23505' || error.message?.includes('409') || error.message?.includes('conflict')) {
+          console.warn('Conflict detected, retrying with explicit conflict resolution:', error);
+          // Retry with explicit update instead of upsert
+          try {
+            const { error: updateError } = await supabase
+              .from('user_progress')
+              .update(mapToDB(newProgress))
+              .eq('user_id', user.id);
+            
+            if (updateError) {
+              console.error('Update also failed, creating new record:', updateError);
+              // If update fails, try insert
+              const { error: insertError } = await supabase
+                .from('user_progress')
+                .insert({
+                  user_id: user.id,
+                  ...mapToDB(newProgress)
+                });
+              if (insertError) {
+                console.error('Insert also failed:', insertError);
+              }
+            }
+          } catch (retryError) {
+            console.error('Retry failed:', retryError);
+          }
         } else {
           console.error('Failed to save progress to database:', error);
         }
@@ -448,13 +481,42 @@ export function ProgressProvider({ children }) {
       // Save to Supabase with error handling
       (async () => {
         try {
-          await supabase.from('user_progress').upsert({
+          const { error } = await supabase.from('user_progress').upsert({
             user_id: user.id,
             ...mapToDB(newProgress)
+          }, {
+            onConflict: 'user_id,language'
           });
+          
+          if (error) throw error;
         } catch (error) {
           if (error.code === '42501' || error.code === 'PGRST204') {
             console.warn('Database access restricted, progress saved locally only');
+          } else if (error.code === '23505' || error.message?.includes('409') || error.message?.includes('conflict')) {
+            console.warn('Conflict detected, retrying with explicit conflict resolution:', error);
+            // Retry with explicit update instead of upsert
+            try {
+              const { error: updateError } = await supabase
+                .from('user_progress')
+                .update(mapToDB(newProgress))
+                .eq('user_id', user.id);
+              
+              if (updateError) {
+                console.error('Update also failed, creating new record:', updateError);
+                // If update fails, try insert
+                const { error: insertError } = await supabase
+                  .from('user_progress')
+                  .insert({
+                    user_id: user.id,
+                    ...mapToDB(newProgress)
+                  });
+                if (insertError) {
+                  console.error('Insert also failed:', insertError);
+                }
+              }
+            } catch (retryError) {
+              console.error('Retry failed:', retryError);
+            }
           } else {
             console.error('Failed to save progress to database:', error);
           }
@@ -472,13 +534,42 @@ export function ProgressProvider({ children }) {
       // Save to Supabase with error handling
       (async () => {
         try {
-          await supabase.from('user_progress').upsert({
+          const { error } = await supabase.from('user_progress').upsert({
             user_id: user.id,
             ...mapToDB(newProgress)
+          }, {
+            onConflict: 'user_id,language'
           });
+          
+          if (error) throw error;
         } catch (error) {
           if (error.code === '42501' || error.code === 'PGRST204') {
             console.warn('Database access restricted, progress saved locally only');
+          } else if (error.code === '23505' || error.message?.includes('409') || error.message?.includes('conflict')) {
+            console.warn('Conflict detected, retrying with explicit conflict resolution:', error);
+            // Retry with explicit update instead of upsert
+            try {
+              const { error: updateError } = await supabase
+                .from('user_progress')
+                .update(mapToDB(newProgress))
+                .eq('user_id', user.id);
+              
+              if (updateError) {
+                console.error('Update also failed, creating new record:', updateError);
+                // If update fails, try insert
+                const { error: insertError } = await supabase
+                  .from('user_progress')
+                  .insert({
+                    user_id: user.id,
+                    ...mapToDB(newProgress)
+                  });
+                if (insertError) {
+                  console.error('Insert also failed:', insertError);
+                }
+              }
+            } catch (retryError) {
+              console.error('Retry failed:', retryError);
+            }
           } else {
             console.error('Failed to save progress to database:', error);
           }

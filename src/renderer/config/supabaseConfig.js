@@ -8,6 +8,10 @@ const getEnv = (key) => {
   if (typeof window !== 'undefined' && window.__ENV__ && key in window.__ENV__) {
     return window.__ENV__[key];
   }
+  // Add support for window.ENV fallback
+  if (typeof window !== 'undefined' && window.ENV && key in window.ENV) {
+    return window.ENV[key];
+  }
   return undefined;
 };
 
@@ -24,11 +28,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey || '', {
   realtime: {
     params: {
       eventsPerSecond: 0 // Disable realtime events
-    }
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'edlingo-web'
     }
   }
 });
