@@ -3956,7 +3956,12 @@
                             <div class="mt-4 pdf-highlights">
                                 <div class="flex items-center justify-between mb-2">
                                     <label class="block text-sm font-medium text-gray-800">PDF Highlights</label>
-                                    <button type="button" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700" onclick="addPdfHighlightRow(this)">Add Row</button>
+                                    <div class="flex space-x-2">
+                                        <button type="button" class="auto-fetch-btn px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" onclick="autoFetchPdfHighlights(this.closest('.content-item'))">
+                                            <i data-lucide="download" class="w-3 h-3 inline mr-1"></i>Fetch Existing
+                                        </button>
+                                        <button type="button" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700" onclick="addPdfHighlightRow(this)">Add Row</button>
+                                    </div>
                                 </div>
                                 <div class="overflow-x-auto border border-gray-200 rounded">
                                     <table class="min-w-full text-sm pdf-highlights-table">
@@ -4013,6 +4018,18 @@
             }
             
             contentFields.innerHTML = fieldsHTML;
+            
+            // Refresh lucide icons after updating HTML
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+            
+            // If PDF content type is selected, automatically try to fetch existing highlights
+            if (contentType === 'pdf') {
+                setTimeout(() => {
+                    autoFetchPdfHighlights(contentItem);
+                }, 500); // Small delay to ensure DOM is fully updated
+            }
             
             // If image content type is selected, automatically check for existing images
             if (contentType === 'image') {
@@ -4482,6 +4499,402 @@
             } catch (e) {
                 console.warn('collectPdfHighlightsFromContentItem error:', e);
                 return [];
+            }
+        }
+
+        // Fetch PDF highlights from database for a specific course and PDF URL
+        async function fetchPdfHighlightsFromDatabase(courseId, pdfUrl) {
+            try {
+                const client = supabaseAdmin || supabase;
+                if (!client?.from) {
+                    console.error('fetchPdfHighlightsFromDatabase: No Supabase client available');
+                    return [];
+                }
+
+                console.log('fetchPdfHighlightsFromDatabase: Fetching highlights for course:', courseId, 'PDF:', pdfUrl);
+
+                // First, find the book for this course and PDF URL
+                const { data: books, error: booksError } = await client
+                    .from('books')
+                    .select('id')
+                    .eq('course_id', courseId)
+                    .eq('pdf_url', pdfUrl)
+                    .limit(1);
+
+                if (booksError) {
+                    console.error('fetchPdfHighlightsFromDatabase: Error fetching books:', booksError.message);
+                    return [];
+                }
+
+                if (!books || books.length === 0) {
+                    console.log('fetchPdfHighlightsFromDatabase: No book found for this PDF');
+                    return [];
+                }
+
+                const bookId = books[0].id;
+                console.log('fetchPdfHighlightsFromDatabase: Found book ID:', bookId);
+
+                // Fetch highlights for this book
+                const { data: highlights, error: highlightsError } = await client
+                    .from('word_highlights')
+                    .select('id, word, synonyms, page_number, position')
+                    .eq('book_id', bookId)
+                    .order('page_number', { ascending: true });
+
+                if (highlightsError) {
+                    console.error('fetchPdfHighlightsFromDatabase: Error fetching highlights:', highlightsError.message);
+                    return [];
+                }
+
+                if (!highlights || highlights.length === 0) {
+                    console.log('fetchPdfHighlightsFromDatabase: No highlights found for this book');
+                    return [];
+                }
+
+                console.log('fetchPdfHighlightsFromDatabase: Found', highlights.length, 'highlights');
+
+                // Convert database format to the format expected by the UI
+                const formattedHighlights = highlights.map(h => {
+                    const position = h.position || {};
+                    const rect = position.rect || {};
+                    const refs = position.refs || {};
+                    
+                    return {
+                        id: h.id,
+                        word: h.word || '',
+                        synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                        page: h.page_number || 1,
+                        rect: {
+                            x: rect.x || 0,
+                            y: rect.y || 0,
+                            w: rect.w || rect.width || 0.1,
+                            h: rect.h || rect.height || 0.03
+                        },
+                        refs: {
+                            images: Array.isArray(refs.images) ? refs.images : [],
+                            audio: Array.isArray(refs.audio) ? refs.audio : [],
+                            video: Array.isArray(refs.video) ? refs.video : []
+                        }
+                    };
+                });
+
+                console.log('fetchPdfHighlightsFromDatabase: Formatted highlights:', formattedHighlights);
+                return formattedHighlights;
+
+            } catch (e) {
+                console.error('fetchPdfHighlightsFromDatabase: Error:', e?.message || e);
+                return [];
+            }
+        }
+
+        // Populate PDF highlights table with data from database
+        async function populatePdfHighlightsTable(contentItem, courseId, pdfUrl) {
+            try {
+                if (!contentItem || !courseId || !pdfUrl) {
+                    console.log('populatePdfHighlightsTable: Missing required parameters');
+                    return;
+                }
+
+                console.log('populatePdfHighlightsTable: Populating highlights for PDF:', pdfUrl);
+
+                // Fetch highlights from database
+                const highlights = await fetchPdfHighlightsFromDatabase(courseId, pdfUrl);
+
+                if (highlights.length === 0) {
+                    console.log('populatePdfHighlightsTable: No highlights to populate');
+                    return;
+                }
+
+                // Clear existing rows (except the empty template row if it exists)
+                const tbody = contentItem.querySelector('.pdf-highlights-table tbody');
+                if (tbody) {
+                    // Keep one empty row if no highlights exist, remove all others
+                    tbody.innerHTML = '';
+                }
+
+                // Add each highlight as a row
+                highlights.forEach(highlight => {
+                    appendPdfHighlightRowWithValues(contentItem, highlight);
+                });
+
+                console.log('populatePdfHighlightsTable: Populated', highlights.length, 'highlights');
+
+            } catch (e) {
+                console.error('populatePdfHighlightsTable: Error:', e?.message || e);
+            }
+        }
+
+        // Automatically fetch and populate PDF highlights when PDF content is created
+        async function autoFetchPdfHighlights(contentItem) {
+            try {
+                if (!contentItem) {
+                    console.log('autoFetchPdfHighlights: No content item provided');
+                    return;
+                }
+
+                // Check if this is a PDF content type
+                const typeSelect = contentItem.querySelector('.content-type');
+                if (!typeSelect || typeSelect.value !== 'pdf') {
+                    console.log('autoFetchPdfHighlights: Not a PDF content type');
+                    return;
+                }
+
+                // Get the course ID from the form or current editing context
+                const courseId = getCurrentCourseId();
+                if (!courseId) {
+                    console.log('autoFetchPdfHighlights: No course ID available');
+                    return;
+                }
+
+                console.log('autoFetchPdfHighlights: Starting auto-fetch for course:', courseId);
+
+                // Show loading indicator
+                const fetchBtn = contentItem.querySelector('.auto-fetch-btn');
+                if (fetchBtn) {
+                    fetchBtn.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 inline mr-1 animate-spin"></i>Fetching...';
+                    fetchBtn.disabled = true;
+                    if (window.lucide) {
+                        window.lucide.createIcons();
+                    }
+                }
+
+                // Strategy 1: Check if there's a PDF file selected
+                const pdfFile = contentItem.querySelector('.content-file')?.files[0];
+                const existingPdfUrl = contentItem.querySelector('.content-file')?.dataset.existingUrl;
+                
+                let pdfUrl = null;
+                if (pdfFile) {
+                    console.log('autoFetchPdfHighlights: New PDF file detected, will need to wait for upload');
+                    pdfUrl = `placeholder:${pdfFile.name}`;
+                } else if (existingPdfUrl) {
+                    pdfUrl = existingPdfUrl;
+                    console.log('autoFetchPdfHighlights: Using existing PDF URL:', pdfUrl);
+                } else {
+                    // Strategy 2: Find any PDF for this course (for existing courses like Elementry)
+                    pdfUrl = await findAnyPdfForCourse(courseId);
+                    if (pdfUrl) {
+                        console.log('autoFetchPdfHighlights: Found PDF for course:', pdfUrl);
+                    }
+                }
+
+                // Strategy 3: If still no PDF URL, check if we're editing and try to find based on content title
+                if (!pdfUrl || pdfUrl.startsWith('placeholder:')) {
+                    pdfUrl = await findExistingPdfUrl(contentItem, courseId);
+                    if (pdfUrl) {
+                        console.log('autoFetchPdfHighlights: Found PDF by title matching:', pdfUrl);
+                    }
+                }
+
+                if (!pdfUrl || pdfUrl.startsWith('placeholder:')) {
+                    console.log('autoFetchPdfHighlights: No valid PDF URL found, but will still try to find any highlights for course');
+                    // Try to fetch highlights for any PDF in this course
+                    await fetchAnyHighlightsForCourse(contentItem, courseId);
+                } else {
+                    console.log('autoFetchPdfHighlights: Attempting to fetch highlights for PDF:', pdfUrl);
+                    // Fetch and populate highlights for specific PDF
+                    await populatePdfHighlightsTable(contentItem, courseId, pdfUrl);
+                }
+
+            } catch (e) {
+                console.error('autoFetchPdfHighlights: Error:', e?.message || e);
+            } finally {
+                // Restore fetch button
+                const fetchBtn = contentItem.querySelector('.auto-fetch-btn');
+                if (fetchBtn) {
+                    fetchBtn.innerHTML = '<i data-lucide="download" class="w-3 h-3 inline mr-1"></i>Fetch Existing';
+                    fetchBtn.disabled = false;
+                    if (window.lucide) {
+                        window.lucide.createIcons();
+                    }
+                }
+            }
+        }
+
+        // Get current course ID from various sources
+        function getCurrentCourseId() {
+            // Try to get from form dataset (when editing)
+            const courseForm = document.getElementById('courseForm');
+            if (courseForm?.dataset?.courseId) {
+                return courseForm.dataset.courseId;
+            }
+
+            // Try to get from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseIdFromUrl = urlParams.get('courseId');
+            if (courseIdFromUrl) {
+                return courseIdFromUrl;
+            }
+
+            // Try to get from global variable (if set)
+            if (window.currentCourseId) {
+                return window.currentCourseId;
+            }
+
+            return null;
+        }
+
+        // Find existing PDF URL for content item when editing
+        async function findExistingPdfUrl(contentItem, courseId) {
+            try {
+                // This would be called when editing existing content
+                // For now, we'll check if there's any indication of an existing PDF
+                const titleInput = contentItem.querySelector('.content-title');
+                const title = titleInput?.value || '';
+                
+                if (!title) {
+                    return null;
+                }
+
+                // Try to find books with similar titles for this course
+                const client = supabaseAdmin || supabase;
+                const { data: books, error } = await client
+                    .from('books')
+                    .select('pdf_url, title')
+                    .eq('course_id', courseId)
+                    .ilike('title', `%${title}%`)
+                    .limit(1);
+
+                if (error || !books || books.length === 0) {
+                    return null;
+                }
+
+                return books[0].pdf_url;
+            } catch (e) {
+                console.error('findExistingPdfUrl: Error:', e?.message || e);
+                return null;
+            }
+        }
+
+        // Find any PDF for a course (useful for auto-fetching)
+        async function findAnyPdfForCourse(courseId) {
+            try {
+                const client = supabaseAdmin || supabase;
+                const { data: books, error } = await client
+                    .from('books')
+                    .select('pdf_url')
+                    .eq('course_id', courseId)
+                    .limit(1);
+
+                if (error || !books || books.length === 0) {
+                    return null;
+                }
+
+                return books[0].pdf_url;
+            } catch (e) {
+                console.error('findAnyPdfForCourse: Error:', e?.message || e);
+                return null;
+            }
+        }
+
+        // Fetch any highlights for a course (when no specific PDF URL is known)
+        async function fetchAnyHighlightsForCourse(contentItem, courseId) {
+            try {
+                const client = supabaseAdmin || supabase;
+                
+                // Get all books for this course
+                const { data: books, error: booksError } = await client
+                    .from('books')
+                    .select('id, title, pdf_url')
+                    .eq('course_id', courseId);
+
+                if (booksError || !books || books.length === 0) {
+                    console.log('fetchAnyHighlightsForCourse: No books found for course');
+                    return;
+                }
+
+                console.log(`fetchAnyHighlightsForCourse: Found ${books.length} books for course`);
+
+                // Get all highlights for all books in this course
+                const bookIds = books.map(book => book.id);
+                const { data: highlights, error: highlightsError } = await client
+                    .from('word_highlights')
+                    .select('id, word, synonyms, page_number, position, book_id')
+                    .in('book_id', bookIds)
+                    .order('page_number', { ascending: true });
+
+                if (highlightsError || !highlights || highlights.length === 0) {
+                    console.log('fetchAnyHighlightsForCourse: No highlights found for any books in course');
+                    return;
+                }
+
+                console.log(`fetchAnyHighlightsForCourse: Found ${highlights.length} highlights across all books`);
+
+                // Convert to UI format and populate table
+                const formattedHighlights = highlights.map(h => {
+                    const position = h.position || {};
+                    const rect = position.rect || {};
+                    const refs = position.refs || {};
+                    
+                    return {
+                        id: h.id,
+                        word: h.word || '',
+                        synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                        page: h.page_number || 1,
+                        rect: {
+                            x: rect.x || 0,
+                            y: rect.y || 0,
+                            w: rect.w || rect.width || 0.1,
+                            h: rect.h || rect.height || 0.03
+                        },
+                        refs: {
+                            images: Array.isArray(refs.images) ? refs.images : [],
+                            audio: Array.isArray(refs.audio) ? refs.audio : [],
+                            video: Array.isArray(refs.video) ? refs.video : []
+                        }
+                    };
+                });
+
+                // Clear existing table and populate with all highlights
+                const tbody = contentItem.querySelector('.pdf-highlights-table tbody');
+                if (tbody) {
+                    tbody.innerHTML = '';
+                }
+
+                formattedHighlights.forEach(highlight => {
+                    appendPdfHighlightRowWithValues(contentItem, highlight);
+                });
+
+                console.log(`fetchAnyHighlightsForCourse: Populated ${formattedHighlights.length} highlights`);
+
+            } catch (e) {
+                console.error('fetchAnyHighlightsForCourse: Error:', e?.message || e);
+            }
+        }
+
+        // Enhanced PDF highlights table with auto-fetch button
+        function addAutoFetchButton(contentItem) {
+            try {
+                const pdfHighlightsDiv = contentItem.querySelector('.pdf-highlights');
+                if (!pdfHighlightsDiv) {
+                    return;
+                }
+
+                // Check if auto-fetch button already exists
+                if (pdfHighlightsDiv.querySelector('.auto-fetch-btn')) {
+                    return;
+                }
+
+                // Add auto-fetch button next to "Add Row" button
+                const headerDiv = pdfHighlightsDiv.querySelector('.flex.items-center.justify-between');
+                if (headerDiv) {
+                    const autoFetchBtn = document.createElement('button');
+                    autoFetchBtn.type = 'button';
+                    autoFetchBtn.className = 'auto-fetch-btn px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 mr-2';
+                    autoFetchBtn.innerHTML = '<i data-lucide="download" class="w-3 h-3 inline mr-1"></i>Fetch Existing';
+                    autoFetchBtn.onclick = () => autoFetchPdfHighlights(contentItem);
+                    
+                    // Insert before the "Add Row" button
+                    const addRowBtn = headerDiv.querySelector('button');
+                    if (addRowBtn) {
+                        addRowBtn.parentNode.insertBefore(autoFetchBtn, addRowBtn);
+                        // Refresh lucide icons
+                        if (window.lucide) {
+                            window.lucide.createIcons();
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('addAutoFetchButton: Error:', e?.message || e);
             }
         }
         // ==== end PDF Highlights Helpers ====
@@ -6479,7 +6892,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             if (objectivesTextarea) objectivesTextarea.value = lesson.objectives || '';
                             
                             // Load lesson materials/content if available (await to ensure DOM is populated sequentially)
-                            await loadLessonMaterials(lesson.id, currentLesson);
+                            await loadLessonMaterials(lesson.id, currentLesson, courseId);
                         }
                     }
 
@@ -6713,7 +7126,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
         
         // Function to load lesson materials for a specific lesson
-        async function loadLessonMaterials(lessonId, lessonContainer) {
+        async function loadLessonMaterials(lessonId, lessonContainer, courseId) {
             try {
                 if (!supabase) {
                     console.error('Supabase not initialized');
@@ -6810,13 +7223,29 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                             if (pages) pages.value = contentData.page_range || '';
                                                             if (synonym) synonym.value = contentData.synonym || '';
                                                             if (instructions) instructions.value = contentData.instructions || '';
-                                                            // Hydrate PDF highlights table if metadata.highlights exists
+                                                            
+                                                            // Hydrate PDF highlights table from database
                                                             try {
-                                                                const highlights = Array.isArray(material.metadata?.highlights) ? material.metadata.highlights : (Array.isArray(contentData.highlights) ? contentData.highlights : []);
-                                                                if (highlights && highlights.length) {
-                                                                    highlights.forEach(h => appendPdfHighlightRowWithValues(lastContentItem, h));
+                                                                // First try to load from metadata (for backward compatibility)
+                                                                const metadataHighlights = Array.isArray(material.metadata?.highlights) ? material.metadata.highlights : (Array.isArray(contentData.highlights) ? contentData.highlights : []);
+                                                                
+                                                                if (metadataHighlights && metadataHighlights.length) {
+                                                                    console.log('Loading highlights from metadata:', metadataHighlights.length);
+                                                                    metadataHighlights.forEach(h => appendPdfHighlightRowWithValues(lastContentItem, h));
+                                                                } else {
+                                                                    // If no metadata highlights, try to fetch from database
+                                                                    const pdfUrl = material.url || material.file_url;
+                                                                    if (pdfUrl && courseId) {
+                                                                        console.log('No metadata highlights found, fetching from database for PDF:', pdfUrl);
+                                                                        // Use setTimeout to ensure the content item is fully rendered
+                                                                        setTimeout(async () => {
+                                                                            await populatePdfHighlightsTable(lastContentItem, courseId, pdfUrl);
+                                                                        }, 100);
+                                                                    }
                                                                 }
-                                                            } catch (_) {}
+                                                            } catch (e) {
+                                                                console.warn('Error loading PDF highlights:', e);
+                                                            }
                                                             break;
                                                         case 'quiz':
                                                             const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');

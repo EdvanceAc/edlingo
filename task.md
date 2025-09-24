@@ -66,7 +66,7 @@ This comprehensive list outlines the required tasks, strategic decisions, and fe
 | 5.1 | Image Dictionary | Create a **pre-produced database/library of images** for a core vocabulary (e.g., **3000-4000 words**). | In Progress | Supabase Storage assets referenced in `lesson_file_index.json` |
 | 5.2 | Visual Retrieval | Configure the system to instantly **retrieve and display images** from the pre-built library when a word is searched, avoiding real-time AI generation. | In Progress | Retrieval via pre-indexed lesson file JSON and storage paths |
 | 5.3 | Teacher Upload | Implement a section allowing teachers to **upload educational materials** (e.g., PDF books) for students to read and take quizzes on. | Completed ✅ | Upload + storage in `admin-dashboard.html`; persisted files in `lesson_file_index.json` |
-| 5.4 | Highlighting Feature | Develop functionality for teachers to **highlight words in uploaded content** and add synonyms/definitions for student viewing. | To Do | |
+| 5.4 | Highlighting Feature | Develop functionality for teachers to **highlight words in uploaded content** and add synonyms/definitions for student viewing. | Completed ✅ | PDF highlights table in `admin-dashboard.html`; automatic fetch functionality; database persistence in `books` and `word_highlights` tables |
 | 5.5 | Advanced Media | Explore and potentially implement **AI voice cloning** and realistic **lip-syncing** capabilities for personalized learning experiences and translated content (future/premium feature). | To Do | |
 
 ### Feature Group 6: Deployment, UX, and Testing

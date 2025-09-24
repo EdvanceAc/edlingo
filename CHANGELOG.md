@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ✨ Added
+- **PDF Highlights Automatic Fetching**: Implemented intelligent auto-fetch functionality for PDF highlights in admin dashboard
+  - **Automatic Triggers**: Highlights automatically fetched when "PDF Document" content type is selected
+  - **Manual Control**: Blue "Fetch Existing" button for on-demand highlights retrieval
+  - **Smart Discovery**: Multiple fallback strategies to find existing PDFs and highlights for courses
+  - **Course-Wide Search**: Fetches highlights from all PDFs associated with a course
+  - **Real-time Population**: Highlights table automatically populated without user intervention
+  - **Loading Indicators**: Visual feedback during fetch operations with spinner animation
 - Admin Electron entrypoint for the Admin Dashboard via src/main/admin-main.js with dev/prod loading and GPU/IPC hardening for stability
 - Netlify test index (edlingo_netlify_index.html) to validate Netlify build output and asset loading
 
@@ -20,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All progress fields now properly map through `mapToDB()` function to prevent database column errors
 
 ### 🎯 Enhanced
+- **PDF Highlights Database Integration**: Enhanced PDF highlights workflow with comprehensive database persistence
+  - **Structured Storage**: Highlights saved to dedicated `books` and `word_highlights` tables
+  - **Intelligent Retrieval**: Course editing automatically loads existing highlights from database
+  - **Backward Compatibility**: Supports both metadata and database-stored highlights
+  - **Cross-Course Discovery**: Finds and fetches highlights across all PDFs in a course
+  - **Error Resilience**: Robust error handling with multiple fallback strategies
 - Lessons view: Hardened schema fallbacks in LessonsSection to support tables named "terms" or "sections" and FK columns "term_id" or "section_id", preventing blank views when schemas differ
 - EnhancedAdminDashboard: improved rendering resilience and loading states for admin data flows
 - Supabase service: tightened diagnostics and safer lookups used by Lessons and Admin views
