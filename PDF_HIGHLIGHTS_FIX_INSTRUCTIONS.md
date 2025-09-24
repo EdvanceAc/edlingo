@@ -156,3 +156,4 @@ persistPdfHighlightsToDb: Successfully inserted highlight for word: learning
    - Browser console test script for comprehensive testing
 
 The fix should now properly collect and save PDF highlights to the database. The enhanced logging will help identify any remaining issues.
+
