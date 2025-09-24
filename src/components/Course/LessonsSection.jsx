@@ -12,6 +12,7 @@ import unifiedLevelService from '../../services/unifiedLevelService';
 import pronunciationService from '../../renderer/services/pronunciationService';
 import useProgression from '../../hooks/useProgression';
 import { useNavigate, useParams } from 'react-router-dom';
+import PDFHighlightViewer from '../ContentDelivery/PDFHighlightViewer';
 
 const LessonsSection = ({ courseId: propCourseId }) => {
   const params = useParams();
@@ -20,6 +21,7 @@ const LessonsSection = ({ courseId: propCourseId }) => {
   const [terms, setTerms] = useState([]);
   const [selectedTerm, setSelectedTerm] = useState(null);
   const [lessons, setLessons] = useState([]);
+  const [selectedLesson, setSelectedLesson] = useState(null);
   const [isLoadingTerms, setIsLoadingTerms] = useState(false);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
   const [termsError, setTermsError] = useState(null);
@@ -158,6 +160,9 @@ const LessonsSection = ({ courseId: propCourseId }) => {
 
       if (!lessonsData || lessonsData.length === 0) {
         setLessons([]);
+        setSelectedLesson(null);
+        setPdfUrl(null);
+        setHighlights([]);
         return;
       }
 
@@ -179,12 +184,46 @@ const LessonsSection = ({ courseId: propCourseId }) => {
 
       setLessons(processedLessons);
 
+      // Auto-select first lesson and load its materials/highlights
+      if (processedLessons.length > 0) {
+        setSelectedLesson(processedLessons[0]);
+        fetchLessonDetails(processedLessons[0].id);
+      }
+
     } catch (error) {
       console.error('[LessonsSection] Error fetching lessons:', error);
       setLessonsError(error.message || 'Failed to load lessons');
     } finally {
       setIsLoadingLessons(false);
     }
+  };
+
+  // Normalize various highlight shapes (DB/metadata) to viewer shape
+  const normalizeHighlights = (items) => {
+    if (!Array.isArray(items)) return [];
+    return items.map((h, idx) => {
+      const id = h.id || h.highlight_id || `${h.word || 'hl'}-${h.page || h.page_number || 1}-${idx}`;
+      const word = h.word || h.text || h.term || '';
+      const page = h.page != null ? h.page : (h.page_number != null ? h.page_number : 1);
+      const synonyms = Array.isArray(h.synonyms)
+        ? h.synonyms
+        : (typeof h.synonyms === 'string' && h.synonyms.length
+            ? h.synonyms.split(',').map(s => s.trim()).filter(Boolean)
+            : []);
+
+      // Position/rect mapping with graceful fallbacks
+      const pos = h.position || h.rect || h.bbox || h.coordinates || {};
+      const rect = {
+        x: pos.x != null ? pos.x : (pos.left != null ? pos.left : 0),
+        y: pos.y != null ? pos.y : (pos.top != null ? pos.top : 0),
+        w: pos.w != null ? pos.w : (pos.width != null ? pos.width : 0),
+        h: pos.h != null ? pos.h : (pos.height != null ? pos.height : 0)
+      };
+
+      const refs = h.refs && typeof h.refs === 'object' ? h.refs : { images: [], audio: [], video: [] };
+
+      return { id, word, page, synonyms, rect, refs };
+    });
   };
 
   const fetchLessonDetails = async (lessonId) => {
@@ -197,6 +236,22 @@ const LessonsSection = ({ courseId: propCourseId }) => {
 
       if (materialsError) {
         console.warn('[LessonsSection] Error fetching lesson_materials:', materialsError.message);
+      }
+
+      // Prefer PDF material with metadata.highlights
+      const pdfMat = Array.isArray(materialsData) ? materialsData.find(m => (m.type || '').toLowerCase() === 'pdf') : null;
+      if (pdfMat) {
+        try {
+          let meta = pdfMat?.metadata;
+          if (typeof meta === 'string') {
+            try { meta = JSON.parse(meta); } catch (_) { meta = {}; }
+          }
+          setPdfUrl(pdfMat.url || pdfMat.file_url || null);
+          const hs = meta && Array.isArray(meta.highlights) ? meta.highlights : [];
+          setHighlights(normalizeHighlights(hs));
+        } catch (e) {
+          console.warn('[LessonsSection] Failed to parse PDF metadata:', e?.message || e);
+        }
       }
 
       // Books with fallback ordering
@@ -232,10 +287,27 @@ const LessonsSection = ({ courseId: propCourseId }) => {
         booksData = bookResp.data;
       }
 
+      // If no book found for this lesson, fallback to the course's most recent book
+      let book = booksData?.[0] || null;
+      if (!book && courseId) {
+        const byCourse = await supabase
+          .from('books')
+          .select('id,course_id,pdf_url,updated_at')
+          .eq('course_id', courseId)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+        if (!byCourse.error && Array.isArray(byCourse.data) && byCourse.data.length) {
+          book = byCourse.data[0];
+        } else if (byCourse.error) {
+          console.warn('[LessonsSection] Fallback books by course_id failed:', byCourse.error.message);
+        }
+      }
+
       // Set PDF and highlights
-      const book = booksData?.[0];
       if (book) {
-        setPdfUrl(book.pdf_url);
+        if (book.pdf_url) {
+          setPdfUrl(book.pdf_url);
+        }
         const { data: fetchedHl, error: hlError } = await supabase
           .from('word_highlights')
           .select('*')
@@ -243,10 +315,14 @@ const LessonsSection = ({ courseId: propCourseId }) => {
         if (hlError) {
           console.warn('[LessonsSection] Error fetching word_highlights:', hlError.message);
         }
-        setHighlights(fetchedHl || []);
+        const normalized = normalizeHighlights(fetchedHl || []);
+        if (normalized.length) {
+          setHighlights(normalized);
+        }
       } else {
-        setPdfUrl(null);
-        setHighlights([]);
+        // Only clear if nothing was set from materials
+        setPdfUrl((prev) => prev);
+        setHighlights((prev) => prev);
       }
 
     } catch (e) {
@@ -399,10 +475,146 @@ const LessonsSection = ({ courseId: propCourseId }) => {
               </p>
             </div>
           )}
+
+          {!isLoadingLessons && !lessonsError && lessons.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+            >
+              {lessons.map((lesson, index) => {
+                const isSelected = selectedLesson?.id === lesson.id;
+                return (
+                  <motion.div
+                    key={lesson.id || index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Card 
+                      className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                        isSelected 
+                          ? 'ring-2 ring-primary bg-primary/10 border-primary/20' 
+                          : 'hover:border-primary/30 hover:bg-primary/5'
+                      }`}
+                      onClick={() => {
+                        setSelectedLesson(lesson);
+                        fetchLessonDetails(lesson.id);
+                      }}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-1">
+                              {lesson.title ?? lesson.name ?? `Lesson ${lesson.order_number ?? index + 1}`}
+                            </h4>
+                            {lesson.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {lesson.description}
+                              </p>
+                            )}
+                          </div>
+                          <ArrowRight className={`w-4 h-4 transition-colors ${
+                            isSelected ? 'text-primary' : 'text-muted-foreground'
+                          }`} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
         </div>
       )}
 
-      {/* Overall Empty State */}
+      {/* PDF viewer when available */}
+      {pdfUrl && (
+        <div className="mt-6">
+          <PDFHighlightViewer fileUrl={pdfUrl} highlights={highlights} />
+
+          {/* Highlights table/list */}
+          <div className="mt-4 border rounded-lg">
+            <div className="grid grid-cols-12 px-4 py-2 bg-muted/40 text-sm font-medium text-muted-foreground">
+              <div className="col-span-4">Word</div>
+              <div className="col-span-2">Page</div>
+              <div className="col-span-4">Synonyms</div>
+              <div className="col-span-2">Rect</div>
+            </div>
+            {Array.isArray(highlights) && highlights.length > 0 ? (
+              <div className="divide-y">
+                {highlights.map((h) => (
+                  <div key={h.id} className="grid grid-cols-12 px-4 py-2 text-sm">
+                    <div className="col-span-4 truncate" title={h.word}>{h.word || '-'}</div>
+                    <div className="col-span-2">{h.page ?? '-'}</div>
+                    <div className="col-span-4 truncate" title={(h.synonyms || []).join(', ')}>
+                      {(h.synonyms || []).join(', ') || '-'}
+                    </div>
+                    <div className="col-span-2">
+                      {h.rect ? `${h.rect.x},${h.rect.y},${h.rect.w},${h.rect.h}` : '-'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-3 text-sm text-muted-foreground">No highlights found.</div>
+            )}
+          </div>
+
+          {/* Semantic UL for tests/dom expectations */}
+          -          <ul id="pdf-highlights-list" className="mt-4 space-y-1 list-disc pl-6">
+          -          {Array.isArray(highlights) && highlights.length > 0 ? (
+          -          highlights.map((h) => (
+          -          <li key={`li-${h.id || h.word}`}
+          -          className="pdf-highlight-item"
+          -          data-highlight-id={h.id}
+          -          data-page={h.page}
+          -          data-word={h.word}
+          -          >
+          -          <span className="font-medium">{h.word || '—'}</span>
+          -          <span className="text-muted-foreground"> on page {h.page ?? '—'}</span>
+          -          {(h.synonyms && h.synonyms.length > 0) && (
+          -          <span className="text-muted-foreground"> — Synonyms: {(h.synonyms || []).join(', ')}</span>
+          -          )}
+          -          </li>
+          -          ))
+          -          ) : (
+          -          <li className="text-sm text-muted-foreground">No highlights found.</li>
+          -          )}
+          -          </ul>
+          +          {/* The semantic UL has been moved to an always-rendered container below. */}
+         </div>
+       )}
+
++      {/* Always-rendered highlights container to ensure UL exists after refresh */}
++      <div id="pdf-highlights-table" className="mt-6">
++        <div className="rounded-lg border p-4">
++          <ul id="pdf-highlights-list" className="space-y-1 list-disc pl-6">
++            {Array.isArray(highlights) && highlights.length > 0 ? (
++              highlights.map((h) => (
++                <li key={`li-${h.id || h.word}`}
++                    className="pdf-highlight-item"
++                    data-highlight-id={h.id}
++                    data-page={h.page}
++                    data-word={h.word}
++                >
++                  <span className="font-medium">{h.word || '—'}</span>
++                  <span className="text-muted-foreground"> on page {h.page ?? '—'}</span>
++                  {(h.synonyms && h.synonyms.length > 0) ? (
++                    <span className="text-muted-foreground"> — Synonyms: {(h.synonyms || []).join(', ')}</span>
++                  ) : null}
++                </li>
++              ))
++            ) : (
++              <li className="text-sm text-muted-foreground">No highlights found.</li>
++            )}
++          </ul>
++        </div>
++      </div>
++
+       {/* Overall Empty State */}
       {!isLoadingTerms && !termsError && terms.length === 0 && !isLoadingLessons && !lessonsError && lessons.length === 0 && (
         <div className="text-center py-12">
           <BookOpen className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />

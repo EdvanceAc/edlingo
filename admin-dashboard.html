@@ -3952,6 +3952,34 @@
                                 <label class="block text-sm font-medium text-gray-600 mb-1">Reading Instructions</label>
                                 <textarea class="content-instructions w-full px-2 py-1 border border-gray-300 rounded text-sm" rows="2" placeholder="Instructions for students on how to use this PDF"></textarea>
                             </div>
+
+                            <div class="mt-4 pdf-highlights">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-sm font-medium text-gray-800">PDF Highlights</label>
+                                    <button type="button" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700" onclick="addPdfHighlightRow(this)">Add Row</button>
+                                </div>
+                                <div class="overflow-x-auto border border-gray-200 rounded">
+                                    <table class="min-w-full text-sm pdf-highlights-table">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-2 py-2 text-left">Word/Phrase</th>
+                                                <th class="px-2 py-2 text-left">Synonyms (comma)</th>
+                                                <th class="px-2 py-2 text-left">Page</th>
+                                                <th class="px-2 py-2 text-left">X</th>
+                                                <th class="px-2 py-2 text-left">Y</th>
+                                                <th class="px-2 py-2 text-left">W</th>
+                                                <th class="px-2 py-2 text-left">H</th>
+                                                <th class="px-2 py-2 text-left">Image</th>
+                                                <th class="px-2 py-2 text-left">Audio</th>
+                                                <th class="px-2 py-2 text-left">Video</th>
+                                                <th class="px-2 py-2 text-left">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                                <p class="mt-2 text-xs text-gray-500">Note: X,Y,W,H are normalized (0–1) relative to the PDF page.</p>
+                            </div>
                         </div>
                     `;
                     break;
@@ -4307,6 +4335,157 @@
             alert(`Preview: ${contentType.toUpperCase()} - ${contentTitle || 'Untitled'}`);
         }
 
+        // ==== PDF Highlights Helpers ====
+        function appendPdfHighlightRowWithValues(contentItem, h = {}) {
+            try {
+                const tbody = contentItem?.querySelector('.pdf-highlights-table tbody');
+                if (!tbody) return;
+                const row = document.createElement('tr');
+                const rect = h.rect || {};
+                const refs = h.refs || {};
+                const imageUrl = Array.isArray(refs.images) && refs.images.length ? refs.images[0] : '';
+                const audioUrl = Array.isArray(refs.audio) && refs.audio.length ? refs.audio[0] : '';
+                const videoUrl = Array.isArray(refs.video) && refs.video.length ? refs.video[0] : '';
+                row.innerHTML = `
+                    <td class="px-2 py-1"><input type="text" class="hl-word w-40 px-2 py-1 border rounded" placeholder="word" value="${(h.word || '').replace(/"/g,'&quot;')}"></td>
+                    <td class="px-2 py-1"><input type="text" class="hl-synonyms w-48 px-2 py-1 border rounded" placeholder="fast, quick" value="${Array.isArray(h.synonyms) ? h.synonyms.join(', ') : (h.synonyms || '')}"></td>
+                    <td class="px-2 py-1"><input type="number" class="hl-page w-16 px-2 py-1 border rounded" min="1" value="${Number(h.page||1)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-x w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.x||0)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-y w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.y||0)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-w w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.w||0.1)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-h w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.h||0.03)}"></td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="image/*" class="hl-img-file hidden" onchange="uploadHlAsset(this, 'image')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-image-url" value="${imageUrl}">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="audio/*" class="hl-audio-file hidden" onchange="uploadHlAsset(this, 'audio')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-audio-url" value="${audioUrl}">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="video/*" class="hl-video-file hidden" onchange="uploadHlAsset(this, 'video')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-video-url" value="${videoUrl}">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <button type="button" class="px-2 py-1 bg-red-600 text-white rounded text-xs" onclick="this.closest('tr').remove()">Remove</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            } catch (e) {
+                console.error('appendPdfHighlightRowWithValues error:', e);
+            }
+        }
+
+        function addPdfHighlightRow(btn) {
+            try {
+                const contentItem = btn.closest('.content-item');
+                const tbody = contentItem?.querySelector('.pdf-highlights-table tbody');
+                if (!tbody) return;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-2 py-1"><input type="text" class="hl-word w-40 px-2 py-1 border rounded" placeholder="word"></td>
+                    <td class="px-2 py-1"><input type="text" class="hl-synonyms w-48 px-2 py-1 border rounded" placeholder="fast, quick"></td>
+                    <td class="px-2 py-1"><input type="number" class="hl-page w-16 px-2 py-1 border rounded" min="1" value="1"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-x w-16 px-2 py-1 border rounded" min="0" max="1" value="0"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-y w-16 px-2 py-1 border rounded" min="0" max="1" value="0"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-w w-16 px-2 py-1 border rounded" min="0" max="1" value="0.1"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-h w-16 px-2 py-1 border rounded" min="0" max="1" value="0.03"></td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="image/*" class="hl-img-file hidden" onchange="uploadHlAsset(this, 'image')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-image-url" value="">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="audio/*" class="hl-audio-file hidden" onchange="uploadHlAsset(this, 'audio')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-audio-url" value="">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="video/*" class="hl-video-file hidden" onchange="uploadHlAsset(this, 'video')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-video-url" value="">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <button type="button" class="px-2 py-1 bg-red-600 text-white rounded text-xs" onclick="this.closest('tr').remove()">Remove</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            } catch (e) {
+                console.error('addPdfHighlightRow error:', e);
+            }
+        }
+
+        async function uploadHlAsset(input, kind) {
+            try {
+                const file = input?.files?.[0];
+                if (!file) return;
+                const url = await uploadSingleFile(file, 'highlights');
+                const row = input.closest('tr');
+                if (!row) return;
+                if (kind === 'image') row.querySelector('.hl-image-url').value = url;
+                if (kind === 'audio') row.querySelector('.hl-audio-url').value = url;
+                if (kind === 'video') row.querySelector('.hl-video-url').value = url;
+            } catch (e) {
+                console.error('uploadHlAsset failed:', e);
+                alert('Failed to upload file: ' + (e?.message || e));
+            } finally {
+                if (input) input.value = '';
+            }
+        }
+
+        function collectPdfHighlightsFromContentItem(contentItem) {
+            try {
+                const rows = contentItem?.querySelectorAll('.pdf-highlights-table tbody tr') || [];
+                const out = [];
+                console.log('collectPdfHighlightsFromContentItem: Found', rows.length, 'rows');
+                
+                rows.forEach((tr, idx) => {
+                    const word = tr.querySelector('.hl-word')?.value?.trim();
+                    const synonymsRaw = tr.querySelector('.hl-synonyms')?.value || '';
+                    
+                    console.log(`Row ${idx}: word="${word}", synonyms="${synonymsRaw}"`);
+                    
+                    if (!word) {
+                        console.log(`Skipping row ${idx} - no word`);
+                        return;
+                    }
+                    
+                    const synonyms = synonymsRaw.split(',').map(s => s.trim()).filter(Boolean);
+                    const page = Number(tr.querySelector('.hl-page')?.value || 1);
+                    const x = Number(tr.querySelector('.hl-x')?.value || 0);
+                    const y = Number(tr.querySelector('.hl-y')?.value || 0);
+                    const w = Number(tr.querySelector('.hl-w')?.value || 0.1);
+                    const h = Number(tr.querySelector('.hl-h')?.value || 0.03);
+                    const image = tr.querySelector('.hl-image-url')?.value || null;
+                    const audio = tr.querySelector('.hl-audio-url')?.value || null;
+                    const video = tr.querySelector('.hl-video-url')?.value || null;
+                    const id = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `hl_${Date.now()}_${idx}`;
+                    
+                    const highlight = { id, word, synonyms, page, rect: { x, y, w, h }, refs: { images: image ? [image] : [], audio: audio ? [audio] : [], video: video ? [video] : [] } };
+                    console.log(`Collected highlight ${idx}:`, highlight);
+                    out.push(highlight);
+                });
+                
+                console.log('collectPdfHighlightsFromContentItem: Total collected:', out.length);
+                return out;
+            } catch (e) {
+                console.warn('collectPdfHighlightsFromContentItem error:', e);
+                return [];
+            }
+        }
+        // ==== end PDF Highlights Helpers ====
+
         function moveContentUp(button) {
             if (!button) {
                 console.error('Button is null in moveContentUp');
@@ -4623,6 +4802,7 @@
                                 const result = await window.electronAPI.invoke('db:createLessons', createdCourse.id, lessonsData);
                                 if (result.success) {
                                     console.log('✅ Lessons saved successfully via Electron IPC');
+                                    try { await persistPdfHighlightsToDb(createdCourse.id, lessonsData); } catch (e) { console.warn('persistPdfHighlightsToDb warning:', e?.message || e); }
                                 } else {
                                     console.error('❌ Failed to save lessons via IPC:', result.error);
                                     throw new Error(result.error);
@@ -4652,6 +4832,7 @@
                                 }
                                 
                                 console.log('✅ Lessons saved successfully via direct Supabase');
+                                try { await persistPdfHighlightsToDb(createdCourse.id, lessonsData); } catch (e) { console.warn('persistPdfHighlightsToDb warning:', e?.message || e); }
                             }
                         }
                     } catch (lessonError) {
@@ -4949,6 +5130,138 @@ After running this SQL, refresh the admin dashboard to see the user management w
              return uploadedFiles;
          }
 
+         // Persist PDF highlights to database tables (books, word_highlights) in addition to lesson_materials metadata
+         async function persistPdfHighlightsToDb(courseId, lessonsData) {
+             try {
+                 if (!Array.isArray(lessonsData) || lessonsData.length === 0) {
+                     console.log('persistPdfHighlightsToDb: No lessons data provided');
+                     return;
+                 }
+                 
+                 // Use admin client if available, otherwise regular client
+                 const client = supabaseAdmin || supabase;
+                 if (!client?.from) {
+                     console.error('persistPdfHighlightsToDb: No Supabase client available');
+                     return;
+                 }
+                 
+                 console.log('persistPdfHighlightsToDb: Starting with courseId:', courseId, 'lessons:', lessonsData.length);
+                 
+                 // Verify course exists first
+                 const { data: courseExists, error: courseError } = await client
+                     .from('courses')
+                     .select('id')
+                     .eq('id', courseId)
+                     .single();
+                 
+                 if (courseError) {
+                     console.error('persistPdfHighlightsToDb: Course not found:', courseError.message);
+                     return;
+                 }
+
+                 for (const lesson of lessonsData) {
+                     const materials = Array.isArray(lesson.materials) ? lesson.materials : [];
+                     for (const m of materials) {
+                         if ((m.type || '').toLowerCase() !== 'pdf') continue;
+                         const meta = m.metadata || {};
+                         const hs = Array.isArray(meta.highlights) ? meta.highlights : [];
+                         if (!hs.length) continue;
+
+                         // Ensure a book row exists for this PDF (books: course_id, title, pdf_url)
+                         let bookId = null;
+                         const pdfUrl = m.file_url || m.url || null;
+                         console.log('persistPdfHighlightsToDb: Processing PDF:', pdfUrl);
+                         
+                         if (!pdfUrl) {
+                             console.warn('persistPdfHighlightsToDb: No PDF URL found, skipping highlights');
+                             continue;
+                         }
+                         
+                         try {
+                             // Try find existing by course_id + pdf_url
+                             const { data: existingBooks, error: selectError } = await client
+                                 .from('books')
+                                 .select('id,pdf_url')
+                                 .eq('course_id', courseId)
+                                 .eq('pdf_url', pdfUrl)
+                                 .limit(1);
+                             
+                             if (selectError) {
+                                 console.error('persistPdfHighlightsToDb: Error querying books:', selectError.message);
+                                 continue;
+                             }
+                             
+                             const existing = Array.isArray(existingBooks) ? existingBooks[0] : null;
+                             if (existing?.id) {
+                                 bookId = existing.id;
+                                 console.log('persistPdfHighlightsToDb: Found existing book:', bookId);
+                             } else {
+                                 console.log('persistPdfHighlightsToDb: Creating new book entry...');
+                                 const { data: ins, error: insErr } = await client
+                                     .from('books')
+                                     .insert({ 
+                                         course_id: courseId, 
+                                         title: lesson.title || 'Lesson PDF', 
+                                         pdf_url: pdfUrl 
+                                     })
+                                     .select('id')
+                                     .single();
+                                 
+                                 if (insErr) {
+                                     console.error('persistPdfHighlightsToDb: Error creating book:', insErr.message);
+                                     continue;
+                                 }
+                                 
+                                 if (ins?.id) {
+                                     bookId = ins.id;
+                                     console.log('persistPdfHighlightsToDb: Created book:', bookId);
+                                 }
+                             }
+                         } catch (e) {
+                             console.error('persistPdfHighlightsToDb: Book operation failed:', e?.message || e);
+                             continue;
+                         }
+
+                         if (!bookId) {
+                             console.warn('persistPdfHighlightsToDb: Could not create or fetch books row; skipping structured highlight rows');
+                             continue;
+                         }
+
+                         // Insert highlights as rows in word_highlights
+                         console.log('persistPdfHighlightsToDb: Inserting', hs.length, 'highlights for book:', bookId);
+                         
+                         for (const h of hs) {
+                             try {
+                                 const payload = {
+                                     book_id: bookId,
+                                     word: h.word || '',
+                                     synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                                     page_number: Number(h.page) || 1,
+                                     position: { rect: h.rect || null, refs: h.refs || null }
+                                 };
+                                 
+                                 console.log('persistPdfHighlightsToDb: Inserting highlight:', payload);
+                                 
+                                 const { error: hlErr } = await client
+                                     .from('word_highlights')
+                                     .insert(payload);
+                                 
+                                 if (hlErr) {
+                                     console.error('persistPdfHighlightsToDb: word_highlights insert error:', hlErr.message, hlErr);
+                                 } else {
+                                     console.log('persistPdfHighlightsToDb: Successfully inserted highlight for word:', h.word);
+                                 }
+                             } catch (e) {
+                                 console.error('persistPdfHighlightsToDb: word_highlights insert failed:', e?.message || e);
+                             }
+                         }
+                     }
+                 }
+             } catch (e) {
+                 console.warn('persistPdfHighlightsToDb failed (non-fatal):', e?.message || e);
+             }
+         }
+
          // Course form submission
          document.getElementById('courseForm').addEventListener('submit', async function(e) {
             console.log('Form submission triggered!');
@@ -5062,13 +5375,14 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 if (lessonsData && lessonsData.length > 0 && createdCourse) {
                     console.log('📚 Creating lessons for course:', createdCourse.id);
                     try {
-                        if (window.isElectron) {
+                            if (window.isElectron) {
                             const lessonResult = await window.electronAPI.invoke('db:createLessons', createdCourse.id, lessonsData);
                             if (lessonResult && lessonResult.error) {
                                 console.error('❌ Failed to create lessons via IPC:', lessonResult.error);
                                 showError('Course saved but lessons failed: ' + lessonResult.error);
                             } else {
                                 console.log('✅ Lessons created via IPC:', lessonResult);
+                                    try { await persistPdfHighlightsToDb(createdCourse.id, lessonsData); } catch (e) { console.warn('persistPdfHighlightsToDb warning:', e?.message || e); }
                             }
                         } else {
                             const { data: lessonData, error: lessonError } = await supabase
@@ -5078,6 +5392,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                 showError('Course saved but lessons failed: ' + lessonError.message);
                             } else {
                                 console.log('✅ Lessons created via Supabase:', lessonData);
+                                    try { await persistPdfHighlightsToDb(createdCourse.id, lessonsData); } catch (e) { console.warn('persistPdfHighlightsToDb warning:', e?.message || e); }
                             }
                         }
                     } catch (lessonError) {
@@ -5267,15 +5582,21 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                     materialData.file_url = await uploadSingleFile(pdfFile, 'lessons', sectionNameForPath, lessonNameForPath, i);
                                     materialData.file_size = pdfFile.size;
                                     materialData.file_type = pdfFile.type;
-                                    materialData.metadata = {
-                                        title: materialTitle,
-                                        page_range: contentItem.querySelector('.content-pages')?.value || '',
-                                        instructions: contentItem.querySelector('.content-instructions')?.value || '',
-                                        page_count: 0 // Would need PDF parsing to get actual count
-                                    };
                                 } catch (error) {
                                     console.error('Failed to upload PDF file:', error);
                                 }
+                            }
+                            const hl = collectPdfHighlightsFromContentItem(contentItem);
+                            console.log('collectLessonsData: PDF highlights collected for material:', materialTitle, '- Count:', hl.length);
+                            materialData.metadata = {
+                                title: materialTitle,
+                                page_range: contentItem.querySelector('.content-pages')?.value || '',
+                                instructions: contentItem.querySelector('.content-instructions')?.value || '',
+                                page_count: 0,
+                                highlights: hl
+                            };
+                            if (hl.length > 0) {
+                                console.log('collectLessonsData: PDF highlights data:', hl);
                             }
                             break;
                             
@@ -6489,6 +6810,13 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                             if (pages) pages.value = contentData.page_range || '';
                                                             if (synonym) synonym.value = contentData.synonym || '';
                                                             if (instructions) instructions.value = contentData.instructions || '';
+                                                            // Hydrate PDF highlights table if metadata.highlights exists
+                                                            try {
+                                                                const highlights = Array.isArray(material.metadata?.highlights) ? material.metadata.highlights : (Array.isArray(contentData.highlights) ? contentData.highlights : []);
+                                                                if (highlights && highlights.length) {
+                                                                    highlights.forEach(h => appendPdfHighlightRowWithValues(lastContentItem, h));
+                                                                }
+                                                            } catch (_) {}
                                                             break;
                                                         case 'quiz':
                                                             const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
