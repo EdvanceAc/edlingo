@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
     const genAI = new GoogleGenerativeAI(geminiApiKey)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash', // Faster model for better response times
+      model: 'gemini-pro', // Stable model for reliable responses
       generationConfig: {
         maxOutputTokens: 100, // Reduced for even faster responses
         temperature: 0.6, // Lower temperature for faster, more focused responses

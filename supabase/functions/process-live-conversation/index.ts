@@ -42,7 +42,7 @@ serve(async (req) => {
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-pro',
       generationConfig: {
         temperature: 0.7,
         topK: 40,
@@ -136,7 +136,13 @@ Current message: ${message}`
         JSON.stringify({
           response: response,
           session_id: session_id,
-          success: true
+          success: true,
+          geminiUsed: true,
+          source: 'gemini-api',
+          debug: {
+            hasApiKey: !!GEMINI_API_KEY,
+            timestamp: new Date().toISOString()
+          }
         }),
         { 
           headers: { 
@@ -149,10 +155,23 @@ Current message: ${message}`
   } catch (error) {
     console.error('Error in process-live-conversation:', error)
     
+    // Check if this is a missing API key error
+    const isApiKeyMissing = error.message.includes('API key not configured') || 
+                           error.message.includes('Gemini API key') ||
+                           !GEMINI_API_KEY;
+    
     return new Response(
       JSON.stringify({
         error: error.message,
-        success: false
+        success: false,
+        geminiUsed: false,
+        source: 'error',
+        apiKeyConfigured: !!GEMINI_API_KEY,
+        debug: {
+          hasApiKey: !!GEMINI_API_KEY,
+          errorMessage: error.message,
+          timestamp: new Date().toISOString()
+        }
       }),
       { 
         status: 400,
