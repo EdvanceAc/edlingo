@@ -194,3 +194,4 @@ if (typeof window !== 'undefined') {
     window.testCourseCreation = testCourseCreation;
     window.testHighlightsPersistence = testHighlightsPersistence;
 }
+

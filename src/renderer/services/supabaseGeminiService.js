@@ -124,7 +124,11 @@ class SupabaseGeminiService {
                               if (data.fullResponse) {
                                 fullResponse = data.fullResponse;
                               }
-                              return { fullResponse, done: true };
+                              return { 
+                            fullResponse, 
+                            done: true, 
+                            audioData: data.audioData // Pass through audio data
+                          };
                             }
                             if (data.error) {
                               throw new Error(data.error);
@@ -169,7 +173,11 @@ class SupabaseGeminiService {
                           if (data.fullResponse) {
                             fullResponse = data.fullResponse;
                           }
-                          return { fullResponse, done: true };
+                          return { 
+                            fullResponse, 
+                            done: true, 
+                            audioData: data.audioData // Pass through audio data
+                          };
                         }
                       } catch (e) {
                         console.warn('Failed to parse streaming data:', e);
@@ -562,7 +570,11 @@ class SupabaseGeminiService {
                               if (data.fullResponse) {
                                 fullResponse = data.fullResponse;
                               }
-                              return { fullResponse, done: true };
+                              return { 
+                            fullResponse, 
+                            done: true, 
+                            audioData: data.audioData // Pass through audio data
+                          };
                             }
                             if (data.error) {
                               throw new Error(data.error);
@@ -605,7 +617,11 @@ class SupabaseGeminiService {
                           if (data.fullResponse) {
                             fullResponse = data.fullResponse;
                           }
-                          return { fullResponse, done: true };
+                          return { 
+                            fullResponse, 
+                            done: true, 
+                            audioData: data.audioData // Pass through audio data
+                          };
                         }
                       } catch (e) {
                         console.warn('Failed to parse streaming data:', e);

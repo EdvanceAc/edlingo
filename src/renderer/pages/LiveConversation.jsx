@@ -109,24 +109,50 @@ const LiveConversation = () => {
   const handleLiveMessage = useCallback(async (message) => {
     if (message.type === 'text') {
       if (message.isComplete) {
+        let shouldPlayAudio = false;
+        let audioDataToPlay = null;
+        
         setMessages(prev => {
           const newMessages = [...prev];
           const lastMessage = newMessages[newMessages.length - 1];
+          
+          // Check if we already have this exact message to prevent duplicates
+          const isDuplicate = newMessages.some(msg => 
+            msg.type === 'ai' && 
+            msg.content === message.content && 
+            !msg.isStreaming
+          );
+          
+          if (isDuplicate) {
+            console.log('🚫 Duplicate message detected, skipping');
+            return newMessages; // Don't add duplicate
+          }
+          
           if (lastMessage && lastMessage.isStreaming) {
+            // Update existing streaming message
             lastMessage.content = message.content;
             lastMessage.isStreaming = false;
             lastMessage.timestamp = new Date().toLocaleTimeString();
+            lastMessage.audioData = message.audioData; // Store audio data
+            audioDataToPlay = message.audioData;
+            shouldPlayAudio = true;
           } else {
-            newMessages.push({
+            // Add new message
+            const newMessage = {
               id: Date.now(),
               type: 'ai',
               content: message.content,
               timestamp: new Date().toLocaleTimeString(),
-              isStreaming: false
-            });
+              isStreaming: false,
+              audioData: message.audioData
+            };
+            newMessages.push(newMessage);
+            audioDataToPlay = message.audioData;
+            shouldPlayAudio = true;
           }
           return newMessages;
         });
+        
         setIsAIResponding(false);
         setIsStreaming(false);
         setStreamingMessage('');
@@ -147,10 +173,18 @@ const LiveConversation = () => {
           }
         }
         
-        // Play TTS if speaker is enabled using browser's speech synthesis
-        if (isSpeakerEnabled && message.content) {
-          const utterance = new SpeechSynthesisUtterance(message.content);
-          window.speechSynthesis.speak(utterance);
+        // Play TTS if speaker is enabled - prefer Zephyr audio over browser TTS
+        if (isSpeakerEnabled && message.content && shouldPlayAudio) {
+          const liveService = liveServiceRef.current;
+          
+          if (audioDataToPlay && liveService) {
+            console.log('🎙️ Playing Zephyr voice from message');
+            liveService.playZephyrAudio(audioDataToPlay);
+          } else {
+            console.log('🔊 Using browser TTS - no Zephyr audio available');
+            const utterance = new SpeechSynthesisUtterance(message.content);
+            window.speechSynthesis.speak(utterance);
+          }
         }
       } else {
         setIsStreaming(true);

@@ -109,37 +109,61 @@ class ModernGeminiLiveService {
       }
       
       let fullResponse = '';
+      let audioData = null;
+      let lastEmittedContent = '';
       
       // Process streaming chunks
       for await (const chunk of result.stream) {
         const chunkText = chunk?.chunk || chunk?.text || '';
-        if (!chunkText && !chunk?.fullResponse) continue;
+        if (!chunkText && !chunk?.fullResponse && !chunk?.audioData) continue;
         fullResponse = chunk?.fullResponse || (fullResponse + (chunkText || ''));
         
-        // Emit streaming message progressively
-        this.emit('message', {
-          type: 'text',
-          content: fullResponse,
-          isComplete: false,
-          chunk: chunkText,
-          timestamp: new Date().toISOString()
-        });
+        // Capture audio data from any chunk (including final)
+        if (chunk?.audioData) {
+          audioData = chunk.audioData;
+          console.log('🎵 Zephyr audio data received from chunk:', {
+            hasData: !!audioData.data,
+            mimeType: audioData.mimeType,
+            size: audioData.data?.length || 0
+          });
+        }
+        
+        // Check if this is the final chunk with audioData
+        if (chunk?.done && chunk?.audioData) {
+          audioData = chunk.audioData;
+          console.log('🎵 Final Zephyr audio data received:', {
+            hasData: !!audioData.data,
+            mimeType: audioData.mimeType,
+            size: audioData.data?.length || 0
+          });
+        }
+        
+        // Only emit streaming message if content has significantly changed
+        // This prevents too many rapid updates
+        if (fullResponse !== lastEmittedContent && fullResponse.length > lastEmittedContent.length + 5) {
+          this.emit('message', {
+            type: 'text',
+            content: fullResponse,
+            isComplete: false,
+            chunk: chunkText,
+            timestamp: new Date().toISOString()
+          });
+          lastEmittedContent = fullResponse;
+        }
       }
 
-      // Emit final complete message
+      // Always emit final complete message (this is the important one)
       this.emit('message', {
         type: 'text',
         content: fullResponse,
         isComplete: true,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        audioData: audioData
       });
 
-      // Automatically play TTS for the complete response
-      if (fullResponse.trim() && options.autoTTS !== false) {
-        setTimeout(() => {
-          this.speak(fullResponse);
-        }, 100); // Small delay to ensure UI updates first
-      }
+      // Don't auto-play TTS here - let the LiveConversation component handle it
+      // This prevents duplicate TTS calls
+      console.log('📤 Response processing completed, audioData available:', !!audioData);
 
       console.log('Message sent successfully via Supabase, response received');
       return { success: true, response: fullResponse, message: 'Message sent successfully' };
@@ -290,7 +314,78 @@ class ModernGeminiLiveService {
       this.isSpeaking = false;
       this.emit('tts-stopped', {});
     }
+    // Also stop any Zephyr audio
+    if (this.currentAudio && !this.currentAudio.paused) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
     return { success: true };
+  }
+
+  // Play Zephyr voice audio from Gemini
+  async playZephyrAudio(audioData) {
+    try {
+      if (!audioData || !audioData.data) {
+        console.warn('No audio data provided for Zephyr playback');
+        return { success: false, error: 'No audio data' };
+      }
+
+      // Stop any current audio
+      await this.stopSpeaking();
+
+      // Convert base64 audio data to blob
+      const audioBytes = atob(audioData.data);
+      const audioArray = new Uint8Array(audioBytes.length);
+      for (let i = 0; i < audioBytes.length; i++) {
+        audioArray[i] = audioBytes.charCodeAt(i);
+      }
+      
+      const audioBlob = new Blob([audioArray], { 
+        type: audioData.mimeType || 'audio/wav' 
+      });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // Create and play audio element
+      this.currentAudio = new Audio(audioUrl);
+      this.isSpeaking = true;
+
+      // Set up event handlers
+      this.currentAudio.onplay = () => {
+        console.log('🎙️ Zephyr voice started playing');
+        this.emit('tts-start', { type: 'zephyr-audio' });
+      };
+
+      this.currentAudio.onended = () => {
+        console.log('🎙️ Zephyr voice finished playing');
+        this.isSpeaking = false;
+        this.emit('tts-end', { type: 'zephyr-audio' });
+        this.emit('speechEnd');
+        
+        // Clean up
+        URL.revokeObjectURL(audioUrl);
+        this.currentAudio = null;
+      };
+
+      this.currentAudio.onerror = (error) => {
+        console.error('🚨 Zephyr audio playback error:', error);
+        this.isSpeaking = false;
+        this.emit('tts-error', { error: 'zephyr-audio-playback-failed' });
+        
+        // Clean up
+        URL.revokeObjectURL(audioUrl);
+        this.currentAudio = null;
+      };
+
+      // Play the audio
+      await this.currentAudio.play();
+      
+      return { success: true, type: 'zephyr-audio' };
+    } catch (error) {
+      console.error('Failed to play Zephyr audio:', error);
+      this.isSpeaking = false;
+      this.emit('tts-error', { error: error.message });
+      return { success: false, error: error.message };
+    }
   }
 
   // Enhanced Speech-to-Text functionality

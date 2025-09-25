@@ -1227,12 +1227,93 @@ const CourseDetailsPage = () => {
 
                         {/* Answers Section */}
                         <div className="border rounded-lg p-4">
-                          <div className="font-medium mb-2">Your Answer</div>
+                          <div className="font-medium mb-2 flex items-center justify-between">
+                            <span>Your Answer</span>
+                            {answerText && (
+                              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                {answerText.length} chars • Auto-save enabled
+                              </span>
+                            )}
+                          </div>
                           <Textarea
                             placeholder="Type your answer here..."
                             value={answerText}
-                            onChange={(e) => setAnswerText(e.target.value)}
+                            onChange={async (e) => {
+                              const newValue = e.target.value;
+                              setAnswerText(newValue);
+                              
+                              // Auto-save after user stops typing (debounced)
+                              if (window.autoSaveTimeout) {
+                                clearTimeout(window.autoSaveTimeout);
+                              }
+                              
+                              window.autoSaveTimeout = setTimeout(async () => {
+                                if (newValue.trim() && activeLesson) {
+                                  try {
+                                    console.log('🔄 Auto-saving answer...');
+                                    const result = await supabaseService.upsertLessonSubmission({
+                                      courseId,
+                                      lessonId: activeLesson.id,
+                                      textAnswer: newValue,
+                                      attachments: []
+                                    });
+                                    
+                                    if (result.success) {
+                                      console.log('✅ Auto-save successful');
+                                      // Show subtle auto-save indicator
+                                      const textarea = e.target;
+                                      const originalBorder = textarea.style.borderColor;
+                                      textarea.style.borderColor = '#10b981';
+                                      textarea.style.borderWidth = '1px';
+                                      setTimeout(() => {
+                                        textarea.style.borderColor = originalBorder;
+                                        textarea.style.borderWidth = '';
+                                      }, 1000);
+                                    } else {
+                                      console.error('❌ Auto-save failed:', result.error);
+                                      // Show error indicator
+                                      const textarea = e.target;
+                                      const originalBorder = textarea.style.borderColor;
+                                      textarea.style.borderColor = '#ef4444';
+                                      textarea.style.borderWidth = '2px';
+                                      setTimeout(() => {
+                                        textarea.style.borderColor = originalBorder;
+                                        textarea.style.borderWidth = '';
+                                      }, 2000);
+                                    }
+                                  } catch (error) {
+                                    console.error('❌ Auto-save error:', error);
+                                  }
+                                }
+                              }, 2000); // Auto-save 2 seconds after user stops typing
+                            }}
                             className="mb-3"
+                            onFocus={() => {
+                              // Add visual feedback when focused
+                              console.log('📝 Answer textarea focused');
+                            }}
+                            onBlur={async () => {
+                              // Save when user leaves the textarea
+                              if (answerText.trim() && activeLesson) {
+                                try {
+                                  console.log('💾 Saving on blur...');
+                                  const result = await supabaseService.upsertLessonSubmission({
+                                    courseId,
+                                    lessonId: activeLesson.id,
+                                    textAnswer: answerText,
+                                    attachments: []
+                                  });
+                                  
+                                  if (result.success) {
+                                    console.log('✅ Blur save successful');
+                                  } else {
+                                    console.error('❌ Blur save failed:', result.error);
+                                  }
+                                } catch (error) {
+                                  console.error('❌ Blur save error:', error);
+                                }
+                              }
+                            }}
                           />
                           <div className="flex items-center gap-3">
                             <input
@@ -1264,12 +1345,73 @@ const CourseDetailsPage = () => {
                                       console.warn('Answer file upload failed:', e?.message || e);
                                     }
                                   }
-                                  await supabaseService.upsertLessonSubmission({
+                                  console.log('💾 Saving answer manually...');
+                                  const result = await supabaseService.upsertLessonSubmission({
                                     courseId,
                                     lessonId: activeLesson.id,
                                     textAnswer: answerText,
                                     attachments: uploads
                                   });
+                                  
+                                  console.log('📊 Save result:', result);
+                                  
+                                  if (result.success) {
+                                    // Show success notification
+                                    const notification = document.createElement('div');
+                                    notification.innerHTML = `
+                                      <div style="font-weight: bold;">✅ Answer Saved!</div>
+                                      <div style="font-size: 12px; margin-top: 4px;">
+                                        ${answerText.length} characters saved
+                                      </div>
+                                    `;
+                                    notification.style.cssText = `
+                                      position: fixed;
+                                      top: 20px;
+                                      right: 20px;
+                                      background: #10b981;
+                                      color: white;
+                                      padding: 12px 16px;
+                                      border-radius: 8px;
+                                      font-size: 14px;
+                                      z-index: 9999;
+                                      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                                    `;
+                                    document.body.appendChild(notification);
+                                    setTimeout(() => {
+                                      if (notification.parentNode) {
+                                        notification.remove();
+                                      }
+                                    }, 3000);
+                                  } else {
+                                    // Show error notification
+                                    const notification = document.createElement('div');
+                                    notification.innerHTML = `
+                                      <div style="font-weight: bold;">❌ Save Failed</div>
+                                      <div style="font-size: 12px; margin-top: 4px;">
+                                        ${result.error || 'Unknown error'}
+                                      </div>
+                                    `;
+                                    notification.style.cssText = `
+                                      position: fixed;
+                                      top: 20px;
+                                      right: 20px;
+                                      background: #ef4444;
+                                      color: white;
+                                      padding: 12px 16px;
+                                      border-radius: 8px;
+                                      font-size: 14px;
+                                      z-index: 9999;
+                                      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                                    `;
+                                    document.body.appendChild(notification);
+                                    setTimeout(() => {
+                                      if (notification.parentNode) {
+                                        notification.remove();
+                                      }
+                                    }, 4000);
+                                    
+                                    throw new Error(result.error);
+                                  }
                                 } finally {
                                   setSavingAnswer(false);
                                 }

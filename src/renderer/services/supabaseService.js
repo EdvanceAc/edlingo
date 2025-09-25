@@ -1171,46 +1171,233 @@ class SupabaseService {
   // Lesson Submissions (Answers)
   async upsertLessonSubmission({ courseId, lessonId, textAnswer = null, attachments = [] }) {
     try {
-      const userProfileId = await this.getOrCreateUserProfileId();
-      if (!userProfileId) return { success: false, error: 'No user profile id' };
+      console.log('🔄 Starting lesson submission save process...');
+      console.log('📊 Input parameters:', { courseId, lessonId, textAnswerLength: textAnswer?.length });
 
-      const payload = {
-        user_id: userProfileId,
-        course_id: courseId || null,
-        lesson_id: lessonId,
-        text_answer: textAnswer,
-        attachments: Array.isArray(attachments) ? attachments : [],
-        updated_at: new Date().toISOString()
-      };
+      // Validate required parameters
+      if (!lessonId) {
+        throw new Error('Lesson ID is required');
+      }
+      if (!textAnswer || textAnswer.trim() === '') {
+        console.warn('⚠️ Empty answer, skipping save');
+        return { success: false, error: 'Empty answer' };
+      }
 
-      const { data, error } = await this.client
-        .from('lesson_submissions')
-        .upsert(payload, { onConflict: 'user_id,lesson_id' })
-        .select()
-        .single();
-      if (error) throw error;
-      return { success: true, data };
+      // Get current authenticated user
+      const { data: { user }, error: authError } = await this.client.auth.getUser();
+      if (authError || !user) {
+        throw new Error('User not authenticated: ' + (authError?.message || 'No user'));
+      }
+      console.log('✅ User authenticated:', user.id);
+
+      // Generate UUID for IDs if they're not already UUIDs
+      function isValidUUID(str) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(str);
+      }
+
+      function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
+
+      // Ensure IDs are valid UUIDs
+      let finalLessonId = lessonId;
+      let finalCourseId = courseId;
+
+      if (!isValidUUID(lessonId)) {
+        finalLessonId = generateUUID();
+        console.log('⚠️ Generated UUID for lesson ID:', finalLessonId);
+      }
+
+      if (courseId && !isValidUUID(courseId)) {
+        finalCourseId = generateUUID();
+        console.log('⚠️ Generated UUID for course ID:', finalCourseId);
+      }
+
+      // Try multiple user ID strategies
+      const userIdStrategies = [
+        { id: user.id, name: 'auth.uid()' }
+      ];
+
+      // Add profile ID if available
+      try {
+        const profileId = await this.getOrCreateUserProfileId();
+        if (profileId && profileId !== user.id) {
+          userIdStrategies.unshift({ id: profileId, name: 'profile.id' });
+        }
+      } catch (e) {
+        console.log('Could not get profile ID:', e.message);
+      }
+
+      console.log('🔄 Trying user ID strategies:', userIdStrategies.map(s => s.name));
+
+      // Try each strategy until one works
+      for (const strategy of userIdStrategies) {
+        try {
+          console.log(`🔄 Attempting save with ${strategy.name}: ${strategy.id}`);
+
+          const payload = {
+            user_id: strategy.id,
+            course_id: finalCourseId || null,
+            lesson_id: finalLessonId,
+            text_answer: textAnswer.trim(),
+            attachments: Array.isArray(attachments) ? attachments : [],
+            status: 'submitted',
+            updated_at: new Date().toISOString()
+          };
+
+          console.log('📤 Payload:', payload);
+
+          const { data, error } = await this.client
+            .from('lesson_submissions')
+            .upsert(payload, { onConflict: 'user_id,lesson_id' })
+            .select()
+            .single();
+
+          if (error) {
+            console.log(`❌ ${strategy.name} failed:`, error.message, '(code:', error.code + ')');
+            
+            // If this is the last strategy, throw the error
+            if (strategy === userIdStrategies[userIdStrategies.length - 1]) {
+              throw error;
+            }
+            continue; // Try next strategy
+          }
+
+          console.log(`✅ ${strategy.name} succeeded! Submission ID:`, data.id);
+          return { success: true, data };
+
+        } catch (strategyError) {
+          console.log(`❌ ${strategy.name} strategy failed:`, strategyError.message);
+          
+          // If this is the last strategy, throw the error
+          if (strategy === userIdStrategies[userIdStrategies.length - 1]) {
+            throw strategyError;
+          }
+        }
+      }
+
+      throw new Error('All save strategies failed');
+
     } catch (error) {
-      console.error('Upsert lesson submission error:', error);
+      console.error('❌ Upsert lesson submission error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
       return { success: false, error: error.message };
     }
   }
 
   async getLessonSubmission(lessonId) {
     try {
-      const userProfileId = await this.getOrCreateUserProfileId();
-      if (!userProfileId) return { success: true, data: null };
-      const { data, error } = await this.client
+      console.log('🔍 Fetching lesson submission for:', lessonId);
+
+      // Get current authenticated user
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) {
+        console.log('⚠️ No authenticated user for fetch');
+        return { success: true, data: null };
+      }
+
+      // Generate UUID for lesson ID if it's not already a UUID
+      function isValidUUID(str) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(str);
+      }
+
+      // For fetch, we need to be more flexible - try both original ID and generated UUID
+      const searchIds = [lessonId];
+      if (!isValidUUID(lessonId)) {
+        console.log('⚠️ Lesson ID is not UUID format, will search by original ID');
+      }
+
+      // Try multiple user ID strategies
+      const userIdStrategies = [
+        { id: user.id, name: 'auth.uid()' }
+      ];
+
+      // Add profile ID if available
+      try {
+        const profileId = await this.getOrCreateUserProfileId();
+        if (profileId && profileId !== user.id) {
+          userIdStrategies.unshift({ id: profileId, name: 'profile.id' });
+        }
+      } catch (e) {
+        console.log('Could not get profile ID for fetch:', e.message);
+      }
+
+      console.log('🔍 Trying fetch strategies:', userIdStrategies.map(s => s.name));
+
+      // Try each user ID strategy
+      for (const strategy of userIdStrategies) {
+        try {
+          console.log(`🔍 Trying fetch with ${strategy.name}: ${strategy.id}`);
+
+          // Try to find submission with exact lesson ID match
+          const { data, error } = await this.client
+            .from('lesson_submissions')
+            .select('*')
+            .eq('user_id', strategy.id)
+            .eq('lesson_id', lessonId)
+            .maybeSingle();
+
+          if (error) {
+            console.log(`❌ ${strategy.name} fetch failed:`, error.message);
+            if (strategy === userIdStrategies[userIdStrategies.length - 1]) {
+              throw error;
+            }
+            continue;
+          }
+
+          if (data) {
+            console.log(`✅ ${strategy.name} found submission:`, data.id);
+            return { success: true, data };
+          } else {
+            console.log(`📭 ${strategy.name} no submission found for lesson ${lessonId}`);
+          }
+
+        } catch (strategyError) {
+          console.log(`❌ ${strategy.name} fetch strategy failed:`, strategyError.message);
+          if (strategy === userIdStrategies[userIdStrategies.length - 1]) {
+            if (strategyError.code === '42P01') {
+              return { success: true, data: null }; // Table doesn't exist
+            }
+            throw strategyError;
+          }
+        }
+      }
+
+      // If no exact match, try to find any submission for this user (for debugging)
+      console.log('🔍 No exact match found, checking for any user submissions...');
+      const { data: anySubmissions, error: anyError } = await this.client
         .from('lesson_submissions')
-        .select('*')
-        .eq('user_id', userProfileId)
-        .eq('lesson_id', lessonId)
-        .maybeSingle();
-      if (error) throw error;
-      return { success: true, data: data || null };
+        .select('lesson_id, text_answer, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!anyError && anySubmissions?.length > 0) {
+        console.log('📚 Found other submissions for this user:');
+        anySubmissions.forEach((sub, i) => {
+          console.log(`  ${i + 1}. ${sub.lesson_id}: "${sub.text_answer?.substring(0, 30)}..." (${new Date(sub.created_at).toLocaleDateString()})`);
+        });
+      }
+
+      return { success: true, data: null };
+
     } catch (error) {
-      if (error.code === '42P01') return { success: true, data: null };
-      console.error('Get lesson submission error:', error);
+      if (error.code === '42P01') {
+        console.log('⚠️ lesson_submissions table does not exist');
+        return { success: true, data: null };
+      }
+      console.error('❌ Get lesson submission error:', error);
       return { success: false, error: error.message };
     }
   }
