@@ -157,6 +157,18 @@ export default defineConfig({
     'process.stderr': JSON.stringify({ isTTY: false })
   },
   optimizeDeps: {
-    include: ['googleapis', 'google-auth-library']
+    include: ['googleapis', 'google-auth-library', 'react', 'react-dom', 'framer-motion'],
+    exclude: []
+  },
+  define: {
+    __IS_DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
+    global: 'globalThis',
+    'process.env': {
+      NODE_ENV: JSON.stringify(process.env.NODE_ENV)
+    },
+    'process.stdout': JSON.stringify({ isTTY: false }),
+    'process.stderr': JSON.stringify({ isTTY: false }),
+    // Ensure React is properly available globally
+    'React': 'React'
   }
 });
