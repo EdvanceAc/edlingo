@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../renderer/config/supabaseConfig.js';
+import supabaseStorageService from '../../renderer/services/supabaseStorageService.js';
 import { toast } from 'react-hot-toast';
 import { 
   Settings, 
-  Save, 
   Upload, 
   Trash2, 
   Download, 
-  Eye, 
   FileText,
   Image,
   Video,
@@ -107,19 +106,11 @@ const AdminSettings: React.FC = () => {
   };
 
   const handleFileUpload = async () => {
-    if (!uploadFile) return;
+    if (!uploadFile || uploading) return;
 
     setUploading(true);
     try {
-      const fileExt = uploadFile.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-
-      const { error } = await supabase.storage
-        .from('files')
-        .upload(fileName, uploadFile);
-
-      if (error) throw error;
-
+      await supabaseStorageService.uploadFile(uploadFile, 'files');
       toast.success('File uploaded successfully');
       setUploadFile(null);
       loadFiles();

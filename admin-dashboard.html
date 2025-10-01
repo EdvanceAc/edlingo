@@ -7,9 +7,30 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%93%8D%3C/text%3E%3C/svg%3E" />
     <script src="/env.js"></script>
-    
-    <!-- MCP Client for enhanced database operations (supports both browser and Electron environments) -->
+    <script>
+        // Fallback loader if /env.js fails (e.g., served on 127.0.0.1 or different base)
+        (function(){
+          function loadScript(src){
+            return new Promise((resolve)=>{ const s=document.createElement('script'); s.src=src; s.onload=()=>resolve(true); s.onerror=()=>resolve(false); document.head.appendChild(s); });
+          }
+          if(!window.__ENV__){
+            const candidates = [
+              '/env.js',
+              './env.js',
+              location.origin + '/env.js'
+            ];
+            (async ()=>{
+              for(const c of candidates){
+                const ok = await loadScript(c);
+                if(ok && window.__ENV__){ console.log('env.js loaded from', c); break; }
+              }
+              if(!window.__ENV__){ console.warn('env.js could not be loaded; will rely on localStorage if available'); }
+            })();
+          }
+        })();
+    </script>
     <script type="module">
         // Utility function to detect if we're in Electron environment
         window.isElectron = typeof window.electronAPI !== 'undefined' && !(window.electronAPI && window.electronAPI._isShim);
@@ -33,6 +54,7 @@
     </script>
 
     <style>
+        /* Existing styles kept for compatibility */
         .admin-gradient {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
@@ -46,23 +68,210 @@
         .loading {
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+
+        /* Modern luxury theme additions */
+        :root {
+          --lux-primary: #6366f1; /* indigo-500 */
+          --lux-secondary: #22d3ee; /* cyan-400 */
+          --lux-accent: #a78bfa; /* violet-400 */
+          --lux-card-bg: rgba(255, 255, 255, 0.7);
+          --lux-border: rgba(255, 255, 255, 0.55);
+        }
+
+        body {
+          position: relative;
+          background-image:
+            radial-gradient(90rem 40rem at 10% -10%, rgba(99,102,241,0.08), transparent 60%),
+            radial-gradient(90rem 40rem at 90% 0%, rgba(34,211,238,0.08), transparent 60%);
+          background-repeat: no-repeat;
+        }
+
+        .glass-card {
+          background: var(--lux-card-bg);
+          -webkit-backdrop-filter: saturate(140%) blur(12px);
+          backdrop-filter: saturate(140%) blur(12px);
+          border: 1px solid var(--lux-border);
+          border-radius: 16px;
+          box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+        }
+
+        .gradient-border { position: relative; border-radius: 16px; }
+        .gradient-border::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          padding: 1px;
+          border-radius: inherit;
+          background: linear-gradient(135deg, var(--lux-primary), var(--lux-secondary));
+          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+                  mask-composite: exclude;
+          pointer-events: none;
+        }
+
+        .shine-on-hover { position: relative; overflow: hidden; }
+        .shine-on-hover::after {
+          content: '';
+          position: absolute;
+          inset: -150% -30%;
+          background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+          transform: translateX(-100%);
+        }
+        .shine-on-hover:hover::after { animation: shine 1.2s ease; }
+        @keyframes shine { to { transform: translateX(100%); } }
+
+        .section-title {
+          background: linear-gradient(135deg, var(--lux-primary), var(--lux-secondary));
+          -webkit-background-clip: text;
+                  background-clip: text;
+          color: transparent;
+        }
+
+        .icon-blob { position: relative; z-index: 0; }
+        .icon-blob::before {
+          content: '';
+          position: absolute;
+          inset: -6px;
+          border-radius: 9999px;
+          background: radial-gradient(circle at 50% 50%, rgba(99,102,241,0.25), transparent 60%);
+          filter: blur(3px);
+          z-index: -1;
+        }
+
+        .lux-action {
+          border-radius: 14px;
+          border: 1px solid transparent;
+          background: linear-gradient(#ffffff,#ffffff) padding-box,
+                      linear-gradient(135deg, rgba(99,102,241,0.6), rgba(34,211,238,0.6)) border-box;
+          transition: all .25s ease;
+        }
+        .lux-action:hover {
+          background: linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)) padding-box,
+                      linear-gradient(135deg, var(--lux-primary), var(--lux-secondary)) border-box;
+          box-shadow: 0 10px 25px rgba(2,6,23,.06);
+          transform: translateY(-2px);
+        }
+
+        .lux-muted {
+          color: rgb(75 85 99); /* gray-600 */
+        }
+
+        /* Luxury Header Buttons */
+        .glass-icon-btn {
+          width: 36px; height: 36px;
+          display: inline-flex; align-items: center; justify-content: center;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.35);
+          background: rgba(255,255,255,0.18);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          transition: all .25s ease;
+        }
+        .glass-icon-btn:hover {
+          background: rgba(255,255,255,0.28);
+          transform: translateY(-1px);
+          box-shadow: 0 10px 24px rgba(2,6,23,.12);
+        }
+        .glass-icon-btn i { transition: transform .25s ease; }
+        .glass-icon-btn:hover i { transform: scale(1.05) rotate(8deg); }
+
+        /* Header ornaments */
+        .header-ornament { position: absolute; inset: 0; pointer-events: none; }
+        .header-ornament .blob { position: absolute; filter: blur(24px); opacity: .35; }
+        .header-ornament .blob.b1 { width: 220px; height: 220px; top: -40px; left: -40px; background: radial-gradient(closest-side, var(--lux-primary), transparent); }
+        .header-ornament .blob.b2 { width: 260px; height: 260px; right: -60px; bottom: -60px; background: radial-gradient(closest-side, var(--lux-secondary), transparent); }
+        .brand-glow { text-shadow: 0 2px 10px rgba(255,255,255,.25); }
+
+        /* Luxury Tabs */
+        .lux-tabs { position: sticky; top: 0; z-index: 30; }
+        .lux-tab { position: relative; border-bottom: 2px solid transparent; border-radius: 10px; transition: all .25s ease; }
+        .lux-tab:hover { background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(34,211,238,0.06)); transform: translateY(-1px); }
+        .lux-tab::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -2px; height: 2px; border-radius: 2px;
+          background: linear-gradient(90deg, var(--lux-primary), var(--lux-secondary)); transform: scaleX(0); transform-origin: left; transition: transform .25s ease; }
+        .lux-tab:hover::after { transform: scaleX(1); }
+        .lux-tab.border-blue-500::after { transform: scaleX(1); }
+        .lux-tab i { transition: transform .25s ease, color .25s ease; }
+        .lux-tab:hover i { transform: translateY(-1px); }
+
+        /* Tooltip (glass) via global portal (prevents clipping) */
+        .tooltip { position: relative; }
+        .tooltip::before, .tooltip::after { display: none !important; }
+        #tooltip-portal { position: fixed; left: 0; top: 0; opacity: 0; visibility: hidden; pointer-events: none; z-index: 1000;
+          background: rgba(17,24,39,0.86); color: #fff; padding: 8px 12px; font-size: 12px; line-height: 1.2; border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 10px 24px rgba(2,6,23,.25); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+          white-space: nowrap; transform: translate(-50%, 4px) scale(.98); transition: opacity .15s ease, transform .15s ease; }
+        #tooltip-portal.visible { opacity: 1; visibility: visible; transform: translate(-50%, 0) scale(1); }
+        #tooltip-portal::after { content: ""; position: absolute; width: 10px; height: 10px; background: rgba(17,24,39,0.86);
+          border-left: 1px solid rgba(255,255,255,0.14); border-top: 1px solid rgba(255,255,255,0.14); transform: rotate(45deg); }
+        #tooltip-portal[data-placement="bottom"]::after { top: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); }
+        #tooltip-portal[data-placement="top"]::after { bottom: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); }
+        /* Safety: prevent accidental horizontal overflow */
+        html, body { max-width: 100%; overflow-x: hidden; }
+
+        /* Minimal Dark Theme scaffold (non-invasive) */
+        [data-theme="dark"] body { background: radial-gradient(circle at 20% 0%, rgba(2,6,23,1) 0%, rgba(15,23,42,1) 45%, rgba(17,24,39,1) 100%); }
+        [data-theme="dark"] .admin-gradient { background: linear-gradient(135deg, #242850 0%, #282e63 50%, #0f1a3a 100%); }
+        [data-theme="dark"] nav.bg-white { background: rgba(15,23,42,0.70) !important; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-color: rgba(148,163,184,0.18) !important; }
+        [data-theme="dark"] .glass-icon-btn { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.28); }
+        [data-theme="dark"] .glass-icon-btn:hover { background: rgba(255,255,255,0.20); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
+        [data-theme="dark"] .section-title { background: linear-gradient(90deg, #93c5fd, #67e8f9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        /* Overview polish: reveal animations, KPI numbers, activity timeline, and interactions */
+        .reveal { opacity: 0; transform: translateY(12px) scale(.98); transition: opacity .45s ease, transform .45s cubic-bezier(.22,.61,.36,1); transition-delay: var(--reveal-delay, 0ms); }
+        .reveal.revealed { opacity: 1; transform: none; }
+        .kpi-number { font-variant-numeric: tabular-nums; letter-spacing: 0.2px; display: inline-block; transform-origin: center; }
+        /* KPI pulse animation */
+        .kpi-pulse { animation: kpiPulse .5s ease-out; }
+        @keyframes kpiPulse { 0% { transform: scale(1) } 20% { transform: scale(1.08) } 100% { transform: scale(1) } }
+        #overview-content .glass-card:hover { box-shadow: 0 18px 40px rgba(2,6,23,.10); }
+        /* Quick Actions micro-interactions */
+        .lux-action { position: relative; overflow: hidden; }
+        .lux-action:active { transform: translateY(0) scale(.98); }
+        .lux-action::before { content:""; position:absolute; inset:0; background: radial-gradient(300px 120px at var(--rx,50%) var(--ry,50%), rgba(99,102,241,.12), transparent 60%); opacity:0; transition: opacity .25s ease; }
+        .lux-action:hover::before { opacity:1; }
+        /* Recent Activity timeline styling (non-invasive) */
+        #activity-list.activity-timeline { position: relative; margin-left: 10px; padding-left: 8px; border-left: 2px dashed rgba(99,102,241,.22); }
+        #activity-list .activity-item { position: relative; padding-left: 10px; }
+        #activity-list .activity-item::before { content: ""; position: absolute; left: -10px; top: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; border-radius: 9999px; background: linear-gradient(135deg, var(--lux-primary), var(--lux-secondary)); box-shadow: 0 0 0 2px #fff; }
+        /* Motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+          .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+          .glass-card, .lux-action, .lux-tab, .glass-icon-btn { transition: none !important; }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" aria-live="polite" class="fixed top-4 right-4 z-50 space-y-3 pointer-events-none"></div>
+
+    <!-- Global Loading Overlay -->
+    <div id="global-loading" class="fixed inset-0 bg-gray-900 bg-opacity-30 flex items-center justify-center z-40 hidden">
+        <div class="bg-white rounded-xl shadow-xl px-5 py-4 flex items-center space-x-3">
+            <div class="h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <div class="text-gray-700 text-sm font-medium" id="global-loading-text">Loading...</div>
+        </div>
+    </div>
     <!-- Header -->
-    <header class="admin-gradient text-white shadow-lg">
+    <header class="admin-gradient text-white shadow-lg relative overflow-hidden">
+        <div class="header-ornament" aria-hidden="true">
+            <div class="blob b1"></div>
+            <div class="blob b2"></div>
+        </div>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-6">
                 <div class="flex items-center">
                     <i data-lucide="graduation-cap" class="w-8 h-8 mr-3"></i>
-                    <h1 class="text-2xl font-bold">EdLingo Admin Dashboard</h1>
+                    <h1 class="text-2xl font-bold brand-glow">EdLingo Admin Dashboard</h1>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-3 overflow-visible">
                     <span class="text-sm opacity-90">Welcome, Admin</span>
-                    <button class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all" onclick="refreshData()">
+                    <button class="glass-icon-btn tooltip" onclick="refreshData()" aria-label="Refresh" data-tooltip="Refresh data">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
-                    <button class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all" onclick="logout()">
+                    <button class="glass-icon-btn tooltip" onclick="toggleDarkMode()" aria-label="Dark Mode" data-tooltip="Toggle dark/light mode">
+                        <i id="theme-icon" data-lucide="moon" class="w-4 h-4"></i>
+                    </button>
+                    <button class="glass-icon-btn tooltip" onclick="logout()" aria-label="Logout" data-tooltip="Sign out">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -71,26 +280,26 @@
     </header>
 
     <!-- Navigation Tabs -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
+    <nav class="bg-white shadow-sm border-b border-gray-200 lux-tabs">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex space-x-8">
-                <button id="overview-tab" class="flex items-center space-x-2 px-3 py-4 border-b-2 border-blue-500 text-blue-600 font-medium" onclick="showTab('overview')">
+            <div class="flex space-x-2 sm:space-x-4">
+                <button id="overview-tab" class="lux-tab flex items-center space-x-2 px-3 py-4 border-b-2 border-blue-500 text-blue-600 font-medium" onclick="showTab('overview')">
                     <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
                     <span>Overview</span>
                 </button>
-                <button id="users-tab" class="flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showTab('users')">
+                <button id="users-tab" class="lux-tab flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showTab('users')">
                     <i data-lucide="users" class="w-5 h-5"></i>
                     <span>Users</span>
                 </button>
-                <button id="courses-tab" class="flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showTab('courses')">
+                <button id="courses-tab" class="lux-tab flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showTab('courses')">
                     <i data-lucide="book-open" class="w-5 h-5"></i>
                     <span>Courses</span>
                 </button>
-                <button id="assessments-tab" class="flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showAssessmentsTab()">
+                <button id="assessments-tab" class="lux-tab flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showAssessmentsTab()">
                     <i data-lucide="clipboard-check" class="w-5 h-5"></i>
                     <span>CEFR Assessments</span>
                 </button>
-                <button id="files-tab" class="flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showFilesTab()">
+                <button id="files-tab" class="lux-tab flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showFilesTab()">
                     <i data-lucide="folder" class="w-5 h-5"></i>
                     <span>Files</span>
                 </button>
@@ -103,79 +312,83 @@
         <!-- Overview Tab -->
         <div id="overview-content" class="tab-content">
             <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 reveal" style="--reveal-delay: 40ms">
+            <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 icon-blob">
                         <i data-lucide="users" class="w-6 h-6"></i>
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Total Users</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="total-users">Loading...</p>
+                        <p class="text-2xl font-semibold text-gray-900 kpi-number" id="total-users">Loading...</p>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+            <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600 icon-blob">
                         <i data-lucide="book-open" class="w-6 h-6"></i>
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Grammar Lessons</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="total-lessons">Loading...</p>
+                        <p class="text-2xl font-semibold text-gray-900 kpi-number" id="total-lessons">Loading...</p>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+            <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600 icon-blob">
                         <i data-lucide="clipboard-list" class="w-6 h-6"></i>
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Vocabulary Words</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="total-vocabulary">Loading...</p>
+                        <p class="text-2xl font-semibold text-gray-900 kpi-number" id="total-vocabulary">Loading...</p>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+            <div class="bg-white glass-card gradient-border shine-on-hover rounded-lg p-6 card-hover">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600 icon-blob">
                         <i data-lucide="trophy" class="w-6 h-6"></i>
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Achievements</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="total-achievements">Loading...</p>
+                        <p class="text-2xl font-semibold text-gray-900 kpi-number" id="total-achievements">Loading...</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Quick Actions -->
-        <div class="bg-white rounded-lg shadow-md mb-8">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">Quick Actions</h2>
+        <div class="bg-white glass-card gradient-border mb-8">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-lg font-semibold section-title">Quick Actions</h2>
+                <div class="hidden md:flex items-center text-sm lux-muted">
+                    <i data-lucide="zap" class="w-4 h-4 mr-2"></i>
+                    <span>Speed up your workflow</span>
+                </div>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button class="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" onclick="showTab('courses')">
+                    <button class="lux-action flex items-center justify-center p-5 border rounded-lg transition-all shine-on-hover" onclick="showTab('courses')">
                         <div class="text-center">
-                            <i data-lucide="book-open" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
-                            <span class="text-sm font-medium text-gray-700">Manage Courses</span>
+                            <i data-lucide="book-open" class="w-8 h-8 mx-auto text-gray-500 mb-2"></i>
+                            <span class="text-sm font-medium text-gray-800">Manage Courses</span>
                         </div>
                     </button>
-                    <button class="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" onclick="showTab('assignments')">
+                    <button class="lux-action flex items-center justify-center p-5 border rounded-lg transition-all shine-on-hover" onclick="showTab('assignments')">
                         <div class="text-center">
-                            <i data-lucide="file-text" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
-                            <span class="text-sm font-medium text-gray-700">Manage Assignments</span>
+                            <i data-lucide="file-text" class="w-8 h-8 mx-auto text-gray-500 mb-2"></i>
+                            <span class="text-sm font-medium text-gray-800">Manage Assignments</span>
                         </div>
                     </button>
-                    <button class="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" onclick="showTab('users')">
+                    <button class="lux-action flex items-center justify-center p-5 border rounded-lg transition-all shine-on-hover" onclick="showTab('users')">
                         <div class="text-center">
-                            <i data-lucide="users" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
-                            <span class="text-sm font-medium text-gray-700">Manage Users</span>
+                            <i data-lucide="users" class="w-8 h-8 mx-auto text-gray-500 mb-2"></i>
+                            <span class="text-sm font-medium text-gray-800">Manage Users</span>
                         </div>
                     </button>
                 </div>
@@ -183,9 +396,13 @@
         </div>
 
         <!-- Recent Activity Section -->
-        <div class="bg-white rounded-lg shadow-md mb-8">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">Recent Activity</h2>
+        <div class="bg-white glass-card gradient-border mb-8">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-lg font-semibold section-title">Recent Activity</h2>
+                <div class="hidden md:flex items-center text-sm lux-muted">
+                    <i data-lucide="activity" class="w-4 h-4 mr-2"></i>
+                    <span>Latest events across the platform</span>
+                </div>
             </div>
             <div class="p-6">
                 <div id="activity-list">
@@ -197,9 +414,13 @@
         <!-- Data Management Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <!-- Vocabulary Management -->
-            <div class="bg-white rounded-lg shadow-md">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Vocabulary Management</h2>
+            <div class="bg-white glass-card gradient-border shine-on-hover">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold section-title">Vocabulary Management</h2>
+                    <div class="hidden md:flex items-center text-sm lux-muted">
+                        <i data-lucide="list" class="w-4 h-4 mr-2"></i>
+                        <span>Manage your word sets</span>
+                    </div>
                 </div>
                 <div class="p-6">
                     <div class="space-y-4" id="vocabulary-list">
@@ -209,9 +430,13 @@
             </div>
 
             <!-- Grammar Lessons Management -->
-            <div class="bg-white rounded-lg shadow-md">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Grammar Lessons</h2>
+            <div class="bg-white glass-card gradient-border shine-on-hover">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold section-title">Grammar Lessons</h2>
+                    <div class="hidden md:flex items-center text-sm lux-muted">
+                        <i data-lucide="graduation-cap" class="w-4 h-4 mr-2"></i>
+                        <span>Curate and refine lessons</span>
+                    </div>
                 </div>
                 <div class="p-6">
                     <div class="space-y-4" id="lessons-list">
@@ -224,37 +449,130 @@
 
         <!-- Users Tab -->
         <div id="users-content" class="tab-content hidden">
-            <!-- User Management Section -->
-            <div class="bg-white rounded-lg shadow-md mb-8">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-lg font-semibold text-gray-900">User Management</h2>
-                        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center" onclick="refreshUsers()">
+            <!-- Users Management (Redesigned) -->
+            <div class="bg-white glass-card gradient-border shine-on-hover mb-8">
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="p-2 rounded-full bg-blue-50 text-blue-600 mr-3">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold section-title">User Management</h2>
+                            <p class="text-xs lux-muted">Manage accounts, monitor activity, and perform quick actions</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-100" id="users-total-chip">Total: <span id="users-total-count" class="ml-1">0</span></span>
+                        <button id="export-users-btn" class="lux-action px-3 py-2 rounded-lg flex items-center">
+                            <i data-lucide="download" class="w-4 h-4 mr-2"></i>
+                            Export CSV
+                        </button>
+                        <button id="refresh-users-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
                             <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
-                            Refresh Users
+                            Refresh
                         </button>
                     </div>
                 </div>
+
+                <!-- Toolbar -->
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                            <input id="users-search" type="text" class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Search users...">
+                        </div>
+                        <select id="users-level-filter" class="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                            <option value="">All Levels</option>
+                            <option value="beginner">Beginner</option>
+                            <option value="elementary">Elementary</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                        <select id="users-activity-filter" class="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                            <option value="">All Activity</option>
+                            <option value="active">Active (7 days)</option>
+                            <option value="inactive">Inactive (30+ days)</option>
+                            <option value="new">New Users (7 days)</option>
+                        </select>
+                        <div class="flex items-center space-x-2">
+                            <select id="users-per-page" class="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                <option value="10">10 per page</option>
+                                <option value="25" selected>25 per page</option>
+                                <option value="50">50 per page</option>
+                                <option value="100">100 per page</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Table -->
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors" onclick="sortUsersTable('id')">
+                                    <div class="flex items-center">
+                                        User ID
+                                        <i data-lucide="chevrons-up-down" class="w-3 h-3 ml-1 opacity-50"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors" onclick="sortUsersTable('email')">
+                                    <div class="flex items-center">
+                                        Email
+                                        <i data-lucide="chevrons-up-down" class="w-3 h-3 ml-1 opacity-50"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors" onclick="sortUsersTable('name')">
+                                    <div class="flex items-center">
+                                        Full Name
+                                        <i data-lucide="chevrons-up-down" class="w-3 h-3 ml-1 opacity-50"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors" onclick="sortUsersTable('created')">
+                                    <div class="flex items-center">
+                                        Joined
+                                        <i data-lucide="chevrons-up-down" class="w-3 h-3 ml-1 opacity-50"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Progress & Activity
+                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200" id="users-table-body-tab">
                             <tr>
-                                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                                    <div class="loading">Loading users...</div>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <div class="flex flex-col items-center">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
+                                        <div class="text-sm font-medium">Loading users...</div>
+                                        <div class="text-xs text-gray-400 mt-1">Please wait while we fetch user data</div>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between" id="users-pagination" style="display: none;">
+                    <div class="flex items-center text-sm text-gray-600">
+                        <span>Showing <span id="users-showing-start">1</span> to <span id="users-showing-end">25</span> of <span id="users-showing-total">0</span> users</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="users-prev-page" class="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <div id="users-page-numbers" class="flex items-center space-x-1">
+                            <!-- Page numbers will be inserted here -->
+                        </div>
+                        <button id="users-next-page" class="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -367,30 +685,78 @@
 
                 <!-- Course List -->
                 <div class="bg-white rounded-lg shadow-md">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <div class="flex justify-between items-center">
+                    <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
+                        <div class="flex flex-col space-y-4 lg:flex-row lg:justify-between lg:items-center lg:space-y-0">
                             <h3 class="text-lg font-semibold text-gray-900">All Courses</h3>
-                            <div class="flex space-x-3">
-                                <input type="text" placeholder="Search courses..." class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" id="course-search">
-                                <select class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" id="course-filter">
-                                    <option value="">All Levels</option>
-                                    <option value="A1">A1 - Beginner</option>
-                                    <option value="A2">A2 - Elementary</option>
-                                    <option value="B1">B1 - Intermediate</option>
-                                    <option value="B2">B2 - Upper Intermediate</option>
-                                    <option value="C1">C1 - Advanced</option>
-                                    <option value="C2">C2 - Proficient</option>
-                                </select>
+                            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 items-stretch sm:items-center lg:w-auto w-full">
+                                <div class="relative group flex-1">
+                                    <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 transition-colors group-focus-within:text-blue-500"></i>
+                                    <input type="text" placeholder="Search courses..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-gray-400 focus:shadow-lg" id="course-search">
+                                </div>
+                                <div class="relative">
+                                    <select class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-gray-400 focus:shadow-lg appearance-none bg-white pr-8" id="course-filter">
+                                        <option value="">All Levels</option>
+                                        <option value="A1">A1 - Beginner</option>
+                                        <option value="A2">A2 - Elementary</option>
+                                        <option value="B1">B1 - Intermediate</option>
+                                        <option value="B2">B2 - Upper Intermediate</option>
+                                        <option value="C1">C1 - Advanced</option>
+                                        <option value="C2">C2 - Proficient</option>
+                                    </select>
+                                    <i data-lucide="chevron-down" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
+                                </div>
+                                <button class="px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md" id="clear-filters" title="Clear Filters">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <div class="p-6">
-                        <div id="courses-list" class="space-y-4">
-                            <div class="text-center py-12">
+                    <div class="p-4 sm:p-6">
+                        <!-- Loading State -->
+                        <div id="courses-loading" class="hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <!-- Skeleton Card 1 -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-6 animate-pulse">
+                                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                                    <div class="h-3 bg-gray-200 rounded w-full mb-2"></div>
+                                    <div class="h-3 bg-gray-200 rounded w-2/3 mb-4"></div>
+                                    <div class="flex justify-between items-center">
+                                        <div class="h-6 bg-gray-200 rounded w-16"></div>
+                                        <div class="h-8 bg-gray-200 rounded w-20"></div>
+                                    </div>
+                                </div>
+                                <!-- Skeleton Card 2 -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-6 animate-pulse">
+                                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                                    <div class="h-3 bg-gray-200 rounded w-full mb-2"></div>
+                                    <div class="h-3 bg-gray-200 rounded w-2/3 mb-4"></div>
+                                    <div class="flex justify-between items-center">
+                                        <div class="h-6 bg-gray-200 rounded w-16"></div>
+                                        <div class="h-8 bg-gray-200 rounded w-20"></div>
+                                    </div>
+                                </div>
+                                <!-- Skeleton Card 3 -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-6 animate-pulse">
+                                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                                    <div class="h-3 bg-gray-200 rounded w-full mb-2"></div>
+                                    <div class="h-3 bg-gray-200 rounded w-2/3 mb-4"></div>
+                                    <div class="flex justify-between items-center">
+                                        <div class="h-6 bg-gray-200 rounded w-16"></div>
+                                        <div class="h-8 bg-gray-200 rounded w-20"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Courses Grid -->
+                        <div id="courses-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Empty State -->
+                            <div id="courses-empty" class="col-span-full text-center py-12">
                                 <i data-lucide="book-open" class="w-12 h-12 mx-auto text-gray-400 mb-4"></i>
                                 <h3 class="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
-                                <p class="text-gray-500 mb-4">Create your first course to get started.</p>
-                                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors" onclick="showAddCourseModal()">
+                                <p class="text-gray-500 mb-6">Create your first course to get started.</p>
+                                <button class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center mx-auto" onclick="showAddCourseModal()">
+                                    <i data-lucide="plus" class="w-5 h-5 mr-2"></i>
                                     Create Course
                                 </button>
                             </div>
@@ -1616,12 +1982,13 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import supabaseStorageService from './src/renderer/services/supabaseStorageService.js';
         // Initialize Supabase client with environment variables
-        // Seed localStorage from env.js when running on localhost for dev convenience
-        const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
-        if (isLocalDev && window.__ENV__) {
+        const isLocalDevHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        // Seed localStorage from env.js when running on local dev for convenience
+        if (isLocalDevHost && window.__ENV__) {
             try {
                 const keys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_SERVICE_ROLE_KEY'];
                 keys.forEach((k) => {
@@ -1630,31 +1997,30 @@
                         localStorage.setItem(k, v);
                     }
                 });
-                console.log('🧪 Seeded localStorage from env.js for local development');
+
+                console.log('🧪 Seeded localStorage from env.js for', window.location.hostname);
+
             } catch (e) {
                 console.warn('Failed to seed localStorage from env.js', e);
             }
         }
 
-        // Values come from env.js (window.ENV or window.__ENV__) or localStorage in local dev
-        const supabaseUrl = (window.ENV && window.ENV.SUPABASE_URL)
-            || (window.__ENV__ && window.__ENV__.VITE_SUPABASE_URL)
-            || (isLocalDev ? localStorage.getItem('VITE_SUPABASE_URL') : '');
+
+        // Values come from env.js (window.__ENV__) or localStorage (dev convenience)
+        const supabaseUrl = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_URL) 
+            || localStorage.getItem('VITE_SUPABASE_URL') || '';
             
-        const supabaseAnonKey = (window.ENV && window.ENV.SUPABASE_ANON_KEY)
-            || (window.__ENV__ && window.__ENV__.VITE_SUPABASE_ANON_KEY)
-            || (isLocalDev ? localStorage.getItem('VITE_SUPABASE_ANON_KEY') : '');
+        const supabaseAnonKey = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_ANON_KEY) 
+            || localStorage.getItem('VITE_SUPABASE_ANON_KEY') || '';
             
-        const supabaseServiceKey = (window.ENV && window.ENV.SUPABASE_SERVICE_ROLE_KEY)
-            || (window.__ENV__ && window.__ENV__.VITE_SUPABASE_SERVICE_ROLE_KEY)
-            || (isLocalDev ? localStorage.getItem('VITE_SUPABASE_SERVICE_ROLE_KEY') : '');
+        const supabaseServiceKey = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_SERVICE_ROLE_KEY) 
+            || localStorage.getItem('VITE_SUPABASE_SERVICE_ROLE_KEY') || '';
 
         // Log configuration source
-        if (window.ENV) {
-            console.log('🌍 Using environment variables from env.js (window.ENV)');
-        } else if (window.__ENV__) {
-            console.log('🌍 Using environment variables from env.js (window.__ENV__)');
-        } else if (isLocalDev) {
+        if (window.__ENV__) {
+            console.log('🌍 Using environment variables from env.js');
+        } else if (localStorage.getItem('VITE_SUPABASE_URL')) {
+
             console.log('🏠 Using localStorage for local development');
         } else {
             console.warn('⚠️ No environment variables found - please configure environment variables');
@@ -1967,28 +2333,36 @@
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async function() {
             lucide.createIcons();
-            
-            // Check authentication first
-            if (!checkAuthentication()) {
-                redirectToLogin();
-                return;
+            const overlay = document.getElementById('global-loading');
+            try {
+                if (overlay) overlay.classList.remove('hidden');
+                // Check authentication first
+                if (!checkAuthentication()) {
+                    redirectToLogin();
+                    return;
+                }
+                
+                // Authenticate with Supabase using a demo user
+                await authenticateWithSupabase();
+                
+                // Check connection first
+                const isConnected = await checkConnection();
+                if (isConnected) {
+                    await loadDashboardData();
+                    // Start auto-refresh only after initial load succeeds
+                    startAutoRefresh();
+                    createToast({ type: 'success', message: 'Dashboard is ready' });
+                } else {
+                    showConnectionError();
+                }
+                
+                // Initialize course management
+                initializeCourseManagement();
+            } catch (e) {
+                console.error(e);
+            } finally {
+                if (overlay) overlay.classList.add('hidden');
             }
-            
-            // Authenticate with Supabase using a demo user
-            await authenticateWithSupabase();
-            
-            // Check connection first
-            const isConnected = await checkConnection();
-            if (isConnected) {
-                await loadDashboardData();
-                // Start auto-refresh only after initial load succeeds
-                startAutoRefresh();
-            } else {
-                showConnectionError();
-            }
-            
-            // Initialize course management
-            initializeCourseManagement();
         });
 
         // Stop auto-refresh when page is about to unload
@@ -2105,7 +2479,7 @@
                 updateLastUpdated();
                 
                 // Show success message
-                alert('Question created successfully!');
+                createToast({ type: 'success', message: 'Question created successfully!' });
                 
             } catch (error) {
                 console.error('Error creating question:', error);
@@ -2123,7 +2497,7 @@
         function editQuestion(questionId) {
             console.log('Editing question:', questionId);
             // TODO: Implement question editing functionality
-            alert('Question editing functionality will be implemented soon.');
+            createToast({ type: 'info', message: 'Question editing functionality will be implemented soon.' });
         }
 
         async function deleteQuestion(questionId) {
@@ -2142,7 +2516,7 @@
                 await loadQuestionsForAssignment();
                 updateLastUpdated();
                 
-                alert('Question deleted successfully!');
+                createToast({ type: 'success', message: 'Question deleted successfully!' });
             } catch (error) {
                 console.error('Error deleting question:', error);
                 showError('Failed to delete question');
@@ -2258,6 +2632,9 @@
                     loadRecentActivity()
                 ]);
                 updateLastUpdated();
+                // Initialize reveal animations and timeline hooks after content is in DOM
+                if (window.initReveals) initReveals();
+                if (window.applyActivityTimeline) applyActivityTimeline();
                 console.log('✅ Dashboard data loaded successfully');
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
@@ -2265,14 +2642,7 @@
             }
         }
 
-        function updateLastUpdated() {
-            const now = new Date();
-            const timeString = now.toLocaleString();
-            const lastUpdatedElement = document.getElementById('last-updated');
-            if (lastUpdatedElement) {
-                lastUpdatedElement.textContent = `Last updated: ${timeString}`;
-            }
-        }
+        // duplicate removed: updateLastUpdated is defined once in Utility functions section
 
         async function loadCourses() {
             try {
@@ -2295,47 +2665,6 @@
                                 <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors" onclick="showAddCourseModal()">
                                     Create Course
                                 </button>
-                            </div>
-                            <!-- Test Course Card for debugging -->
-                            <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow mt-4">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div class="flex-1">
-                                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Test Course</h3>
-                                        <p class="text-gray-600 mb-3">This is a test course for debugging the edit functionality</p>
-                                        <div class="flex flex-wrap gap-2 mb-3">
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                beginner
-                                            </span>
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                                Spanish
-                                            </span>
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
-                                                10 hours
-                                            </span>
-                                        </div>
-                                        <p class="text-sm text-gray-500">Created: Today</p>
-                                    </div>
-                                    <div class="flex space-x-2 ml-4">
-                                        <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors" onclick="editCourse('test-course-id')">
-                                            <i data-lucide="edit" class="w-4 h-4 inline mr-1"></i>
-                                            Edit
-                                        </button>
-                                        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors" onclick="deleteCourse('test-course-id')">
-                                            <i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i>
-                                            Delete
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between items-center pt-3 border-t border-gray-100">
-                                    <span class="text-sm text-gray-500">
-                                        Status: <span class="font-medium text-green-600">
-                                            Active
-                                        </span>
-                                    </span>
-                                    <button class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick="viewCourseDetails('test-course-id')">
-                                        View Details →
-                                    </button>
-                                </div>
                             </div>
                         `;
                     }
@@ -2508,6 +2837,60 @@
             }
         }
         
+        // UI helper utilities
+        function updateKpiValue(elementId, value) {
+            try {
+                const el = document.getElementById(elementId);
+                if (!el) return;
+                const text = String(value);
+                // Update content
+                el.textContent = text;
+                // Restart pulse animation
+                el.classList.remove('kpi-pulse');
+                // Force reflow to restart animation reliably
+                void el.offsetWidth;
+                el.classList.add('kpi-pulse');
+            } catch (e) {
+                console.warn('updateKpiValue error:', e);
+            }
+        }
+        
+        function initReveals() {
+            try {
+                const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                const items = document.querySelectorAll('.reveal');
+                if (!items || items.length === 0) return;
+                if (prefersReduced) {
+                    items.forEach(el => el.classList.add('revealed'));
+                    return;
+                }
+                const io = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('revealed');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.1 });
+                items.forEach(el => io.observe(el));
+            } catch (e) {
+                console.warn('initReveals error:', e);
+            }
+        }
+        window.initReveals = window.initReveals || initReveals;
+        
+        function applyActivityTimeline() {
+            try {
+                const el = document.getElementById('activity-list');
+                if (el && !el.classList.contains('activity-timeline')) {
+                    el.classList.add('activity-timeline');
+                }
+            } catch (e) {
+                console.warn('applyActivityTimeline error:', e);
+            }
+        }
+        window.applyActivityTimeline = window.applyActivityTimeline || applyActivityTimeline;
+        
         async function loadTableCount(tableName, elementId) {
             try {
                 console.log(`🔍 Loading count for ${tableName}...`);
@@ -2537,7 +2920,7 @@
                             }
                             
                             console.log(`✅ MCP ${tableName} count: ${count}`);
-                            document.getElementById(elementId).textContent = count;
+                            updateKpiValue(elementId, count);
                             return;
                         } else {
                             console.warn(`⚠️ MCP failed for ${tableName}:`, mcpResult?.error);
@@ -2561,23 +2944,23 @@
                     if (error.code === '42P01') {
                         // Table doesn't exist
                         console.warn(`⚠️ Table ${tableName} does not exist, setting count to 0`);
-                        document.getElementById(elementId).textContent = '0';
+                        updateKpiValue(elementId, '0');
                     } else if (error.code === '42501' || error.message.includes('row-level security')) {
                         // RLS policy restriction - show 0 for user_profiles, demo for others
                         console.warn(`⚠️ RLS restriction for ${tableName}`);
                         if (tableName === 'user_profiles') {
-                            document.getElementById(elementId).textContent = '0';
+                            updateKpiValue(elementId, '0');
                         } else {
                             const demoCount = getDemoCount(tableName);
-                            document.getElementById(elementId).textContent = demoCount;
+                            updateKpiValue(elementId, demoCount);
                         }
                     } else {
                         console.error(`❌ Error with table ${tableName}:`, error);
-                        document.getElementById(elementId).textContent = '0';
+                        updateKpiValue(elementId, '0');
                     }
                 } else {
                     console.log(`✅ ${tableName} count: ${count}`);
-                    document.getElementById(elementId).textContent = count || 0;
+                    updateKpiValue(elementId, count || 0);
                 }
             } catch (error) {
                 console.error(`Error loading count for ${tableName}:`, error);
@@ -2587,11 +2970,11 @@
                         document.getElementById(elementId).textContent = 'RLS Active';
                         document.getElementById(elementId).title = 'Row Level Security policies are preventing access to user count';
                     } else {
-                        document.getElementById(elementId).textContent = '0';
+                        updateKpiValue(elementId, '0');
                     }
                 } else {
                     const demoCount = getDemoCount(tableName);
-                    document.getElementById(elementId).textContent = demoCount;
+                    updateKpiValue(elementId, demoCount);
                 }
             }
         }
@@ -2690,103 +3073,91 @@
         }
         
         async function renderUsersTable(users, dataSource) {
-            const tableBody = document.getElementById('users-table-body-tab');
-            if (!tableBody) {
-                console.error('❌ Could not find users-table-body-tab element');
-                return;
-            }
-            
             console.log(`📋 Found ${users ? users.length : 0} users from ${dataSource}`);
             
             if (!users || users.length === 0) {
                 console.log('📝 No users found');
+                usersCache = [];
+                filteredUsers = [];
                 
                 // Update the total users count to 0 in the overview
                 const totalUsersElement = document.getElementById('total-users');
                 if (totalUsersElement) {
-                    totalUsersElement.textContent = '0';
+                    if (window.updateKpiValue) updateKpiValue('total-users', '0'); else totalUsersElement.textContent = '0';
                 }
                 
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="px-6 py-4">
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div class="flex items-center">
-                                    <i data-lucide="users" class="w-5 h-5 text-blue-600 mr-2"></i>
-                                    <h3 class="text-sm font-medium text-blue-800">No Users Found</h3>
+                const tableBody = document.getElementById('users-table-body-tab');
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4">
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <i data-lucide="users" class="w-5 h-5 text-blue-600 mr-2"></i>
+                                        <h3 class="text-sm font-medium text-blue-800">No Users Found</h3>
+                                    </div>
+                                    <div class="mt-2 text-sm text-blue-700">
+                                        <p>No users have registered yet. Users will appear here once they sign up for the application.</p>
+                                    </div>
                                 </div>
-                                <div class="mt-2 text-sm text-blue-700">
-                                    <p>No users have registered yet. Users will appear here once they sign up for the application.</p>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                lucide.createIcons();
+                            </td>
+                        </tr>
+                    `;
+                    lucide.createIcons();
+                }
                 return;
             }
 
-            console.log('🎨 Rendering user table with', users.length, 'users');
+            console.log('🎨 Processing user data for filtering system');
+            
+            // Normalize and cache user data
+            usersCache = users.map(user => {
+                let normalizedUser;
+                
+                if (dataSource === 'auth_users') {
+                    // auth.users format
+                    normalizedUser = {
+                        id: user.id,
+                        user_id: user.id,
+                        email: user.email,
+                        full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email,
+                        name: user.user_metadata?.full_name || user.user_metadata?.name || user.email,
+                        created_at: user.created_at,
+                        updated_at: user.updated_at,
+                        last_activity: user.last_sign_in_at || user.updated_at,
+                        level: 'beginner' // Default level for auth users
+                    };
+                } else {
+                    // user_profiles format
+                    const progress = user.user_progress?.[0] || {};
+                    normalizedUser = {
+                        id: user.id,
+                        user_id: user.id,
+                        email: user.email,
+                        full_name: user.full_name || user.email,
+                        name: user.full_name || user.email,
+                        created_at: user.created_at,
+                        updated_at: user.updated_at,
+                        last_activity: user.last_activity || user.updated_at,
+                        level: progress.current_level || 'beginner'
+                    };
+                }
+                
+                return normalizedUser;
+            });
+            
+            // Initialize filtered users with all users
+            filteredUsers = [...usersCache];
             
             // Update the total users count in the overview
             const totalUsersElement = document.getElementById('total-users');
             if (totalUsersElement) {
-                totalUsersElement.textContent = users.length;
+                if (window.updateKpiValue) updateKpiValue('total-users', usersCache.length); 
+                else totalUsersElement.textContent = usersCache.length;
             }
             
-            tableBody.innerHTML = users.map(user => {
-                // Handle different data formats
-                let userId, email, fullName, createdAt, progress;
-                
-                if (dataSource === 'auth_users') {
-                    // auth.users format
-                    userId = user.id;
-                    email = user.email;
-                    fullName = user.user_metadata?.full_name || user.user_metadata?.name || email;
-                    createdAt = new Date(user.created_at).toLocaleDateString();
-                    progress = {}; // No progress data from auth.users
-                } else {
-                    // user_profiles format
-                    userId = user.id;
-                    email = user.email;
-                    fullName = user.full_name || email;
-                    createdAt = new Date(user.created_at).toLocaleDateString();
-                    progress = user.user_progress?.[0] || {};
-                }
-                
-                return `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                            ${userId.substring(0, 8)}...
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${email || 'N/A'}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${fullName || 'N/A'}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${createdAt}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <div class="flex flex-col">
-                                <span class="text-xs text-gray-500">Level: ${progress.current_level || 'beginner'}</span>
-                                <span class="text-xs text-gray-500">XP: ${progress.total_xp || 0}</span>
-                                <span class="text-xs text-gray-500">Streak: ${progress.daily_streak || 0}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="viewUser('${userId}')">
-                                View
-                            </button>
-                            <button class="text-red-600 hover:text-red-900" onclick="deleteUser('${userId}')">
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            console.log('✅ User table rendered successfully');
+            // Use the new filtering system to render users
+            filterAndRenderUsers();
         }
         
         async function handleUserLoadError(error) {
@@ -2842,17 +3213,372 @@
         }
 
          // User management functions
-         function viewUser(userId) {
-             alert(`View user details for ID: ${userId}\n\nThis feature will show detailed user information, progress, and activity history.`);
-         }
+         window.viewUser = window.viewUser || function(userId) {
+             createToast({ type: 'info', message: `View user details for ID: ${userId}. This feature will show detailed user information, progress, and activity history.` });
+         };
 
-         function deleteUser(userId) {
+         window.deleteUser = window.deleteUser || async function(userId) {
              if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-                 // In a real implementation, this would delete the user from the database
+                 // Placeholder in early section; real implementation exists later
                  console.log(`Delete user with ID: ${userId}`);
-                 alert('User deletion functionality would be implemented here.');
+                 createToast({ type: 'info', message: 'User deletion functionality would be implemented here.' });
              }
-         }
+         };
+
+        // Users tab functionality
+        let usersCache = [];
+        let filteredUsers = [];
+        let currentUsersPage = 1;
+        let usersPerPage = 10;
+        let currentSortField = 'created';
+        let currentSortDirection = 'desc';
+
+        // Initialize Users tab
+        function initializeUsersTab() {
+            // Set up event listeners
+            const searchInput = document.getElementById('users-search');
+            const levelFilter = document.getElementById('users-level-filter');
+            const activityFilter = document.getElementById('users-activity-filter');
+            const perPageSelect = document.getElementById('users-per-page');
+            const exportBtn = document.getElementById('export-users-btn');
+            const refreshBtn = document.getElementById('refresh-users-btn');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', debounce(filterAndRenderUsers, 300));
+            }
+            if (levelFilter) {
+                levelFilter.addEventListener('change', filterAndRenderUsers);
+            }
+            if (activityFilter) {
+                activityFilter.addEventListener('change', filterAndRenderUsers);
+            }
+            if (perPageSelect) {
+                perPageSelect.addEventListener('change', (e) => {
+                    usersPerPage = parseInt(e.target.value);
+                    currentUsersPage = 1;
+                    filterAndRenderUsers();
+                });
+            }
+            if (exportBtn) {
+                exportBtn.addEventListener('click', exportUsersToCSV);
+            }
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    loadUsers();
+                    createToast({ type: 'success', message: 'Users data refreshed successfully!' });
+                });
+            }
+        }
+
+        // Debounce function for search
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Filter and render users
+        function filterAndRenderUsers() {
+            // If no users in cache, don't filter
+            if (!usersCache || usersCache.length === 0) {
+                filteredUsers = [];
+                renderFilteredUsers();
+                return;
+            }
+
+            const searchTerm = document.getElementById('users-search')?.value.toLowerCase() || '';
+            const levelFilter = document.getElementById('users-level-filter')?.value || 'all';
+            const activityFilter = document.getElementById('users-activity-filter')?.value || 'all';
+
+            filteredUsers = usersCache.filter(user => {
+                // Search filter - improved to search in email and full name
+                const matchesSearch = !searchTerm || 
+                    (user.email && user.email.toLowerCase().includes(searchTerm)) ||
+                    (user.full_name && user.full_name.toLowerCase().includes(searchTerm)) ||
+                    (user.name && user.name.toLowerCase().includes(searchTerm));
+
+                // Level filter
+                const userLevel = user.level || 'beginner';
+                const matchesLevel = levelFilter === 'all' || userLevel === levelFilter;
+
+                // Activity filter
+                let matchesActivity = true;
+                if (activityFilter !== 'all') {
+                    const lastActivity = user.last_activity || user.updated_at || user.created_at;
+                    if (lastActivity) {
+                        const daysSinceActivity = Math.floor((Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24));
+                        if (activityFilter === 'active' && daysSinceActivity > 7) matchesActivity = false;
+                        if (activityFilter === 'inactive' && daysSinceActivity <= 7) matchesActivity = false;
+                    }
+                }
+
+                return matchesSearch && matchesLevel && matchesActivity;
+            });
+
+            // Sort filtered users
+            sortFilteredUsers();
+            
+            // Reset to first page
+            currentUsersPage = 1;
+            
+            // Render users
+            renderFilteredUsers();
+        }
+
+        // Sort filtered users
+        function sortFilteredUsers() {
+            filteredUsers.sort((a, b) => {
+                let aVal = a[currentSortField];
+                let bVal = b[currentSortField];
+
+                // Handle different data types
+                if (currentSortField === 'created' || currentSortField === 'updated_at') {
+                    aVal = new Date(aVal || 0).getTime();
+                    bVal = new Date(bVal || 0).getTime();
+                } else if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = (bVal || '').toLowerCase();
+                }
+
+                if (currentSortDirection === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+        }
+
+        // Sort users table
+        function sortUsersTable(field) {
+            if (currentSortField === field) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortDirection = 'asc';
+            }
+
+            // Update sort indicators
+            document.querySelectorAll('.sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '';
+            });
+
+            const currentHeader = document.querySelector(`[onclick="sortUsersTable('${field}')"]`);
+            if (currentHeader) {
+                const indicator = currentHeader.querySelector('.sort-indicator') || 
+                    (() => {
+                        const span = document.createElement('span');
+                        span.className = 'sort-indicator ml-1';
+                        currentHeader.appendChild(span);
+                        return span;
+                    })();
+                indicator.innerHTML = currentSortDirection === 'asc' ? '↑' : '↓';
+            }
+
+            filterAndRenderUsers();
+        }
+
+        // Render filtered users with pagination
+        function renderFilteredUsers() {
+            const tableBody = document.getElementById('users-table-body-tab');
+            if (!tableBody) return;
+
+            // Update total count
+            const totalUsersElement = document.getElementById('total-users');
+            if (totalUsersElement) {
+                totalUsersElement.textContent = filteredUsers.length;
+            }
+
+            // Calculate pagination
+            const startIndex = (currentUsersPage - 1) * usersPerPage;
+            const endIndex = startIndex + usersPerPage;
+            const pageUsers = filteredUsers.slice(startIndex, endIndex);
+
+            // Render users
+            if (pageUsers.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center">
+                            <div class="text-gray-400">
+                                <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">No users found</h3>
+                                <p class="text-sm text-gray-500">Try adjusting your search or filter criteria.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tableBody.innerHTML = pageUsers.map(user => {
+                    const userId = user.id || user.user_id;
+                    const email = user.email || 'No email';
+                    const name = user.full_name || user.name || 'No name';
+                    const created = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown';
+                    const level = user.level || 'beginner';
+                    const lastActivity = user.last_activity || user.updated_at;
+                    const activityText = lastActivity ? getTimeAgo(new Date(lastActivity)) : 'No activity';
+
+                    return `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                ${userId}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">${email}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">${name}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                ${created}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    level === 'advanced' ? 'bg-purple-100 text-purple-800' :
+                                    level === 'intermediate' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-green-100 text-green-800'
+                                }">
+                                    ${level}
+                                </span>
+                                <div class="text-xs text-gray-500 mt-1">${activityText}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button class="text-blue-600 hover:text-blue-900 mr-3 transition-colors" onclick="viewUser('${userId}')">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-900 transition-colors" onclick="deleteUser('${userId}')">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Update pagination
+            updateUsersPagination();
+            
+            // Recreate icons
+            lucide.createIcons();
+        }
+
+        // Update pagination controls
+        function updateUsersPagination() {
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+            const paginationContainer = document.getElementById('users-pagination');
+            
+            if (!paginationContainer || totalPages <= 1) {
+                if (paginationContainer) paginationContainer.innerHTML = '';
+                return;
+            }
+
+            let paginationHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                        Showing ${((currentUsersPage - 1) * usersPerPage) + 1} to ${Math.min(currentUsersPage * usersPerPage, filteredUsers.length)} of ${filteredUsers.length} results
+                    </div>
+                    <div class="flex items-center space-x-2">
+            `;
+
+            // Previous button
+            paginationHTML += `
+                <button onclick="changeUsersPage(${currentUsersPage - 1})" 
+                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors ${
+                            currentUsersPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+                        }" 
+                        ${currentUsersPage === 1 ? 'disabled' : ''}>
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            // Page numbers
+            const startPage = Math.max(1, currentUsersPage - 2);
+            const endPage = Math.min(totalPages, currentUsersPage + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `
+                    <button onclick="changeUsersPage(${i})" 
+                            class="px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                i === currentUsersPage 
+                                    ? 'bg-blue-600 text-white' 
+                                    : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                            }">
+                        ${i}
+                    </button>
+                `;
+            }
+
+            // Next button
+            paginationHTML += `
+                <button onclick="changeUsersPage(${currentUsersPage + 1})" 
+                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors ${
+                            currentUsersPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+                        }" 
+                        ${currentUsersPage === totalPages ? 'disabled' : ''}>
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            paginationHTML += `
+                    </div>
+                </div>
+            `;
+
+            paginationContainer.innerHTML = paginationHTML;
+            lucide.createIcons();
+        }
+
+        // Change users page
+        function changeUsersPage(page) {
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+            if (page < 1 || page > totalPages) return;
+            
+            currentUsersPage = page;
+            renderFilteredUsers();
+        }
+
+        // Export users to CSV
+        function exportUsersToCSV() {
+            if (filteredUsers.length === 0) {
+                createToast({ type: 'warning', message: 'No users to export!' });
+                return;
+            }
+
+            const headers = ['ID', 'Email', 'Name', 'Created Date', 'Level', 'Last Activity'];
+            const csvContent = [
+                headers.join(','),
+                ...filteredUsers.map(user => [
+                    user.id || user.user_id || '',
+                    `"${(user.email || '').replace(/"/g, '""')}"`,
+                    `"${(user.full_name || user.name || '').replace(/"/g, '""')}"`,
+                    user.created_at ? new Date(user.created_at).toLocaleDateString() : '',
+                    user.level || 'beginner',
+                    user.last_activity ? new Date(user.last_activity).toLocaleDateString() : 'No activity'
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            createToast({ type: 'success', message: `Exported ${filteredUsers.length} users to CSV!` });
+        }
+
+        // Make functions globally available
+        window.sortUsersTable = sortUsersTable;
+        window.changeUsersPage = changeUsersPage;
+        window.initializeUsersTab = initializeUsersTab;
+        window.filterAndRenderUsers = filterAndRenderUsers;
 
         async function loadVocabulary() {
             try {
@@ -2971,22 +3697,68 @@
             }
         }
 
+        // Toast helper
+        function createToast({ type = 'info', message = '', duration = 3000 } = {}) {
+            const container = document.getElementById('toast-container');
+            if (!container) {
+                console.warn('Toast container not found:', message);
+                return;
+            }
+            const id = 'toast-' + Math.random().toString(36).slice(2);
+            const colorMap = {
+                success: { bg: 'bg-green-600', icon: 'check-circle', ring: 'ring-green-500/20' },
+                error: { bg: 'bg-red-600', icon: 'alert-triangle', ring: 'ring-red-500/20' },
+                info: { bg: 'bg-blue-600', icon: 'info', ring: 'ring-blue-500/20' },
+                warning: { bg: 'bg-yellow-600', icon: 'alert-circle', ring: 'ring-yellow-500/20' }
+            }[type] || { bg: 'bg-gray-800', icon: 'bell', ring: 'ring-gray-500/20' };
+
+            const wrapper = document.createElement('div');
+            wrapper.id = id;
+            wrapper.className = `pointer-events-auto transform transition-all duration-300 translate-y-0 opacity-0`;
+
+            wrapper.innerHTML = `
+                <div class="flex items-start gap-3 text-white shadow-lg rounded-lg px-4 py-3 ${colorMap.bg} ring-1 ${colorMap.ring}">
+                    <i data-lucide="${colorMap.icon}" class="w-5 h-5 mt-0.5 flex-shrink-0"></i>
+                    <div class="text-sm leading-5">${message}</div>
+                    <button type="button" aria-label="Close" class="ml-2 opacity-80 hover:opacity-100">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>`;
+
+            container.appendChild(wrapper);
+            lucide.createIcons({ attrs: { 'stroke-width': 2 } });
+            requestAnimationFrame(() => {
+                wrapper.classList.remove('opacity-0');
+                wrapper.classList.add('opacity-100');
+            });
+
+            const remove = () => {
+                wrapper.classList.remove('opacity-100');
+                wrapper.classList.add('opacity-0');
+                setTimeout(() => wrapper.remove(), 250);
+            };
+
+            const closeBtn = wrapper.querySelector('button');
+            closeBtn.addEventListener('click', remove);
+            if (duration > 0) setTimeout(remove, duration);
+        }
+
         // Utility functions
-        function updateLastUpdated() {
+        window.updateLastUpdated = window.updateLastUpdated || function() {
             const now = new Date();
             const timeString = now.toLocaleString();
             const lastUpdatedElement = document.getElementById('last-updated');
             if (lastUpdatedElement) {
                 lastUpdatedElement.textContent = `Last updated: ${timeString}`;
             }
-        }
+        };
 
         function showError(message) {
-            alert(`Error: ${message}`);
+            createToast({ type: 'error', message });
         }
 
         function showSuccess(message) {
-            alert(`Success: ${message}`);
+            createToast({ type: 'success', message });
         }
 
         function saveDraft() {
@@ -3162,32 +3934,59 @@
             // Load data for specific tabs
             if (tabName === 'users') {
                 loadUsers();
+                // Initialize users tab functionality if not already done
+                if (typeof window.usersTabInitialized === 'undefined') {
+                    initializeUsersTab();
+                    window.usersTabInitialized = true;
+                }
             } else if (tabName === 'questions') {
                 loadQuestions();
             }
         }
-
+        
+        window.showTab = window.showTab || showTab;
+        
         // Modal functions
-        function showAddCourseModal() {
+        window.showAddCourseModal = window.showAddCourseModal || function() {
             // Reset modal to create mode
             const modalTitleElement = document.getElementById('courseModalTitle');
             const finishBtnElement = document.getElementById('finishBtn');
-            
             if (modalTitleElement) {
                 modalTitleElement.textContent = 'Create New Course';
             }
             if (finishBtnElement) {
                 finishBtnElement.innerHTML = '<i data-lucide="check" class="w-4 h-4 mr-1"></i>Create Course';
             }
-            
-            // Clear any edit data
+            // Clear any edit data and reset form
             const form = document.getElementById('courseForm');
-            delete form.dataset.courseId;
-            delete form.dataset.isEdit;
-            form.reset();
-            
-            document.getElementById('courseModal').classList.remove('hidden');
-        }
+            if (form) {
+                delete form.dataset.courseId;
+                delete form.dataset.isEdit;
+                form.reset();
+            }
+            // Reset wizard data and show first step if available
+            try {
+                if (typeof showWizardStep === 'function') {
+                    if (typeof window.courseWizardData !== 'object') {
+                        window.courseWizardData = {};
+                    } else {
+                        window.courseWizardData = {};
+                    }
+                    if (typeof window.currentWizardStep !== 'number') {
+                        window.currentWizardStep = 1;
+                    } else {
+                        window.currentWizardStep = 1;
+                    }
+                    showWizardStep(1);
+                }
+            } catch (e) {
+                console.warn('Wizard init not available:', e);
+            }
+            const modalEl = document.getElementById('courseModal');
+            if (modalEl) {
+                modalEl.classList.remove('hidden');
+            }
+        };
 
         function closeCourseModal() {
             document.getElementById('courseModal').classList.add('hidden');
@@ -3212,6 +4011,7 @@
             // Reset wizard to first step
             showWizardStep(1);
         }
+        window.closeCourseModal = window.closeCourseModal || closeCourseModal;
 
         // Course Creation Wizard Functions
         let currentWizardStep = 1;
@@ -3290,6 +4090,7 @@
             
             currentWizardStep = stepNumber;
         }
+        window.showWizardStep = window.showWizardStep || showWizardStep;
 
         function updateNavigationHighlighting(currentStep) {
             // Reset all navigation items
@@ -3374,12 +4175,14 @@
                 showWizardStep(currentWizardStep + 1);
             }
         }
+        window.nextWizardStep = window.nextWizardStep || nextWizardStep;
 
         function prevWizardStep() {
             if (currentWizardStep > 1) {
                 showWizardStep(currentWizardStep - 1);
             }
         }
+        window.prevWizardStep = window.prevWizardStep || prevWizardStep;
 
         function validateCurrentStep() {
             switch (currentWizardStep) {
@@ -3671,11 +4474,28 @@
                             Add Questions
                         </button>
                     </div>
+
+                    <!-- Lesson Files (auto-linked by lesson number) -->
+                    <div class="mt-4 border-t pt-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h5 class="font-medium text-gray-800">Lesson Files</h5>
+                            <button type="button" class="refresh-lesson-files px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">Refresh</button>
+                        </div>
+                        <div class="text-xs text-gray-500 mb-2">These links are pulled from the course-materials storage under the folder for this lesson.</div>
+                        <div class="lesson-files-list border rounded-lg p-3 bg-white">
+                            <div class="text-gray-500 text-sm">No files found for this lesson.</div>
+                        </div>
+                    </div>
                 </div>
             `;
             
             lessonsContainer.insertAdjacentHTML('beforeend', lessonHTML);
             lucide.createIcons();
+            // Initialize the Lesson Files section for the newly added lesson
+            const lessonItemEl = document.getElementById(`lesson-${lessonCount}`);
+            if (lessonItemEl && typeof setupLessonFilesSection === 'function') {
+                setupLessonFilesSection(lessonItemEl);
+            }
         }
 
         async function removeLesson(button) {
@@ -3722,6 +4542,88 @@
                 if (title && title.textContent.startsWith('Lesson ')) {
                     title.textContent = `Lesson ${index + 1}`;
                 }
+            });
+
+            // After renumbering, refresh files list for all lessons to reflect new lesson numbers
+            if (typeof refreshAllLessonFiles === 'function') {
+                refreshAllLessonFiles();
+            }
+        }
+        window.removeLesson = window.removeLesson || removeLesson;
+
+        // ===== Lesson Files helpers (Supabase Storage) =====
+        function getSanitizedCourseFolder() {
+            let courseName = '';
+            const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+            if (courseTitleInput && courseTitleInput.value) {
+                courseName = courseTitleInput.value.trim();
+            }
+            if (courseName) {
+                return courseName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
+            }
+            return 'course_content';
+        }
+
+        async function renderLessonFilesForItem(lessonItem) {
+            try {
+                const lessonsContainer = document.getElementById('lessonsContainer');
+                const items = Array.from(lessonsContainer.querySelectorAll('.lesson-item'));
+                const lessonNumber = items.indexOf(lessonItem) + 1; // 1-based index
+
+                const listEl = lessonItem.querySelector('.lesson-files-list');
+                if (!listEl) return;
+
+                listEl.innerHTML = '<div class="text-gray-500 text-sm">Loading files…</div>';
+
+                const courseFolder = getSanitizedCourseFolder();
+                const folderPath = `${courseFolder}/lesson_${lessonNumber}`;
+
+                let files = [];
+                try {
+                    files = await supabaseStorageService.listFiles('course-materials', folderPath);
+                } catch (err) {
+                    console.warn('Failed to list lesson files:', err);
+                }
+
+                if (!files || files.length === 0) {
+                    listEl.innerHTML = '<div class="text-gray-500 text-sm">No files found for this lesson.</div>';
+                    return;
+                }
+
+                const linksHtml = files.map(f => {
+                    const filePath = `${folderPath}/${f.name}`;
+                    const url = supabaseStorageService.getFileUrl('course-materials', filePath);
+                    const icon = f.type?.startsWith('image/') ? '🖼️' : f.type?.startsWith('audio/') ? '🎧' : f.type?.startsWith('video/') ? '📹' : f.name.toLowerCase().endsWith('.pdf') ? '📄' : '📎';
+                    return `<li class=\"py-1 flex items-center gap-2\"><span>${icon}</span><a class=\"text-blue-600 hover:underline break-all\" href=\"${url}\" target=\"_blank\" rel=\"noopener\">${f.name}</a></li>`;
+                }).join('');
+
+                listEl.innerHTML = `<ul class=\"list-disc pl-5\">${linksHtml}</ul>`;
+            } catch (e) {
+                console.error('Error rendering lesson files:', e);
+            }
+        }
+
+        function setupLessonFilesSection(lessonItem) {
+            const refreshBtn = lessonItem.querySelector('.refresh-lesson-files');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => renderLessonFilesForItem(lessonItem));
+            }
+            // Initial render
+            renderLessonFilesForItem(lessonItem);
+        }
+
+        function refreshAllLessonFiles() {
+            const lessons = document.querySelectorAll('.lesson-item');
+            lessons.forEach(item => renderLessonFilesForItem(item));
+        }
+
+        // Refresh lesson files when course title changes (so folder path updates)
+        const courseTitleEl = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+        if (courseTitleEl) {
+            let debounceTimer;
+            courseTitleEl.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => refreshAllLessonFiles(), 500);
             });
         }
 
@@ -3794,6 +4696,7 @@
             contentContainer.insertAdjacentHTML('beforeend', contentHTML);
             lucide.createIcons();
         }
+        window.addLessonContent = window.addLessonContent || addLessonContent;
 
         function removeLessonContent(button) {
             if (!button) {
@@ -3816,6 +4719,7 @@
                 }
             });
         }
+        window.removeLessonContent = window.removeLessonContent || removeLessonContent;
 
         function updateContentFields(selectElement) {
             if (!selectElement) {
@@ -4709,6 +5613,7 @@
                 }
             }
         }
+        window.updateContentFields = window.updateContentFields || updateContentFields;
 
         // Get current course ID from various sources
         function getCurrentCourseId() {
@@ -4896,8 +5801,15 @@
             } catch (e) {
                 console.error('addAutoFetchButton: Error:', e?.message || e);
             }
+
+            const contentType = contentItem.querySelector('.content-type').value;
+            const contentTitle = contentItem.querySelector('.content-title').value;
+            
+            // Create a simple preview modal or alert
+            createToast({ type: 'info', message: `Preview: ${contentType.toUpperCase()} - ${contentTitle || 'Untitled'}` });
         }
-        // ==== end PDF Highlights Helpers ====
+        window.previewContent = window.previewContent || previewContent;
+
 
         function moveContentUp(button) {
             if (!button) {
@@ -4944,7 +5856,7 @@
 
         function openQuizBuilder(button) {
             // This would open a more detailed quiz builder modal
-            alert('Quiz Builder would open here - allowing creation of detailed quiz questions');
+            createToast({ type: 'info', message: 'Quiz Builder would open here - allowing creation of detailed quiz questions' });
         }
 
         // Question Management Functions
@@ -5282,43 +6194,54 @@
         }
 
         // Initialize wizard when modal opens
+        // Delegate to global guarded function to avoid duplicate declarations
         function showAddCourseModal() {
-            // Reset modal to create mode
-            document.getElementById('courseModalTitle').textContent = 'Create New Course';
-            
-            // Clear any edit data and reset wizard
+            if (typeof window.showAddCourseModal === 'function' && window.showAddCourseModal !== showAddCourseModal) {
+                return window.showAddCourseModal();
+            }
+            // Fallback in case global is missing
+            const titleEl = document.getElementById('courseModalTitle');
+            if (titleEl) titleEl.textContent = 'Create New Course';
             const form = document.getElementById('courseForm');
             if (form) {
                 delete form.dataset.courseId;
                 delete form.dataset.isEdit;
                 form.reset();
             }
-            
-            // Reset wizard data and show first step
-            courseWizardData = {};
-            currentWizardStep = 1;
-            showWizardStep(1);
-            
-            document.getElementById('courseModal').classList.remove('hidden');
+            try {
+                if (typeof showWizardStep === 'function') {
+                    window.courseWizardData = {};
+                    window.currentWizardStep = 1;
+                    showWizardStep(1);
+                }
+            } catch (e) {
+                console.warn('Wizard fallback init issue:', e);
+            }
+            const modal = document.getElementById('courseModal');
+            if (modal) modal.classList.remove('hidden');
         }
 
         function showAddAssignmentModal() {
             document.getElementById('assignmentModal').classList.remove('hidden');
         }
+        window.showAddAssignmentModal = window.showAddAssignmentModal || showAddAssignmentModal;
 
         function closeAssignmentModal() {
             document.getElementById('assignmentModal').classList.add('hidden');
             document.getElementById('assignmentForm').reset();
         }
+        window.closeAssignmentModal = window.closeAssignmentModal || closeAssignmentModal;
 
         function showAddQuestionModal() {
             document.getElementById('questionModal').classList.remove('hidden');
         }
+        window.showAddQuestionModal = window.showAddQuestionModal || showAddQuestionModal;
 
         function closeQuestionModal() {
             document.getElementById('questionModal').classList.add('hidden');
             document.getElementById('questionForm').reset();
         }
+        window.closeQuestionModal = window.closeQuestionModal || closeQuestionModal;
 
         async function loadQuestionsForAssignment() {
             const assignmentSelect = document.getElementById('questionAssignmentSelect');
@@ -5450,8 +6373,8 @@ INSERT INTO public.grammar_lessons (title, description, language, level, content
 
 After running this SQL, refresh the admin dashboard to see the grammar lessons.
             `;
-            
-            alert(instructions);
+            console.log(instructions);
+            createToast({ type: 'info', message: 'Lesson builder SQL instructions printed to console.' });
         }
 
         function showUserManagementSetup() {
@@ -5502,44 +6425,49 @@ CREATE INDEX IF NOT EXISTS idx_learning_sessions_user_id ON public.learning_sess
 
 After running this SQL, refresh the admin dashboard to see the user management working properly.
             `;
-            
-            alert(instructions);
+            console.log(instructions);
+            createToast({ type: 'info', message: 'User management setup instructions printed to console.' });
         }
 
         // File upload helper function
          async function uploadFiles(files, folder, courseId = null, assignmentId = null) {
+             if (uploadFiles.uploading) return [];
+             uploadFiles.uploading = true;
              const uploadedFiles = [];
-             
-             for (const file of files) {
-                 const fileExt = file.name.split('.').pop();
-                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-                 const filePath = `${folder}/${fileName}`;
-                 
-                 try {
-                     const client = window.supabaseAdminClient || window.supabaseClient || supabase;
-                     const { data, error } = await client.storage
-                         .from('course-materials')
-                         .upload(filePath, file, { contentType: file.type });
-                     
-                     if (error) throw error;
-                     
-                     // Get public URL
-                     const { data: { publicUrl } } = client.storage
-                         .from('course-materials')
-                         .getPublicUrl(filePath);
-                     
-                     uploadedFiles.push({
-                         name: file.name,
-                         url: publicUrl,
-                         type: file.type,
-                         size: file.size,
-                         path: filePath
-                     });
-                 } catch (error) {
-                     console.error(`Error uploading ${file.name}:`, error);
+             const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+
+             try {
+                 for (const file of files) {
+                     const contentType = file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : file.type;
+                     try {
+                         const result = await supabaseStorageService.uploadFile(file, 'course-materials', folder, { contentType });
+
+                         try {
+                             await client.from('documents').upsert({
+                                 name: file.name,
+                                 path: result.path,
+                                 bucket: 'course-materials',
+                                 url: result.url
+                             }, { onConflict: 'path' });
+                         } catch (dbError) {
+                             console.error('Error storing file info:', dbError);
+                         }
+
+                         uploadedFiles.push({
+                             name: file.name,
+                             url: result.url,
+                             type: contentType,
+                             size: file.size,
+                             path: result.path
+                         });
+                     } catch (error) {
+                         console.error(`Error uploading ${file.name}:`, error);
+                     }
                  }
+             } finally {
+                 uploadFiles.uploading = false;
              }
-             
+
              return uploadedFiles;
          }
 
@@ -5826,7 +6754,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 
                 // Show success message
                 const successMessage = isEdit ? 'Course updated successfully!' : (lessonsData && lessonsData.length > 0 ? `Course created successfully with ${lessonsData.length} lessons!` : 'Course created successfully!');
-                alert(successMessage);
+                createToast({ type: 'success', message: successMessage });
                 
             } catch (error) {
                 console.error(isEdit ? 'Error updating course:' : 'Error creating course:', error);
@@ -6095,17 +7023,44 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     fileName = generated;
                 }
                 
+
+                // Add lesson number (1-based index)
+                const lessonNumber = lessonIndex + 1;
+                filePath += `/lesson_${lessonNumber}`;
+
+                filePath += `/${fileName}`;
+
+                // Ensure the bucket exists before uploading
+                await supabaseStorageService.ensureBucket('course-materials');
+
+
                 // Use IPC for file upload if in Electron environment
                 if (window.isElectron) {
                     // Convert file to buffer for IPC
                     const arrayBuffer = await file.arrayBuffer();
                     const buffer = new Uint8Array(arrayBuffer);
-                    
+
                     const result = await window.electronAPI.invoke('db:uploadFile', buffer, fileName, 'course-materials', filePath);
-                    
+
                     if (result.success) {
-                        console.log('✅ File uploaded successfully via Electron IPC:', result.result);
-                        return result.result.publicUrl || result.result;
+                        const publicUrl = result.result.publicUrl || result.result;
+                        const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                        try {
+                            await client.from('documents').upsert({
+                                name: file.name,
+                                path: filePath,
+                                bucket: 'course-materials',
+                                url: publicUrl
+                            }, { onConflict: 'path' });
+                        } catch (dbError) {
+                            console.error('Error storing file info:', dbError);
+                        }
+
+                        console.log('✅ File uploaded successfully via Electron IPC:', publicUrl);
+                        if (typeof refreshAllLessonFiles === 'function') {
+                            try { refreshAllLessonFiles(); } catch (e) { console.warn('refreshAllLessonFiles error:', e); }
+                        }
+                        return publicUrl;
                     } else {
                         console.error('❌ Failed to upload file via IPC:', result.error);
                         throw new Error(result.error);
@@ -6113,19 +7068,27 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 } else {
                     // Fallback to direct Supabase upload for web environment (prefer admin client if available)
                     const client = window.supabaseAdminClient || window.supabaseClient || supabase;
-                    const { data, error } = await client.storage
-                        .from('course-materials')
-                        .upload(filePath, file, { contentType: file.type });
-                    
-                    if (error) throw error;
-                    
-                    // Get public URL
-                    const { data: { publicUrl } } = client.storage
-                        .from('course-materials')
-                        .getPublicUrl(filePath);
-                    
-                    console.log('✅ File uploaded successfully via direct Supabase:', publicUrl);
-                    return publicUrl;
+                    const contentType = fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : file.type;
+                    const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
+                    const result = await supabaseStorageService.uploadFile(file, 'course-materials', folderPath, { contentType });
+
+                    // Store path and public URL in documents table
+                    try {
+                        await client.from('documents').upsert({
+                            name: file.name,
+                            path: result.path,
+                            bucket: 'course-materials',
+                            url: result.url
+                        }, { onConflict: 'path' });
+                    } catch (dbError) {
+                        console.error('Error storing file info:', dbError);
+                    }
+
+                    console.log('✅ File uploaded successfully via direct Supabase:', result.url);
+                    if (typeof refreshAllLessonFiles === 'function') {
+                        try { refreshAllLessonFiles(); } catch (e) { console.warn('refreshAllLessonFiles error:', e); }
+                    }
+                    return result.url;
                 }
             } catch (error) {
                 console.error('❌ Error uploading file:', error);
@@ -6201,7 +7164,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 updateLastUpdated();
                 
                 // Show success message
-                alert('Assignment created successfully!');
+                createToast({ type: 'success', message: 'Assignment created successfully!' });
                 
             } catch (error) {
                 console.error('Error creating assignment:', error);
@@ -6217,12 +7180,26 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
         // Action functions
         async function refreshData() {
+            const overlay = document.getElementById('global-loading');
+            const refreshBtn = document.querySelector('header button[onclick="refreshData()"]');
             try {
+                if (overlay) overlay.classList.remove('hidden');
+                if (refreshBtn) {
+                    refreshBtn.disabled = true;
+                    refreshBtn.classList.add('opacity-50','cursor-not-allowed');
+                }
                 await loadDashboardData();
                 updateLastUpdated();
+                createToast({ type: 'success', message: 'Dashboard refreshed' });
             } catch (error) {
                 console.error('Error refreshing data:', error);
                 showError('Failed to refresh data');
+            } finally {
+                if (overlay) overlay.classList.add('hidden');
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.classList.remove('opacity-50','cursor-not-allowed');
+                }
             }
         }
 
@@ -6237,10 +7214,16 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
 
         function viewUser(userId) {
-            alert(`View user details for: ${userId}`);
+            if (typeof window.viewUser === 'function' && window.viewUser !== viewUser) {
+                return window.viewUser(userId);
+            }
+            createToast({ type: 'info', message: `View user details for: ${userId}` });
         }
 
         async function deleteUser(userId) {
+            if (typeof window.deleteUser === 'function' && window.deleteUser !== deleteUser) {
+                return window.deleteUser(userId);
+            }
             if (!confirm('Are you sure you want to delete this user?')) {
                 return;
             }
@@ -6262,7 +7245,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
 
         function editVocabulary(wordId) {
-            alert(`Edit vocabulary word: ${wordId}`);
+            createToast({ type: 'info', message: `Edit vocabulary word: ${wordId}` });
         }
 
         async function deleteVocabulary(wordId) {
@@ -6287,7 +7270,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
 
         function editLesson(lessonId) {
-            alert(`Edit lesson: ${lessonId}`);
+            createToast({ type: 'info', message: `Edit lesson: ${lessonId}` });
         }
 
         async function deleteLesson(lessonId) {
@@ -6435,7 +7418,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 // Check if supabase is available
                 if (typeof supabase === 'undefined') {
                     console.error('Supabase client not initialized');
-                    alert('Database connection not available. Please refresh the page.');
+                    createToast({ type: 'error', message: 'Database connection not available. Please refresh the page.' });
                     return;
                 }
 
@@ -6449,7 +7432,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
                 if (error) {
                     console.error('Error fetching course:', error);
-                    alert('Error loading course data: ' + error.message);
+                    createToast({ type: 'error', message: 'Error loading course data: ' + error.message });
                     return;
                 }
 
@@ -6467,7 +7450,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 
                 if (!titleElement || !descElement || !levelElement || !modalElement) {
                     console.error('Required form elements not found');
-                    alert('Form elements not found. Please refresh the page.');
+                    createToast({ type: 'error', message: 'Form elements not found. Please refresh the page.' });
                     return;
                 }
 
@@ -6526,9 +7509,11 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 console.log('Modal should be visible now');
             } catch (error) {
                 console.error('Error in editCourse:', error);
-                alert('Error loading course for editing: ' + error.message);
+                createToast({ type: 'error', message: 'Error loading course for editing: ' + error.message });
             }
         }
+
+        window.editCourse = window.editCourse || editCourse;
 
         async function deleteCourse(courseId) {
             console.log('🗑️ Delete course called with ID:', courseId);
@@ -6733,6 +7718,11 @@ After running this SQL, refresh the admin dashboard to see the user management w
         // Function to load lesson data from database for editing using RPC
         async function loadLessonContentFromDatabase(courseId) {
             try {
+                if (window.__lessonsLoading) {
+                    console.warn('Lesson load already in progress, skipping this invocation.');
+                    return;
+                }
+                window.__lessonsLoading = true;
                 if (!supabase) {
                     console.error('Supabase not initialized');
                     return;
@@ -6844,6 +7834,8 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 console.error('❌ Error loading lesson content from database:', error);
                 // Try fallback method
                 return await loadLessonContentFromDatabaseFallback(courseId);
+            } finally {
+                window.__lessonsLoading = false;
             }
         }
         
@@ -7097,17 +8089,68 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                             if (altInput) altInput.value = contentData.alt_text || '';
                                             if (captionInput) captionInput.value = contentData.caption || '';
                                             
-                                            // Show preview of existing image if we have a url
-                                            if (material.url) {
-                                                let preview = fieldsContainer.querySelector('.image-loaded-preview');
-                                                if (!preview) {
-                                                    preview = document.createElement('div');
-                                                    preview.className = 'image-loaded-preview mt-2';
-                                                    preview.innerHTML = `<img class="max-h-40 rounded border" alt="Image preview" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">`;
-                                                    fieldsContainer.appendChild(preview);
-                                                }
-                                                const imgEl = preview.querySelector('img');
-                                                if (imgEl) imgEl.src = material.url;
+
+                                            // Populate based on material type
+                                            switch (materialType) {
+                                                case 'text':
+                                                    const textArea = fieldsContainer.querySelector('textarea');
+                                                    if (textArea) textArea.value = typeof material.content === 'string' ? material.content : (contentData.text || contentData.content || '');
+                                                    break;
+                                                case 'video':
+                                                    const videoDuration = fieldsContainer.querySelector('.content-duration');
+                                                    const videoDesc = fieldsContainer.querySelector('.content-description');
+                                                    if (videoDuration) videoDuration.value = contentData.duration || '';
+                                                    if (videoDesc) videoDesc.value = contentData.description || '';
+                                                    break;
+                                                case 'audio':
+                                                    const audioDuration = fieldsContainer.querySelector('.content-duration');
+                                                    const transcript = fieldsContainer.querySelector('.content-transcript');
+                                                    if (audioDuration) audioDuration.value = contentData.duration || '';
+                                                    if (transcript) transcript.value = contentData.transcript || '';
+                                                    break;
+                                                case 'pdf':
+                                                    const pages = fieldsContainer.querySelector('.content-pages');
+                                                    const synonym = fieldsContainer.querySelector('.content-synonym');
+                                                    const instructions = fieldsContainer.querySelector('.content-instructions');
+                                                    if (pages) pages.value = contentData.page_range || '';
+                                                    if (synonym) synonym.value = contentData.synonym || '';
+                                                    if (instructions) instructions.value = contentData.instructions || '';
+                                                    break;
+                                                case 'quiz':
+                                                    const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
+                                                    const questions = fieldsContainer.querySelector('input[placeholder*="questions"]');
+                                                    if (quizTitle) quizTitle.value = contentData.title || '';
+                                                    if (questions) questions.value = contentData.questions || '';
+                                                    break;
+                                                case 'image':
+                                                    const altInput = fieldsContainer.querySelector('.content-alt');
+                                                    const captionInput = fieldsContainer.querySelector('.content-caption');
+                                                    if (altInput) altInput.value = contentData.alt_text || '';
+                                                    if (captionInput) captionInput.value = contentData.caption || '';
+                                                    
+                                                    // Show preview of existing image using stored URL or generate if missing
+                                                    let imageUrl = material.url;
+                                                    if (!imageUrl && material.path) {
+                                                        const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                                                        const { data: { publicUrl } } = client.storage
+                                                            .from('course-materials')
+                                                            .getPublicUrl(material.path);
+                                                        imageUrl = publicUrl;
+                                                        material.url = publicUrl;
+                                                    }
+                                                    if (imageUrl) {
+                                                        let preview = fieldsContainer.querySelector('.image-loaded-preview');
+                                                        if (!preview) {
+                                                            preview = document.createElement('div');
+                                                            preview.className = 'image-loaded-preview mt-2';
+                                                            preview.innerHTML = `<img class="max-h-40 rounded border" alt="Image preview">`;
+                                                            fieldsContainer.appendChild(preview);
+                                                        }
+                                                        const imgEl = preview.querySelector('img');
+                                                        if (imgEl) imgEl.src = imageUrl;
+                                                    }
+                                                    break;
+
                                             }
                                             break;
                                     }
@@ -7258,8 +8301,17 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                             const captionInput = fieldsContainer.querySelector('.content-caption');
                                                             if (altInput) altInput.value = contentData.alt_text || '';
                                                             if (captionInput) captionInput.value = contentData.caption || '';
-                                                            // Show preview of existing image if we have a url
-                                            if (material.url) {
+                                                            // Show preview of existing image using stored URL or generate if missing
+                                            let imageUrl2 = material.url;
+                                            if (!imageUrl2 && material.path) {
+                                                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                                                const { data: { publicUrl } } = client.storage
+                                                    .from('course-materials')
+                                                    .getPublicUrl(material.path);
+                                                imageUrl2 = publicUrl;
+                                                material.url = publicUrl;
+                                            }
+                                            if (imageUrl2) {
                                                 let preview = fieldsContainer.querySelector('.image-loaded-preview');
                                                 if (!preview) {
                                                     preview = document.createElement('div');
@@ -7268,7 +8320,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                     fieldsContainer.appendChild(preview);
                                                 }
                                                 const imgEl = preview.querySelector('img');
-                                                if (imgEl) imgEl.src = material.url;
+                                                if (imgEl) imgEl.src = imageUrl2;
                                             }
                                                             break;
                                                     }
@@ -7294,7 +8346,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         function editAssignment(assignmentId) {
             console.log('Editing assignment:', assignmentId);
             // TODO: Implement assignment editing functionality
-            alert('Assignment editing functionality will be implemented soon.');
+            createToast({ type: 'info', message: 'Assignment editing functionality will be implemented soon.' });
         }
 
         async function deleteAssignment(assignmentId) {
@@ -7505,7 +8557,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         // Load files from Supabase Storage
         async function loadFiles() {
             try {
-                const buckets = ['course-materials', 'assignment-materials', 'shared-resources'];
+                const buckets = ['course-files', 'assignment-files', 'general-files', 'images', 'documents'];
                 currentFiles = [];
 
                 for (const bucket of buckets) {
@@ -7518,17 +8570,30 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             });
 
                         if (!error && files) {
-                            const categoryMap = {
-                                'course-materials': 'courses',
-                                'assignment-materials': 'assignments',
-                                'shared-resources': 'general'
-                            };
-                            const filesWithBucket = files.map(file => ({
-                                ...file,
-                                bucket: bucket,
-                                category: categoryMap[bucket] || 'general'
-                            }));
-                            currentFiles.push(...filesWithBucket);
+                            for (const file of files) {
+                                const { data: { publicUrl } } = supabase.storage
+                                    .from(bucket)
+                                    .getPublicUrl(file.name);
+
+                                const fileRecord = {
+                                    ...file,
+                                    bucket: bucket,
+                                    category: bucket.replace('-files', '').replace('-', ' '),
+                                    url: publicUrl
+                                };
+                                currentFiles.push(fileRecord);
+
+                                try {
+                                    await supabase.from('documents').upsert({
+                                        name: file.name.split('/').pop(),
+                                        path: file.name,
+                                        bucket: bucket,
+                                        url: publicUrl
+                                    }, { onConflict: 'path' });
+                                } catch (dbError) {
+                                    console.error('Error updating file URL:', dbError);
+                                }
+                            }
                         }
                     } catch (bucketError) {
                         console.warn(`Bucket ${bucket} not accessible:`, bucketError);
@@ -7596,7 +8661,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         // Load storage statistics
         async function loadStorageStats() {
             try {
-                const buckets = ['course-materials', 'assignment-materials', 'shared-resources'];
+                const buckets = ['course-files', 'assignment-files', 'general-files', 'images', 'documents'];
                 let totalFiles = 0;
                 let totalSize = 0;
 
@@ -7679,16 +8744,21 @@ After running this SQL, refresh the admin dashboard to see the user management w
         function openFileUploadModal() {
             document.getElementById('fileUploadModal').classList.remove('hidden');
         }
+        window.openFileUploadModal = window.openFileUploadModal || openFileUploadModal;
+        window.showUploadModal = window.showUploadModal || openFileUploadModal;
 
         function closeFileUploadModal() {
             document.getElementById('fileUploadModal').classList.add('hidden');
             document.getElementById('fileUploadForm').reset();
             document.getElementById('uploadProgress').classList.add('hidden');
         }
+        window.closeFileUploadModal = window.closeFileUploadModal || closeFileUploadModal;
 
         // Handle file upload
         async function handleFileUpload(event) {
             event.preventDefault();
+            if (handleFileUpload.uploading) return;
+            handleFileUpload.uploading = true;
 
             const formData = new FormData(event.target);
             const category = formData.get('category');
@@ -7697,11 +8767,13 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
             if (!files || files.length === 0) {
                 showError('Please select at least one file');
+                handleFileUpload.uploading = false;
                 return;
             }
 
             if (!category) {
                 showError('Please select a file category');
+                handleFileUpload.uploading = false;
                 return;
             }
 
@@ -7713,37 +8785,47 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 const uploadButton = document.getElementById('uploadButton');
                 uploadButton.disabled = true;
 
-                // Determine bucket name (mapped to existing Supabase buckets)
-                const bucketName = category === 'general' ? 'shared-resources' : 
-                                 category === 'courses' ? 'course-materials' :
-                                 category === 'assignments' ? 'assignment-materials' :
-                                 category === 'images' ? 'shared-resources' :
-                                 category === 'documents' ? 'shared-resources' : 'shared-resources';
+                // Determine bucket name
+                const bucketName = category === 'general' ? 'general-files' :
+                                 category === 'courses' ? 'course-files' :
+                                 category === 'assignments' ? 'assignment-files' :
+                                 category === 'images' ? 'images' :
+                                 category === 'documents' ? 'documents' : 'general-files';
+
+                // Ensure target bucket exists
+                await supabaseStorageService.ensureBucket(bucketName);
 
                 // Upload files one by one
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
-                    const fileName = `${Date.now()}_${file.name}`;
+                    const contentType = file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : file.type;
 
                     progressText.textContent = `Uploading ${file.name} (${i + 1}/${files.length})...`;
                     progressBar.style.width = `${((i + 0.5) / files.length) * 100}%`;
 
-                    const { data, error } = await supabase.storage
-                        .from(bucketName)
-                        .upload(fileName, file, {
-                            cacheControl: '3600',
-                            upsert: false
-                        });
+                    try {
+                        const result = await supabaseStorageService.uploadFile(file, bucketName, '', { contentType });
 
-                    if (error) {
+                        if (contentType === 'application/pdf') {
+                            try {
+                                await supabase.from('documents').insert({
+                                    name: file.name,
+                                    path: result.path,
+                                    bucket: bucketName
+                                });
+                            } catch (dbError) {
+                                console.error('Error storing file path:', dbError);
+                            }
+                        }
+
+                        progressBar.style.width = `${((i + 1) / files.length) * 100}%`;
+                    } catch (error) {
                         throw new Error(`Failed to upload ${file.name}: ${error.message}`);
                     }
-
-                    progressBar.style.width = `${((i + 1) / files.length) * 100}%`;
                 }
 
                 progressText.textContent = 'Upload completed!';
-                
+
                 // Close modal and refresh files
                 setTimeout(() => {
                     closeFileUploadModal();
@@ -7756,6 +8838,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to upload files: ' + error.message);
             } finally {
                 document.getElementById('uploadButton').disabled = false;
+                handleFileUpload.uploading = false;
             }
         }
 
@@ -7805,6 +8888,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to delete file');
             }
         }
+        window.deleteFile = window.deleteFile || deleteFile;
 
         // Filter files
         function filterFiles() {
@@ -7919,10 +9003,17 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     completionRate: '87%'
                 };
                 
-                document.getElementById('total-assessments').textContent = stats.totalAssessments;
-                document.getElementById('students-assessed').textContent = stats.studentsAssessed;
-                document.getElementById('avg-cefr-level').textContent = stats.avgCefrLevel;
-                document.getElementById('completion-rate').textContent = stats.completionRate;
+                if (window.updateKpiValue) {
+                    updateKpiValue('total-assessments', stats.totalAssessments);
+                    updateKpiValue('students-assessed', stats.studentsAssessed);
+                    updateKpiValue('avg-cefr-level', stats.avgCefrLevel);
+                    updateKpiValue('completion-rate', stats.completionRate);
+                } else {
+                    document.getElementById('total-assessments').textContent = stats.totalAssessments;
+                    document.getElementById('students-assessed').textContent = stats.studentsAssessed;
+                    document.getElementById('avg-cefr-level').textContent = stats.avgCefrLevel;
+                    document.getElementById('completion-rate').textContent = stats.completionRate;
+                }
                 
             } catch (error) {
                 console.error('Error loading assessment stats:', error);
@@ -8051,6 +9142,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
             document.getElementById('assessmentQuestionModal').classList.remove('hidden');
             resetAssessmentQuestionForm();
         }
+        window.showCreateAssessmentQuestionModal = window.showCreateAssessmentQuestionModal || showCreateAssessmentQuestionModal;
 
         // Close assessment question modal
         function closeAssessmentQuestionModal() {
@@ -8064,6 +9156,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
             // Reset modal title
             document.querySelector('#assessmentQuestionModal h3').textContent = 'Create CEFR Assessment Question';
         }
+        window.closeAssessmentQuestionModal = window.closeAssessmentQuestionModal || closeAssessmentQuestionModal;
 
         // Reset assessment question form
         function resetAssessmentQuestionForm() {
@@ -8229,6 +9322,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
             document.getElementById(`question${type.charAt(0).toUpperCase() + type.slice(1)}`).value = '';
             document.getElementById(`${type}Preview`).classList.add('hidden');
         }
+        window.removeMedia = window.removeMedia || removeMedia;
 
         // Handle assessment question form submission
         async function handleAssessmentQuestionSubmit(event) {
@@ -8642,6 +9736,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to load question data: ' + error.message);
             }
         }
+        window.editAssessmentQuestion = window.editAssessmentQuestion || editAssessmentQuestion;
 
         // Delete assessment question
         async function deleteAssessmentQuestion(questionId) {
@@ -8672,6 +9767,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to delete assessment question: ' + error.message);
             }
         }
+        window.deleteAssessmentQuestion = window.deleteAssessmentQuestion || deleteAssessmentQuestion;
 
         // View student details
         function viewStudentDetails(studentId) {
@@ -8957,43 +10053,46 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
         // Show course sub-tab function
         function showCourseSubTab(tabName) {
-            // Hide all sub-tab content
-            const subTabs = document.querySelectorAll('[id^="course-"]');
-            subTabs.forEach(tab => {
-                if (tab.id.includes('-content') || tab.id.includes('-tab')) {
-                    tab.style.display = 'none';
-                    tab.classList.remove('active');
+            // 1) Hide ONLY the sub-tab contents (don't hide the nav buttons)
+            document.querySelectorAll('.course-subtab-content').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('active');
+            });
+
+            // 2) Show the requested sub-tab content by its correct id pattern: course-${name}-content
+            const targetContent = document.getElementById(`course-${tabName}-content`);
+            if (targetContent) {
+                targetContent.classList.remove('hidden');
+                targetContent.classList.add('active');
+            }
+
+            // 3) Update sub-tab navigation button styles (border-based active state)
+            const map = {
+                overview: 'course-overview-tab',
+                ai: 'course-ai-tab',
+                templates: 'course-templates-tab',
+                versions: 'course-versions-tab'
+            };
+
+            Object.entries(map).forEach(([name, id]) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                if (name === tabName) {
+                    btn.classList.add('border-blue-500', 'text-blue-600');
+                    btn.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                } else {
+                    btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                    btn.classList.remove('border-blue-500', 'text-blue-600');
                 }
             });
-            
-            // Show the selected sub-tab
-            const targetTab = document.getElementById(`course-${tabName}`);
-            if (targetTab) {
-                targetTab.style.display = 'block';
-                targetTab.classList.add('active');
-            }
-            
-            // Update sub-tab navigation buttons
-            const navButtons = document.querySelectorAll('button[onclick*="showCourseSubTab"]');
-            navButtons.forEach(btn => {
-                btn.classList.remove('bg-blue-600', 'text-white');
-                btn.classList.add('bg-gray-100', 'text-gray-700');
-            });
-            
-            // Highlight active button
-            const activeButton = document.querySelector(`button[onclick="showCourseSubTab('${tabName}')"]`);
-            if (activeButton) {
-                activeButton.classList.remove('bg-gray-100', 'text-gray-700');
-                activeButton.classList.add('bg-blue-600', 'text-white');
-            }
-            
+
             console.log('Switched to course sub-tab:', tabName);
         }
 
         // Initialize course management
         function initializeCourseManagement() {
-            // Set default active tab
-            switchCourseTab('course-overview');
+            // Set default active sub-tab and ensure nav visible
+            showCourseSubTab('overview');
             
             // Initialize event listeners
             document.addEventListener('change', function(e) {
@@ -9023,6 +10122,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 existingSelect.style.display = 'none';
             }
         }
+        window.toggleImageSourceFields = window.toggleImageSourceFields || toggleImageSourceFields;
 
         async function populateExistingImages(selectElement) {
             try {
@@ -9218,6 +10318,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 currentUrlInput.value = selectElement.value;
             }
         }
+        window.handleExistingImageSelect = window.handleExistingImageSelect || handleExistingImageSelect;
 
         function handleImageUpload(fileInput) {
             if (fileInput.files && fileInput.files[0]) {
@@ -9266,6 +10367,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 reader.readAsDataURL(file);
             }
         }
+        window.handleImageUpload = window.handleImageUpload || handleImageUpload;
 
         function replaceImage(button) {
             const contentItem = button.closest('.content-item');
@@ -9274,6 +10376,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 replaceInput.click();
             }
         }
+        window.replaceImage = window.replaceImage || replaceImage;
 
         async function handleImageReplace(replaceInput) {
             if (!replaceInput.files || !replaceInput.files[0]) return;
@@ -9327,6 +10430,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to replace image: ' + error.message);
             }
         }
+        window.handleImageReplace = window.handleImageReplace || handleImageReplace;
 
         async function deleteImage(button) {
             if (!confirm('Are you sure you want to delete this image?')) {
@@ -9369,6 +10473,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 showError('Failed to delete image: ' + error.message);
             }
         }
+        window.deleteImage = window.deleteImage || deleteImage;
 
         async function deleteImageFromStorage(imageUrl) {
             try {
@@ -9448,6 +10553,189 @@ After running this SQL, refresh the admin dashboard to see the user management w
             }
         }
 
+    // ===== Global guarded exposures for inline onclick and external access =====
+        (function() {
+            if (typeof window !== 'undefined') {
+                // General navigation and data actions
+                window.logout = window.logout || logout;
+                window.refreshData = window.refreshData || refreshData;
+                window.refreshUsers = window.refreshUsers || refreshUsers;
+                window.showFilesTab = window.showFilesTab || showFilesTab;
+                window.loadFiles = window.loadFiles || loadFiles;
+                window.showAssessmentsTab = window.showAssessmentsTab || showAssessmentsTab;
+                window.showAssessmentSubTab = window.showAssessmentSubTab || showAssessmentSubTab;
+                window.showCourseSubTab = window.showCourseSubTab || showCourseSubTab;
+
+                // Course and lesson CRUD helpers
+                window.editVocabulary = window.editVocabulary || editVocabulary;
+                window.deleteVocabulary = window.deleteVocabulary || deleteVocabulary;
+                window.editLesson = window.editLesson || editLesson;
+                window.deleteLesson = window.deleteLesson || deleteLesson;
+                window.deleteCourse = window.deleteCourse || deleteCourse;
+
+                // Assignment handlers
+                window.editAssignment = window.editAssignment || editAssignment;
+                window.deleteAssignment = window.deleteAssignment || deleteAssignment;
+
+                // Content builder helpers (inline onclick handlers)
+                window.updateContentFields = window.updateContentFields || updateContentFields;
+                window.previewContent = window.previewContent || previewContent;
+                window.moveContentUp = window.moveContentUp || moveContentUp;
+                window.moveContentDown = window.moveContentDown || moveContentDown;
+                window.renumberContentItems = window.renumberContentItems || renumberContentItems;
+                window.openQuizBuilder = window.openQuizBuilder || openQuizBuilder;
+                window.addQuestion = window.addQuestion || addQuestion;
+                window.removeQuestion = window.removeQuestion || removeQuestion;
+                window.generateLessonContent = window.generateLessonContent || generateLessonContent;
+                window.generateQuestionContent = window.generateQuestionContent || generateQuestionContent;
+
+                // Image helpers for inline handlers
+                window.toggleImageSourceFields = window.toggleImageSourceFields || toggleImageSourceFields;
+                window.replaceImage = window.replaceImage || replaceImage;
+                window.deleteImage = window.deleteImage || deleteImage;
+                window.handleImageReplace = window.handleImageReplace || handleImageReplace;
+                window.handleImageUpload = window.handleImageUpload || handleImageUpload;
+                window.handleExistingImageSelect = window.handleExistingImageSelect || handleExistingImageSelect;
+
+                // Fallback stubs for not-yet-implemented features
+                if (typeof window.viewCourseDetails !== 'function') {
+                    window.viewCourseDetails = function(courseId) {
+                        console.warn('viewCourseDetails not implemented yet. courseId:', courseId);
+                        createToast({ type: 'info', message: 'Course details view is not implemented yet.' });
+                    };
+                }
+                if (typeof window.showTemplateGallery !== 'function') {
+                    window.showTemplateGallery = function() {
+                        console.warn('showTemplateGallery not implemented yet.');
+                        createToast({ type: 'info', message: 'Template gallery is coming soon.' });
+                    };
+                }
+
+                // Expose dark mode toggle
+                if (typeof window.toggleDarkMode !== 'function') {
+                    window.toggleDarkMode = function toggleDarkMode() {
+                        const root = document.documentElement;
+                        const current = root.getAttribute('data-theme');
+                        const next = current === 'dark' ? 'light' : 'dark';
+                        root.setAttribute('data-theme', next);
+                        try { localStorage.setItem('edlingo-theme', next); } catch(e) {}
+                        const icon = document.getElementById('theme-icon');
+                        if (icon) {
+                            icon.setAttribute('data-lucide', next === 'dark' ? 'sun' : 'moon');
+                            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                                window.lucide.createIcons();
+                            }
+                        }
+                    };
+                }
+
+                // Initialize theme once on load
+                (function initTheme(){
+                    try {
+                        const saved = localStorage.getItem('edlingo-theme');
+                        if (saved === 'dark') {
+                            document.documentElement.setAttribute('data-theme', 'dark');
+                            const icon = document.getElementById('theme-icon');
+                            if (icon) { icon.setAttribute('data-lucide', 'sun'); }
+                        }
+                        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                            window.lucide.createIcons();
+                        }
+                    } catch (e) {}
+                })();
+            }
+        })();
+
+        // Global tooltip portal logic (prevents clipping and supports auto-flip)
+        (function setupTooltipPortal(){
+            try {
+                const portalId = 'tooltip-portal';
+                let portal = document.getElementById(portalId);
+                if (!portal) {
+                    portal = document.createElement('div');
+                    portal.id = portalId;
+                    document.body.appendChild(portal);
+                }
+                const show = (el) => {
+                    const text = el.getAttribute('data-tooltip');
+                    if (!text) return;
+                    portal.textContent = text;
+                    portal.classList.remove('visible');
+                    portal.removeAttribute('data-placement');
+
+                    const rect = el.getBoundingClientRect();
+                    const spacing = 10;
+                    // default: bottom
+                    let left = rect.left + rect.width/2; // center x
+                    let top = rect.bottom + spacing;
+                    portal.setAttribute('data-placement', 'bottom');
+                    portal.style.left = `${left}px`;
+                    portal.style.top = `${top}px`;
+
+                    // make visible to measure size
+                    portal.classList.add('visible');
+                    const pRect = portal.getBoundingClientRect();
+
+                    // auto-flip if not enough space at bottom
+                    const spaceBottom = window.innerHeight - rect.bottom;
+                    const spaceTop = rect.top;
+                    if (spaceBottom < pRect.height + spacing && spaceTop > pRect.height + spacing) {
+                        top = rect.top - spacing - pRect.height;
+                        portal.setAttribute('data-placement', 'top');
+                        portal.style.top = `${top}px`;
+                    } else {
+                        portal.setAttribute('data-placement', 'bottom');
+                        portal.style.top = `${rect.bottom + spacing}px`;
+                    }
+                    // keep inside viewport horizontally
+                    const minX = 8 + pRect.width/2;
+                    const maxX = window.innerWidth - 8 - pRect.width/2;
+                    left = Math.min(Math.max(left, minX), maxX);
+                    portal.style.left = `${left}px`;
+                };
+                const hide = () => portal.classList.remove('visible');
+
+                let activeEl = null;
+                // Show on mouseover (entering a trigger)
+                document.addEventListener('mouseover', (e) => {
+                    const target = e.target.closest('.tooltip');
+                    if (!target) return;
+                    if (activeEl !== target) {
+                        activeEl = target;
+                        show(target);
+                    }
+                }, true);
+                // Hide when leaving the same trigger (not when moving inside it)
+                document.addEventListener('mouseout', (e) => {
+                    const target = e.target.closest('.tooltip');
+                    if (!target) return;
+                    if (target.contains(e.relatedTarget)) return; // still inside same trigger
+                    if (activeEl === target) {
+                        activeEl = null;
+                        hide();
+                    }
+                }, true);
+                // Accessible focus/blur
+                document.addEventListener('focusin', (e) => {
+                    const target = e.target.closest('.tooltip');
+                    if (target) {
+                        activeEl = target;
+                        show(target);
+                    }
+                });
+                document.addEventListener('focusout', (e) => {
+                    const target = e.target.closest('.tooltip');
+                    if (target && activeEl === target) {
+                        activeEl = null;
+                        hide();
+                    }
+                });
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { activeEl = null; hide(); } });
+                window.addEventListener('scroll', () => { activeEl = null; hide(); }, true);
+                window.addEventListener('resize', () => { activeEl = null; hide(); });
+            } catch (e) { /* no-op */ }
+        })();
     </script>
+    <div id="tooltip-portal" aria-hidden="true"></div>
 </body>
 </html>

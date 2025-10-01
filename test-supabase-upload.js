@@ -1,5 +1,3 @@
-require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 
@@ -12,24 +10,19 @@ async function testSupabaseUpload() {
       return;
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseStorageService = (await import('./src/renderer/services/supabaseStorageService.js')).default;
 
     const testContent = 'This is a test file for Supabase Storage.';
     const testFilePath = path.join(__dirname, 'test-file.txt');
     fs.writeFileSync(testFilePath, testContent);
 
     const fileBuffer = fs.readFileSync(testFilePath);
-    const { data, error } = await supabase.storage
-      .from('course-materials')
-      .upload('test/test-file.txt', fileBuffer, {
-        contentType: 'text/plain'
-      });
+    const file = new Blob([fileBuffer], { type: 'text/plain' });
+    file.name = 'test-file.txt';
 
-    if (error) {
-      console.error('❌ Upload failed:', error.message);
-    } else {
-      console.log('✅ Upload successful!', data);
-    }
+    const result = await supabaseStorageService.uploadFile(file, 'course-materials', 'test', { contentType: 'text/plain' });
+
+    console.log('✅ Upload successful!', result);
 
     fs.unlinkSync(testFilePath);
   } catch (err) {

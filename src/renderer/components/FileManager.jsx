@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import AdminService from '../services/adminService.js';
 import { getFileCategory } from '../config/googleDriveConfig.js';
+import { useToast } from '../hooks/use-toast';
 
 const FileManager = ({ category = null, subcategory = null, className = '' }) => {
   const [files, setFiles] = useState([]);
@@ -88,20 +89,7 @@ const FileManager = ({ category = null, subcategory = null, className = '' }) =>
     });
   };
 
-  const handleDeleteFile = async (file) => {
-    if (!confirm(`Are you sure you want to delete "${file.name}"?`)) {
-      return;
-    }
-
-    try {
-      await AdminService.deleteUploadedFile(file.id, file.google_drive_id);
-      await loadFiles();
-      await loadFilesByCategory();
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      alert('Error deleting file: ' + error.message);
-    }
-  };
+  const { error: toastError } = useToast();
 
   const filteredFiles = files
     .filter(file => 

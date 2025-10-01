@@ -2,12 +2,39 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
 
-// Plugin to serve admin-dashboard.html at /admin route
-const adminStaticRoutePlugin = () => {
+
+// Load environment variables for server-side API usage
+dotenv.config();
+
+// Helper to read JSON body from Node request
+async function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      try {
+        const json = body ? JSON.parse(body) : {};
+        resolve(json);
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+// Plugin to serve admin-dashboard.html at /admin route and provide API middleware
+const adminRoutePlugin = () => {
+
   return {
     name: 'admin-route',
     configureServer(server) {
+      // Admin dashboard HTML
       server.middlewares.use('/admin', (req, res, next) => {
         const adminHtmlPath = path.resolve(__dirname, 'admin-dashboard.html');
         
@@ -18,6 +45,82 @@ const adminStaticRoutePlugin = () => {
         } else {
           res.statusCode = 404;
           res.end('Admin dashboard not found');
+        }
+      });
+
+      // API: Ensure bucket using service role key to bypass RLS
+      server.middlewares.use('/api/storage/ensure-bucket', async (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ ok: false, error: 'Method Not Allowed' }));
+          return;
+        }
+
+        try {
+          const { bucketName } = await readJsonBody(req);
+          if (!bucketName || typeof bucketName !== 'string') {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: false, error: 'bucketName is required' }));
+            return;
+          }
+
+          const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+          const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+          if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: false, error: 'Server missing Supabase URL or SERVICE_ROLE key' }));
+            return;
+          }
+
+          const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+            auth: { autoRefreshToken: false, persistSession: false },
+          });
+
+          // List buckets and create/update as needed
+          const { data: buckets, error: listErr } = await adminClient.storage.listBuckets();
+          if (listErr) throw listErr;
+
+          const existing = (buckets || []).find((b) => b.name === bucketName);
+          const desiredAllowed = [
+            'image/*',
+            'image/svg+xml',
+            'video/*',
+            'audio/*',
+            'application/pdf',
+            'text/*',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ];
+          if (!existing) {
+            const { error: createErr } = await adminClient.storage.createBucket(bucketName, {
+              public: true,
+              allowedMimeTypes: desiredAllowed,
+              fileSizeLimit: 50 * 1024 * 1024, // 50MB
+            });
+            if (createErr) throw createErr;
+          } else {
+            const allowed = existing.allowed_mime_types || [];
+            const missing = desiredAllowed.filter((t) => !allowed.includes(t));
+            if (missing.length > 0) {
+              const { error: updateErr } = await adminClient.storage.updateBucket(bucketName, {
+                allowedMimeTypes: Array.from(new Set([...allowed, ...missing])),
+              });
+              if (updateErr) throw updateErr;
+            }
+          }
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+          console.error('ensure-bucket API error:', e);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ ok: false, error: e.message || 'Unknown error' }));
         }
       });
     },

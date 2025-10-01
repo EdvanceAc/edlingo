@@ -32,18 +32,8 @@ const server = http.createServer((req, res) => {
     fs.readFile(filePath, (error, content) => {
         if (error) {
             if(error.code == 'ENOENT') {
-                // Try serving from ./public as a fallback (e.g., /env.js)
-                const publicPath = path.join('.', 'public', req.url.replace(/^\//, ''));
-                fs.readFile(publicPath, (err2, content2) => {
-                    if (!err2) {
-                        const ext2 = String(path.extname(publicPath)).toLowerCase();
-                        const contentType2 = mimeTypes[ext2] || 'application/octet-stream';
-                        res.writeHead(200, { 'Content-Type': contentType2 });
-                        return res.end(content2, 'utf-8');
-                    }
-                    res.writeHead(404, { 'Content-Type': 'text/html' });
-                    return res.end('<h1>404 Not Found</h1>', 'utf-8');
-                });
+                res.writeHead(404, { 'Content-Type': 'text/html' });
+                res.end('<h1>404 Not Found</h1>', 'utf-8');
             } else {
                 res.writeHead(500);
                 res.end('Sorry, check with the site admin for error: '+error.code+' ..\n');

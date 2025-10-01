@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, X, Plus, Trash2 } from 'lucide-react';
+import { useToast } from '../../renderer/hooks/use-toast';
 
 const QuestionForm = ({ question, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,9 @@ const QuestionForm = ({ question, onSave, onCancel }) => {
     difficulty: 'medium',
     points: 1
   });
+
+  // Initialize toast
+  const { error: toastError } = useToast();
 
   useEffect(() => {
     if (question) {
@@ -31,18 +35,18 @@ const QuestionForm = ({ question, onSave, onCancel }) => {
     
     // Validation
     if (!formData.question.trim()) {
-      alert('Please enter a question');
+      toastError('Please enter a question');
       return;
     }
 
     if (formData.type === 'multiple-choice') {
       const validOptions = formData.options.filter(opt => opt.trim());
       if (validOptions.length < 2) {
-        alert('Please provide at least 2 options');
+        toastError('Please provide at least 2 options');
         return;
       }
       if (!formData.correct_answer.trim()) {
-        alert('Please select a correct answer');
+        toastError('Please select a correct answer');
         return;
       }
     }
@@ -171,7 +175,7 @@ const QuestionForm = ({ question, onSave, onCancel }) => {
       {/* True/False */}
       {formData.type === 'true-false' && (
         <div>
-          <label className="block text-sm font-medium mb-2">Correct Answer *</label>
+          <label className="block text.sm font-medium mb-2">Correct Answer *</label>
           <div className="flex space-x-4">
             <label className="flex items-center space-x-2">
               <input

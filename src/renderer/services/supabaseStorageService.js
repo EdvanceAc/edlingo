@@ -11,45 +11,109 @@ class SupabaseStorageService {
   }
 
   /**
+   * Get an admin-capable client for storage operations.
+   * Prefers window.supabaseAdminClient if available, otherwise falls back to regular client.
+   */
+  getStorageAdminClient() {
+    if (typeof window !== 'undefined' && window.supabaseAdminClient) {
+      return window.supabaseAdminClient;
+    }
+    return supabase;
+  }
+
+  /**
    * Ensure bucket exists, create if it doesn't
    * @param {string} bucketName 
    * @returns {Promise<boolean>}
    */
   async ensureBucket(bucketName) {
     try {
-      const { data: buckets, error } = await supabase.storage.listBuckets();
-      
-      if (error) {
-        console.error('Error listing buckets:', error);
-        return false;
-      }
+      // Try using an admin-capable client first (service role key in browser)
+      const adminClient = this.getStorageAdminClient();
+      try {
+        const { data: buckets, error } = await adminClient.storage.listBuckets();
+        if (error) {
+          throw error;
+        }
 
-      const bucketExists = buckets.some(bucket => bucket.name === bucketName);
-      
-      if (!bucketExists) {
-        const { error: createError } = await supabase.storage.createBucket(bucketName, {
-          public: true,
-          allowedMimeTypes: [
+        const bucket = buckets.find(bucket => bucket.name === bucketName);
+
+        if (!bucket) {
+          const { error: createError } = await adminClient.storage.createBucket(bucketName, {
+            public: true,
+            allowedMimeTypes: [
+              'image/*',
+              'image/svg+xml',
+              'video/*',
+              'audio/*',
+              'application/pdf',
+              'text/*',
+              'application/msword',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            ],
+            fileSizeLimit: 50 * 1024 * 1024 // 50MB
+          });
+
+          if (createError) {
+            console.error('Error creating bucket (admin client):', createError);
+            throw createError;
+          }
+
+          console.log(`Bucket '${bucketName}' created successfully (admin client)`);
+        } else {
+          const allowed = bucket.allowed_mime_types || [];
+          const desiredAllowed = [
             'image/*',
+            'image/svg+xml',
             'video/*',
             'audio/*',
             'application/pdf',
             'text/*',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-          ],
-          fileSizeLimit: 50 * 1024 * 1024 // 50MB
-        });
-        
-        if (createError) {
-          console.error('Error creating bucket:', createError);
+          ];
+          const missing = desiredAllowed.filter(t => !allowed.includes(t));
+          if (missing.length > 0) {
+            const { error: updateError } = await adminClient.storage.updateBucket(bucketName, {
+              allowedMimeTypes: Array.from(new Set([...allowed, ...missing]))
+            });
+
+            if (updateError) {
+              console.error('Error updating bucket (admin client):', updateError);
+              throw updateError;
+            }
+
+            console.log(`Bucket '${bucketName}' updated to allow additional MIME types (admin client)`);
+          }
+        }
+
+        return true;
+      } catch (adminErr) {
+        // If admin route not available in browser, try backend API fallback
+        console.warn('Admin storage operations failed in browser, trying server API fallback:', adminErr?.message || adminErr);
+        try {
+          const resp = await fetch('/api/storage/ensure-bucket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucketName })
+          });
+          if (!resp.ok) {
+            const text = await resp.text();
+            console.error('Server ensure-bucket HTTP error:', resp.status, text);
+            return false;
+          }
+          const json = await resp.json();
+          if (json && json.ok) {
+            console.log(`Bucket '${bucketName}' ensured via server API.`);
+            return true;
+          }
+          console.error('Server ensure-bucket failed:', json?.error || 'Unknown error');
+          return false;
+        } catch (serverErr) {
+          console.error('Server API fallback for ensure-bucket failed:', serverErr);
           return false;
         }
-        
-        console.log(`Bucket '${bucketName}' created successfully`);
       }
-      
-      return true;
     } catch (error) {
       console.error('Error ensuring bucket:', error);
       return false;
@@ -89,16 +153,30 @@ class SupabaseStorageService {
       }
 
       const fileName = this.generateFileName(file.name, category);
-      
+
+      const { contentType, ...meta } = metadata || {};
+      const uploadOptions = {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: contentType || file.type,
+        metadata: meta
+      };
+
       const { data, error } = await supabase.storage
         .from(bucketName)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-          metadata: metadata,
-          // Critical: ensure correct MIME type stored, prevents ORB on initial cross-origin load
-          contentType: file.type || undefined,
-        });
+const { contentType, ...meta } = metadata || {};
+const uploadOptions = {
+  cacheControl: '3600',
+  upsert: false,
+  // مهم: مطمئن شو یه MIME درست ست می‌شه تا لود اول از کراس-اوریجین گیر نکنه
+  contentType: contentType || file.type || 'application/octet-stream',
+  metadata: meta,
+};
+
+const { data, error } = await supabase.storage
+  .from(bucketName)
+  .upload(fileName, file, uploadOptions);
+
 
       if (error) {
         throw new Error(`Upload failed: ${error.message}`);
