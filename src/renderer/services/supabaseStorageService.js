@@ -158,24 +158,14 @@ class SupabaseStorageService {
       const uploadOptions = {
         cacheControl: '3600',
         upsert: false,
-        contentType: contentType || file.type,
-        metadata: meta
+        // مهم: مطمئن شو یه MIME درست ست می‌شه تا لود اول از کراس-اوریجین گیر نکنه
+        contentType: contentType || file.type || 'application/octet-stream',
+        metadata: meta,
       };
 
       const { data, error } = await supabase.storage
         .from(bucketName)
-const { contentType, ...meta } = metadata || {};
-const uploadOptions = {
-  cacheControl: '3600',
-  upsert: false,
-  // مهم: مطمئن شو یه MIME درست ست می‌شه تا لود اول از کراس-اوریجین گیر نکنه
-  contentType: contentType || file.type || 'application/octet-stream',
-  metadata: meta,
-};
-
-const { data, error } = await supabase.storage
-  .from(bucketName)
-  .upload(fileName, file, uploadOptions);
+        .upload(fileName, file, uploadOptions);
 
 
       if (error) {

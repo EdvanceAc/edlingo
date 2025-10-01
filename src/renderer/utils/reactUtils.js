@@ -1,4 +1,6 @@
 // React utilities to ensure proper loading and prevent useLayoutEffect errors
+import React from 'react';
+import ReactDOM from 'react-dom/client';
 
 // This utility ensures React is properly loaded before using its hooks
 export const ensureReactLoaded = () => {

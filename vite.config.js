@@ -144,9 +144,9 @@ const adminRoutePlugin = () => {
 };
 
 // Custom plugin to serve admin routes to index.html during dev
-function adminRoutePlugin() {
+function adminRouteRedirectPlugin() {
   return {
-    name: 'admin-route-plugin',
+    name: 'admin-route-redirect-plugin',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (req.url.startsWith('/admin')) {
@@ -159,7 +159,7 @@ function adminRoutePlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), adminStaticRoutePlugin(), adminRoutePlugin()],
+  plugins: [react(), adminRoutePlugin(), adminRouteRedirectPlugin()],
   base: '/',
   publicDir: 'public',
   build: {
@@ -262,16 +262,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ['googleapis', 'google-auth-library', 'react', 'react-dom', 'framer-motion'],
     exclude: []
-  },
-  define: {
-    __IS_DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
-    global: 'globalThis',
-    'process.env': {
-      NODE_ENV: JSON.stringify(process.env.NODE_ENV)
-    },
-    'process.stdout': JSON.stringify({ isTTY: false }),
-    'process.stderr': JSON.stringify({ isTTY: false }),
-    // Ensure React is properly available globally
-    'React': 'React'
   }
 });
