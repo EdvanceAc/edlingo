@@ -2,6 +2,22 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@supabase/supabase-js'
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.get('origin') || '*';
+    const requestedHeaders = req.headers.get('access-control-request-headers') || 'Content-Type, Authorization, Accept, X-Client-Info';
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': requestedHeaders,
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Vary': 'Origin, Access-Control-Request-Headers'
+      }
+    });
+  }
   try {
     // Parse request body
     const { message, user_id, session_id, user_level, focus_area } = await req.json()
@@ -25,7 +41,7 @@ Deno.serve(async (req) => {
 
     const genAI = new GoogleGenerativeAI(geminiApiKey)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash', // Faster model for better response times
+      model: 'gemini-pro', // Stable model for reliable responses
       generationConfig: {
         maxOutputTokens: 100, // Reduced for even faster responses
         temperature: 0.6, // Lower temperature for faster, more focused responses
@@ -57,7 +73,8 @@ Deno.serve(async (req) => {
     const fullPrompt = `${contextPrompt}\n\nUser message: ${message}`
 
     // Check if streaming is requested
-    const enableStreaming = req.headers.get('accept') === 'text/stream' || req.url.includes('stream=true')
+    const acceptHeader = req.headers.get('accept') || '';
+    const enableStreaming = acceptHeader.includes('text/event-stream') || acceptHeader.includes('text/stream') || req.url.includes('stream=true');
     
     if (enableStreaming) {
       // Create streaming response
@@ -71,7 +88,7 @@ Deno.serve(async (req) => {
                if (chunkText) {
                  // Send chunk immediately without buffering
                  const data = `data: ${JSON.stringify({ 
-                   chunk: chunkText, 
+                   content: chunkText, 
                    done: false 
                  })}\n\n`
                  controller.enqueue(new TextEncoder().encode(data))
@@ -83,7 +100,7 @@ Deno.serve(async (req) => {
             
             // Send completion signal
             const finalData = `data: ${JSON.stringify({ 
-              chunk: '', 
+              content: '', 
               done: true 
             })}\n\n`
             controller.enqueue(new TextEncoder().encode(finalData))
@@ -100,16 +117,17 @@ Deno.serve(async (req) => {
           }
         }
       })
-      
+      const origin = req.headers.get('origin') || '*';
       return new Response(stream, {
         status: 200,
         headers: {
-          'Content-Type': 'text/stream',
+          'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': origin,
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept'
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, X-Client-Info',
+          'Vary': 'Origin, Access-Control-Request-Headers'
         }
       })
     }
@@ -152,6 +170,7 @@ Deno.serve(async (req) => {
     }
 
     // Return successful response (non-streaming)
+    const origin = req.headers.get('origin') || '*';
     return new Response(
       JSON.stringify({ 
         response: responseText,
@@ -161,16 +180,16 @@ Deno.serve(async (req) => {
         status: 200, 
         headers: { 
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': origin,
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept'
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, X-Client-Info',
+          'Vary': 'Origin, Access-Control-Request-Headers'
         } 
       }
     )
-
   } catch (error) {
     console.error('Edge function error:', error)
-    
+    const origin = req.headers.get('origin') || '*';
     // Return error response
     return new Response(
       JSON.stringify({ 
@@ -182,7 +201,10 @@ Deno.serve(async (req) => {
         status: 500, 
         headers: { 
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': origin,
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, X-Client-Info',
+          'Vary': 'Origin, Access-Control-Request-Headers'
         } 
       }
     )

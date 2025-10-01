@@ -8,27 +8,27 @@ const getEnv = (key) => {
   if (typeof window !== 'undefined' && window.__ENV__ && key in window.__ENV__) {
     return window.__ENV__[key];
   }
+  // Add support for window.ENV fallback
+  if (typeof window !== 'undefined' && window.ENV && key in window.ENV) {
+    return window.ENV[key];
+  }
   return undefined;
 };
 
 // Supabase configuration
 const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://ecglfwqylqchdyuhmtuv.supabase.co';
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
+// Fallback to project anon key if not provided via env
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
 
-if (!supabaseAnonKey) {
-  console.warn('VITE_SUPABASE_ANON_KEY is not set. Some features may not work properly.');
+if (!getEnv('VITE_SUPABASE_ANON_KEY')) {
+  console.warn('VITE_SUPABASE_ANON_KEY is not set. Falling back to embedded anon key.');
 }
 
 // Create Supabase client with realtime disabled to avoid Cloudflare websocket issues
-export const supabase = createClient(supabaseUrl, supabaseAnonKey || '', {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
     params: {
       eventsPerSecond: 0 // Disable realtime events
-    }
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'edlingo-web'
     }
   }
 });

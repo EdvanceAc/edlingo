@@ -1574,6 +1574,10 @@
                                         Next
                                         <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
                                     </button>
+                                    <button type="button" id="verifyFilesBtn" onclick="verifyLessonFiles()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors" style="display: none;">
+                                        <i data-lucide="search" class="w-4 h-4 mr-1"></i>
+                                        Verify Files
+                                    </button>
                                     <button type="submit" id="finishBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors" style="display: none;">
                                         <i data-lucide="check" class="w-4 h-4 mr-1"></i>
                                         Create Course
@@ -1911,7 +1915,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Image</label>
                                     <input type="file" id="questionImage" name="questionImage" class="w-full px-3 py-2 border border-gray-300 rounded-lg" accept="image/*" onchange="previewMedia('image')">
                                     <div id="imagePreview" class="mt-2 hidden">
-                                        <img id="imagePreviewImg" class="max-w-full h-32 object-cover rounded" alt="Image preview">
+                                        <img id="imagePreviewImg" class="max-w-full h-32 object-cover rounded" alt="Image preview" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">
                                         <button type="button" onclick="removeMedia('image')" class="mt-1 text-red-600 text-sm hover:text-red-800">Remove</button>
                                     </div>
                                 </div>
@@ -1981,6 +1985,7 @@
     <script type="module">
         import supabaseStorageService from './src/renderer/services/supabaseStorageService.js';
         // Initialize Supabase client with environment variables
+
         const isLocalDevHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
         // Seed localStorage from env.js when running on local dev for convenience
         if (isLocalDevHost && window.__ENV__) {
@@ -1992,11 +1997,14 @@
                         localStorage.setItem(k, v);
                     }
                 });
+
                 console.log('🧪 Seeded localStorage from env.js for', window.location.hostname);
+
             } catch (e) {
                 console.warn('Failed to seed localStorage from env.js', e);
             }
         }
+
 
         // Values come from env.js (window.__ENV__) or localStorage (dev convenience)
         const supabaseUrl = (window.__ENV__ && window.__ENV__.VITE_SUPABASE_URL) 
@@ -2012,9 +2020,10 @@
         if (window.__ENV__) {
             console.log('🌍 Using environment variables from env.js');
         } else if (localStorage.getItem('VITE_SUPABASE_URL')) {
+
             console.log('🏠 Using localStorage for local development');
         } else {
-            console.warn('⚠️ Using fallback credentials - please configure environment variables');
+            console.warn('⚠️ No environment variables found - please configure environment variables');
         }
 
         if (!supabaseUrl || !supabaseAnonKey) {
@@ -4135,10 +4144,17 @@
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             const createBtn = document.getElementById('finishBtn');
+            const verifyBtn = document.getElementById('verifyFilesBtn');
             
             // Previous button
             if (prevBtn) {
                 prevBtn.style.display = currentStep === 1 ? 'none' : 'inline-flex';
+            }
+            
+            // Verification button - show in step 4 or when editing existing course
+            if (verifyBtn) {
+                const isEditMode = document.getElementById('courseModalTitle')?.textContent?.includes('Edit');
+                verifyBtn.style.display = (currentStep === totalWizardSteps || isEditMode) ? 'inline-flex' : 'none';
             }
             
             // Next/Create button
@@ -4384,12 +4400,12 @@
 
 
         // Lesson Management Functions
-        function addLesson() {
+        function addLesson(databaseId = null) {
             const lessonsContainer = document.getElementById('lessonsContainer');
             const lessonCount = document.querySelectorAll('.lesson-item').length + 1;
             
             const lessonHTML = `
-                <div id="lesson-${lessonCount}" class="lesson-item bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                <div id="lesson-${lessonCount}" class="lesson-item bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4" data-lesson-db-id="${databaseId || ''}">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-medium text-gray-900">Lesson ${lessonCount}</h4>
                         <button type="button" onclick="removeLesson(this)" class="text-red-600 hover:text-red-800">
@@ -4482,7 +4498,7 @@
             }
         }
 
-        function removeLesson(button) {
+        async function removeLesson(button) {
             if (!button) {
                 console.error('Button element is null in removeLesson');
                 return;
@@ -4492,6 +4508,32 @@
                 console.error('Lesson item not found');
                 return;
             }
+            
+            const databaseId = lessonItem.getAttribute('data-lesson-db-id');
+            
+            // If lesson has a database ID, delete from database
+            if (databaseId && databaseId.trim() !== '') {
+                try {
+                    const client = supabaseAdmin || supabase;
+                    const { error } = await client
+                        .from('lessons')
+                        .delete()
+                        .eq('id', databaseId);
+                    
+                    if (error) {
+                        console.error('❌ Failed to delete lesson from database:', error);
+                        alert('Failed to delete lesson from database. Please try again.');
+                        return;
+                    }
+                    
+                    console.log('✅ Lesson deleted from database:', databaseId);
+                } catch (error) {
+                    console.error('❌ Error deleting lesson:', error);
+                    alert('Error deleting lesson. Please try again.');
+                    return;
+                }
+            }
+            
             lessonItem.remove();
             
             // Renumber remaining lessons
@@ -4743,7 +4785,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                                    <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview" loading="lazy" decoding="async" referrerpolicy="no-referrer" crossorigin="anonymous" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">
                                     <input type="hidden" class="current-image-url" value="">
                                     <input type="hidden" class="material-id" value="">
                                 </div>
@@ -4814,6 +4856,39 @@
                                 <label class="block text-sm font-medium text-gray-600 mb-1">Reading Instructions</label>
                                 <textarea class="content-instructions w-full px-2 py-1 border border-gray-300 rounded text-sm" rows="2" placeholder="Instructions for students on how to use this PDF"></textarea>
                             </div>
+
+                            <div class="mt-4 pdf-highlights">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-sm font-medium text-gray-800">PDF Highlights</label>
+                                    <div class="flex space-x-2">
+                                        <button type="button" class="auto-fetch-btn px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" onclick="autoFetchPdfHighlights(this.closest('.content-item'))">
+                                            <i data-lucide="download" class="w-3 h-3 inline mr-1"></i>Fetch Existing
+                                        </button>
+                                        <button type="button" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700" onclick="addPdfHighlightRow(this)">Add Row</button>
+                                    </div>
+                                </div>
+                                <div class="overflow-x-auto border border-gray-200 rounded">
+                                    <table class="min-w-full text-sm pdf-highlights-table">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-2 py-2 text-left">Word/Phrase</th>
+                                                <th class="px-2 py-2 text-left">Synonyms (comma)</th>
+                                                <th class="px-2 py-2 text-left">Page</th>
+                                                <th class="px-2 py-2 text-left">X</th>
+                                                <th class="px-2 py-2 text-left">Y</th>
+                                                <th class="px-2 py-2 text-left">W</th>
+                                                <th class="px-2 py-2 text-left">H</th>
+                                                <th class="px-2 py-2 text-left">Image</th>
+                                                <th class="px-2 py-2 text-left">Audio</th>
+                                                <th class="px-2 py-2 text-left">Video</th>
+                                                <th class="px-2 py-2 text-left">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                                <p class="mt-2 text-xs text-gray-500">Note: X,Y,W,H are normalized (0–1) relative to the PDF page.</p>
+                            </div>
                         </div>
                     `;
                     break;
@@ -4847,8 +4922,322 @@
             }
             
             contentFields.innerHTML = fieldsHTML;
+            
+            // Refresh lucide icons after updating HTML
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+            
+            // If PDF content type is selected, automatically try to fetch existing highlights
+            if (contentType === 'pdf') {
+                setTimeout(() => {
+                    autoFetchPdfHighlights(contentItem);
+                }, 500); // Small delay to ensure DOM is fully updated
+            }
+            
+            // If image content type is selected, automatically check for existing images
+            if (contentType === 'image') {
+                setTimeout(async () => {
+                    try {
+                        // Get lesson ID from the lesson container
+                        const lessonItem = contentItem.closest('.lesson-item');
+                        const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                        
+                        if (lessonId) {
+                            // Get content item index within the lesson
+                            const contentContainer = lessonItem.querySelector('.lesson-content-container');
+                            const contentItems = contentContainer.querySelectorAll('.content-item');
+                            const contentIndex = Array.from(contentItems).indexOf(contentItem);
+                            
+                            // Check and load existing image
+                            await checkAndLoadExistingImage(lessonId, contentIndex, contentItem);
+                        }
+                    } catch (error) {
+                        console.error('Error auto-loading existing image:', error);
+                    }
+                }, 100);
+            }
         }
-        window.updateContentFields = window.updateContentFields || updateContentFields;
+
+        // Function to check and load existing images from Supabase storage
+        async function checkAndLoadExistingImage(lessonId, contentIndex, contentItem) {
+            try {
+                console.log(`Checking for existing image: lesson ${lessonId}, content ${contentIndex}`);
+                
+                // List files in the lesson content directory
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                if (!client?.storage) {
+                    console.error('Supabase client not initialized for storage');
+                    return;
+                }
+                const { data, error } = await client.storage
+                    .from('course-materials')
+                    .list(`lessons/${lessonId}/content`, {
+                        limit: 100,
+                        offset: 0
+                    });
+                
+                if (error) {
+                    console.error('Error listing storage files:', error);
+                    return;
+                }
+                
+                // Filter for images that match the content index
+                const imageFiles = data.filter(file => 
+                    file.name.includes(`content-${contentIndex}`) && 
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+                );
+                
+                if (imageFiles.length === 0) {
+                    console.log(`No existing images found for lesson ${lessonId}, content ${contentIndex}`);
+                    return;
+                }
+                
+                // Get the most recent image (by name which includes timestamp)
+                const latestImage = imageFiles.sort((a, b) => b.name.localeCompare(a.name))[0];
+                const imagePath = `lessons/${lessonId}/content/${latestImage.name}`;
+                
+                // Get public URL
+                const { data: urlData } = client.storage
+                    .from('course-materials')
+                    .getPublicUrl(imagePath);
+                
+                if (urlData && urlData.publicUrl) {
+                    // Load the existing image into the content item
+                    loadExistingImageIntoContentItem(contentItem, urlData.publicUrl, latestImage.name);
+                    console.log(`Loaded existing image: ${latestImage.name}`);
+                }
+                
+            } catch (error) {
+                console.error('Error checking for existing image:', error);
+            }
+        }
+        
+        // Function to load existing image into content item UI
+        function loadExistingImageIntoContentItem(contentItem, imageUrl, fileName) {
+            try {
+                // Hide the upload input and show the preview
+                const uploadInput = contentItem.querySelector('.content-file');
+                const imageSourceSelect = contentItem.querySelector('.image-source-type');
+                const previewSection = contentItem.querySelector('.image-loaded-preview');
+                const previewImg = previewSection.querySelector('img');
+                const currentImageUrlInput = previewSection.querySelector('.current-image-url');
+                
+                if (uploadInput) uploadInput.style.display = 'none';
+                if (imageSourceSelect) imageSourceSelect.value = 'existing';
+                
+                // Set the image preview
+                if (previewImg) {
+                    previewImg.src = imageUrl;
+                    previewImg.alt = `Existing image: ${fileName}`;
+                }
+                
+                // Store the current image URL
+                if (currentImageUrlInput) {
+                    currentImageUrlInput.value = imageUrl;
+                }
+                
+                // Show the preview section
+                if (previewSection) {
+                    previewSection.style.display = 'block';
+                }
+                
+                // Update the source type selector to show existing image option
+                toggleImageSourceFields(imageSourceSelect);
+                
+            } catch (error) {
+                console.error('Error loading existing image into UI:', error);
+            }
+        }
+        
+        // Function to handle image source type changes
+        function toggleImageSourceFields(selectElement) {
+            if (!selectElement) return;
+            
+            const contentItem = selectElement.closest('.content-item');
+            const uploadInput = contentItem.querySelector('.content-file');
+            const existingSelect = contentItem.querySelector('.existing-image-select');
+            const previewSection = contentItem.querySelector('.image-loaded-preview');
+            
+            if (selectElement.value === 'upload') {
+                if (uploadInput) uploadInput.style.display = 'block';
+                if (existingSelect) existingSelect.style.display = 'none';
+                if (previewSection) previewSection.style.display = 'none';
+            } else if (selectElement.value === 'existing') {
+                if (uploadInput) uploadInput.style.display = 'none';
+                if (existingSelect) existingSelect.style.display = 'block';
+                // Load existing images list
+                loadExistingImagesList(contentItem);
+            }
+        }
+        
+        // Function to load list of existing images for selection
+        async function loadExistingImagesList(contentItem) {
+            try {
+                const lessonItem = contentItem.closest('.lesson-item');
+                const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                const existingSelect = contentItem.querySelector('.existing-image-select');
+                
+                if (!lessonId || !existingSelect) return;
+                
+                existingSelect.innerHTML = '<option value="">Loading...</option>';
+                
+                // List all images in the lesson directory
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                if (!client?.storage) {
+                    existingSelect.innerHTML = '<option value="Client not ready"></option>';
+                    return;
+                }
+                const { data, error } = await client.storage
+                    .from('course-materials')
+                    .list(`lessons/${lessonId}/content`, {
+                        limit: 100,
+                        offset: 0
+                    });
+                
+                if (error) {
+                    existingSelect.innerHTML = '<option value="">Error loading images</option>';
+                    return;
+                }
+                
+                const imageFiles = data.filter(file => 
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+                );
+                
+                if (imageFiles.length === 0) {
+                    existingSelect.innerHTML = '<option value="">No existing images found</option>';
+                    return;
+                }
+                
+                // Populate the select with existing images (use public URLs in option values)
+                let optionsHTML = '<option value="">Select an existing image...</option>';
+                imageFiles.forEach(file => {
+                    const imagePath = `lessons/${lessonId}/content/${file.name}`;
+                    const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                    const { data: { publicUrl } } = client.storage
+                        .from('course-materials')
+                        .getPublicUrl(imagePath);
+                    optionsHTML += `<option value="${publicUrl}">${file.name}</option>`;
+                });
+                
+                existingSelect.innerHTML = optionsHTML;
+                
+            } catch (error) {
+                console.error('Error loading existing images list:', error);
+                const existingSelect = contentItem.querySelector('.existing-image-select');
+                if (existingSelect) {
+                    existingSelect.innerHTML = '<option value="">Error loading images</option>';
+                }
+            }
+        }
+        
+        // Function to handle existing image selection
+        async function handleExistingImageSelect(selectElement) {
+            try {
+                const publicUrl = selectElement.value;
+                if (!publicUrl) return;
+
+                const contentItem = selectElement.closest('.content-item');
+                // Derive a display name from the URL for alt text
+                const fileName = publicUrl.split('/').pop().split('?')[0];
+
+                loadExistingImageIntoContentItem(contentItem, publicUrl, fileName);
+            } catch (error) {
+                console.error('Error handling existing image selection:', error);
+            }
+        }
+        
+        // Function to replace an existing image
+        function replaceImage(button) {
+            const contentItem = button.closest('.content-item');
+            const replaceInput = contentItem.querySelector('.replace-file-input');
+            if (replaceInput) {
+                replaceInput.click();
+            }
+        }
+        
+        // Function to handle image replacement
+        async function handleImageReplace(input) {
+            try {
+                const file = input.files[0];
+                if (!file) return;
+                
+                const contentItem = input.closest('.content-item');
+                const fieldsContainer = contentItem.querySelector('.content-fields');
+                const currentUrlInput = fieldsContainer?.querySelector('.current-image-url');
+                
+                const lessonItem = contentItem.closest('.lesson-item');
+                const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                
+                if (!lessonId) {
+                    alert('Cannot replace image: lesson ID not found');
+                    return;
+                }
+                
+                // Get content item index
+                const contentContainer = lessonItem.querySelector('.lesson-content-container');
+                const contentItems = contentContainer.querySelectorAll('.content-item');
+                const contentIndex = Array.from(contentItems).indexOf(contentItem);
+                
+                // Upload the new image using standardized helper
+                const newUrl = await uploadSingleFile(file, 'lessons', '', '', 0, { lessonId, contentIndex });
+                
+                // Delete the old image if present
+                const oldUrl = currentUrlInput?.value;
+                if (oldUrl) {
+                    try { await deleteImageFromStorage(oldUrl); } catch (e) { console.warn('Old image deletion warning:', e?.message || e); }
+                }
+                
+                // Update the preview and hidden input
+                const fileNameFromUrl = newUrl.split('/').pop().split('?')[0];
+                loadExistingImageIntoContentItem(contentItem, newUrl, fileNameFromUrl);
+                alert('Image replaced successfully!');
+                
+                // Clear the input
+                input.value = '';
+                
+            } catch (error) {
+                console.error('Error replacing image:', error);
+                alert('Error replacing image: ' + error.message);
+            }
+        }
+        
+        // Function to delete an existing image
+        async function deleteImage(button) {
+            try {
+                if (!confirm('Are you sure you want to delete this image?')) {
+                    return;
+                }
+                
+                const contentItem = button.closest('.content-item');
+                const currentImageUrlInput = contentItem.querySelector('.current-image-url');
+                const imageUrl = currentImageUrlInput?.value;
+                
+                if (!imageUrl) {
+                    alert('No image URL found to delete');
+                    return;
+                }
+                
+                // Delete from storage
+                await deleteImageFromStorage(imageUrl);
+                
+                // Reset the content item to upload mode
+                const imageSourceSelect = contentItem.querySelector('.image-source-type');
+                const uploadInput = contentItem.querySelector('.content-file');
+                const previewSection = contentItem.querySelector('.image-loaded-preview');
+                
+                if (imageSourceSelect) imageSourceSelect.value = 'upload';
+                if (uploadInput) uploadInput.style.display = 'block';
+                if (previewSection) previewSection.style.display = 'none';
+                if (currentImageUrlInput) currentImageUrlInput.value = '';
+                
+                alert('Image deleted successfully!');
+                
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                alert('Error deleting image: ' + error.message);
+            }
+        }
 
         function previewContent(button) {
             if (!button) {
@@ -4864,9 +5253,563 @@
             const contentTitle = contentItem.querySelector('.content-title').value;
             
             // Create a simple preview modal or alert
+            alert(`Preview: ${contentType.toUpperCase()} - ${contentTitle || 'Untitled'}`);
+        }
+
+        // ==== PDF Highlights Helpers ====
+        function appendPdfHighlightRowWithValues(contentItem, h = {}) {
+            try {
+                const tbody = contentItem?.querySelector('.pdf-highlights-table tbody');
+                if (!tbody) return;
+                const row = document.createElement('tr');
+                const rect = h.rect || {};
+                const refs = h.refs || {};
+                const imageUrl = Array.isArray(refs.images) && refs.images.length ? refs.images[0] : '';
+                const audioUrl = Array.isArray(refs.audio) && refs.audio.length ? refs.audio[0] : '';
+                const videoUrl = Array.isArray(refs.video) && refs.video.length ? refs.video[0] : '';
+                row.innerHTML = `
+                    <td class="px-2 py-1"><input type="text" class="hl-word w-40 px-2 py-1 border rounded" placeholder="word" value="${(h.word || '').replace(/"/g,'&quot;')}"></td>
+                    <td class="px-2 py-1"><input type="text" class="hl-synonyms w-48 px-2 py-1 border rounded" placeholder="fast, quick" value="${Array.isArray(h.synonyms) ? h.synonyms.join(', ') : (h.synonyms || '')}"></td>
+                    <td class="px-2 py-1"><input type="number" class="hl-page w-16 px-2 py-1 border rounded" min="1" value="${Number(h.page||1)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-x w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.x||0)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-y w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.y||0)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-w w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.w||0.1)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-h w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.h||0.03)}"></td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="image/*" class="hl-img-file hidden" onchange="uploadHlAsset(this, 'image')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-image-url" value="${imageUrl}">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="audio/*" class="hl-audio-file hidden" onchange="uploadHlAsset(this, 'audio')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-audio-url" value="${audioUrl}">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="video/*" class="hl-video-file hidden" onchange="uploadHlAsset(this, 'video')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-video-url" value="${videoUrl}">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <button type="button" class="px-2 py-1 bg-red-600 text-white rounded text-xs" onclick="this.closest('tr').remove()">Remove</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            } catch (e) {
+                console.error('appendPdfHighlightRowWithValues error:', e);
+            }
+        }
+
+        function addPdfHighlightRow(btn) {
+            try {
+                const contentItem = btn.closest('.content-item');
+                const tbody = contentItem?.querySelector('.pdf-highlights-table tbody');
+                if (!tbody) return;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-2 py-1"><input type="text" class="hl-word w-40 px-2 py-1 border rounded" placeholder="word"></td>
+                    <td class="px-2 py-1"><input type="text" class="hl-synonyms w-48 px-2 py-1 border rounded" placeholder="fast, quick"></td>
+                    <td class="px-2 py-1"><input type="number" class="hl-page w-16 px-2 py-1 border rounded" min="1" value="1"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-x w-16 px-2 py-1 border rounded" min="0" max="1" value="0"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-y w-16 px-2 py-1 border rounded" min="0" max="1" value="0"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-w w-16 px-2 py-1 border rounded" min="0" max="1" value="0.1"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-h w-16 px-2 py-1 border rounded" min="0" max="1" value="0.03"></td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="image/*" class="hl-img-file hidden" onchange="uploadHlAsset(this, 'image')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-image-url" value="">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="audio/*" class="hl-audio-file hidden" onchange="uploadHlAsset(this, 'audio')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-audio-url" value="">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <input type="file" accept="video/*" class="hl-video-file hidden" onchange="uploadHlAsset(this, 'video')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-video-url" value="">
+                    </td>
+
+                    <td class="px-2 py-1">
+                      <button type="button" class="px-2 py-1 bg-red-600 text-white rounded text-xs" onclick="this.closest('tr').remove()">Remove</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            } catch (e) {
+                console.error('addPdfHighlightRow error:', e);
+            }
+        }
+
+        async function uploadHlAsset(input, kind) {
+            try {
+                const file = input?.files?.[0];
+                if (!file) return;
+                const url = await uploadSingleFile(file, 'highlights');
+                const row = input.closest('tr');
+                if (!row) return;
+                if (kind === 'image') row.querySelector('.hl-image-url').value = url;
+                if (kind === 'audio') row.querySelector('.hl-audio-url').value = url;
+                if (kind === 'video') row.querySelector('.hl-video-url').value = url;
+            } catch (e) {
+                console.error('uploadHlAsset failed:', e);
+                alert('Failed to upload file: ' + (e?.message || e));
+            } finally {
+                if (input) input.value = '';
+            }
+        }
+
+        function collectPdfHighlightsFromContentItem(contentItem) {
+            try {
+                const rows = contentItem?.querySelectorAll('.pdf-highlights-table tbody tr') || [];
+                const out = [];
+                console.log('collectPdfHighlightsFromContentItem: Found', rows.length, 'rows');
+                
+                rows.forEach((tr, idx) => {
+                    const word = tr.querySelector('.hl-word')?.value?.trim();
+                    const synonymsRaw = tr.querySelector('.hl-synonyms')?.value || '';
+                    
+                    console.log(`Row ${idx}: word="${word}", synonyms="${synonymsRaw}"`);
+                    
+                    if (!word) {
+                        console.log(`Skipping row ${idx} - no word`);
+                        return;
+                    }
+                    
+                    const synonyms = synonymsRaw.split(',').map(s => s.trim()).filter(Boolean);
+                    const page = Number(tr.querySelector('.hl-page')?.value || 1);
+                    const x = Number(tr.querySelector('.hl-x')?.value || 0);
+                    const y = Number(tr.querySelector('.hl-y')?.value || 0);
+                    const w = Number(tr.querySelector('.hl-w')?.value || 0.1);
+                    const h = Number(tr.querySelector('.hl-h')?.value || 0.03);
+                    const image = tr.querySelector('.hl-image-url')?.value || null;
+                    const audio = tr.querySelector('.hl-audio-url')?.value || null;
+                    const video = tr.querySelector('.hl-video-url')?.value || null;
+                    const id = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `hl_${Date.now()}_${idx}`;
+                    
+                    const highlight = { id, word, synonyms, page, rect: { x, y, w, h }, refs: { images: image ? [image] : [], audio: audio ? [audio] : [], video: video ? [video] : [] } };
+                    console.log(`Collected highlight ${idx}:`, highlight);
+                    out.push(highlight);
+                });
+                
+                console.log('collectPdfHighlightsFromContentItem: Total collected:', out.length);
+                return out;
+            } catch (e) {
+                console.warn('collectPdfHighlightsFromContentItem error:', e);
+                return [];
+            }
+        }
+
+        // Fetch PDF highlights from database for a specific course and PDF URL
+        async function fetchPdfHighlightsFromDatabase(courseId, pdfUrl) {
+            try {
+                const client = supabaseAdmin || supabase;
+                if (!client?.from) {
+                    console.error('fetchPdfHighlightsFromDatabase: No Supabase client available');
+                    return [];
+                }
+
+                console.log('fetchPdfHighlightsFromDatabase: Fetching highlights for course:', courseId, 'PDF:', pdfUrl);
+
+                // First, find the book for this course and PDF URL
+                const { data: books, error: booksError } = await client
+                    .from('books')
+                    .select('id')
+                    .eq('course_id', courseId)
+                    .eq('pdf_url', pdfUrl)
+                    .limit(1);
+
+                if (booksError) {
+                    console.error('fetchPdfHighlightsFromDatabase: Error fetching books:', booksError.message);
+                    return [];
+                }
+
+                if (!books || books.length === 0) {
+                    console.log('fetchPdfHighlightsFromDatabase: No book found for this PDF');
+                    return [];
+                }
+
+                const bookId = books[0].id;
+                console.log('fetchPdfHighlightsFromDatabase: Found book ID:', bookId);
+
+                // Fetch highlights for this book
+                const { data: highlights, error: highlightsError } = await client
+                    .from('word_highlights')
+                    .select('id, word, synonyms, page_number, position')
+                    .eq('book_id', bookId)
+                    .order('page_number', { ascending: true });
+
+                if (highlightsError) {
+                    console.error('fetchPdfHighlightsFromDatabase: Error fetching highlights:', highlightsError.message);
+                    return [];
+                }
+
+                if (!highlights || highlights.length === 0) {
+                    console.log('fetchPdfHighlightsFromDatabase: No highlights found for this book');
+                    return [];
+                }
+
+                console.log('fetchPdfHighlightsFromDatabase: Found', highlights.length, 'highlights');
+
+                // Convert database format to the format expected by the UI
+                const formattedHighlights = highlights.map(h => {
+                    const position = h.position || {};
+                    const rect = position.rect || {};
+                    const refs = position.refs || {};
+                    
+                    return {
+                        id: h.id,
+                        word: h.word || '',
+                        synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                        page: h.page_number || 1,
+                        rect: {
+                            x: rect.x || 0,
+                            y: rect.y || 0,
+                            w: rect.w || rect.width || 0.1,
+                            h: rect.h || rect.height || 0.03
+                        },
+                        refs: {
+                            images: Array.isArray(refs.images) ? refs.images : [],
+                            audio: Array.isArray(refs.audio) ? refs.audio : [],
+                            video: Array.isArray(refs.video) ? refs.video : []
+                        }
+                    };
+                });
+
+                console.log('fetchPdfHighlightsFromDatabase: Formatted highlights:', formattedHighlights);
+                return formattedHighlights;
+
+            } catch (e) {
+                console.error('fetchPdfHighlightsFromDatabase: Error:', e?.message || e);
+                return [];
+            }
+        }
+
+        // Populate PDF highlights table with data from database
+        async function populatePdfHighlightsTable(contentItem, courseId, pdfUrl) {
+            try {
+                if (!contentItem || !courseId || !pdfUrl) {
+                    console.log('populatePdfHighlightsTable: Missing required parameters');
+                    return;
+                }
+
+                console.log('populatePdfHighlightsTable: Populating highlights for PDF:', pdfUrl);
+
+                // Fetch highlights from database
+                const highlights = await fetchPdfHighlightsFromDatabase(courseId, pdfUrl);
+
+                if (highlights.length === 0) {
+                    console.log('populatePdfHighlightsTable: No highlights to populate');
+                    return;
+                }
+
+                // Clear existing rows (except the empty template row if it exists)
+                const tbody = contentItem.querySelector('.pdf-highlights-table tbody');
+                if (tbody) {
+                    // Keep one empty row if no highlights exist, remove all others
+                    tbody.innerHTML = '';
+                }
+
+                // Add each highlight as a row
+                highlights.forEach(highlight => {
+                    appendPdfHighlightRowWithValues(contentItem, highlight);
+                });
+
+                console.log('populatePdfHighlightsTable: Populated', highlights.length, 'highlights');
+
+            } catch (e) {
+                console.error('populatePdfHighlightsTable: Error:', e?.message || e);
+            }
+        }
+
+        // Automatically fetch and populate PDF highlights when PDF content is created
+        async function autoFetchPdfHighlights(contentItem) {
+            try {
+                if (!contentItem) {
+                    console.log('autoFetchPdfHighlights: No content item provided');
+                    return;
+                }
+
+                // Check if this is a PDF content type
+                const typeSelect = contentItem.querySelector('.content-type');
+                if (!typeSelect || typeSelect.value !== 'pdf') {
+                    console.log('autoFetchPdfHighlights: Not a PDF content type');
+                    return;
+                }
+
+                // Get the course ID from the form or current editing context
+                const courseId = getCurrentCourseId();
+                if (!courseId) {
+                    console.log('autoFetchPdfHighlights: No course ID available');
+                    return;
+                }
+
+                console.log('autoFetchPdfHighlights: Starting auto-fetch for course:', courseId);
+
+                // Show loading indicator
+                const fetchBtn = contentItem.querySelector('.auto-fetch-btn');
+                if (fetchBtn) {
+                    fetchBtn.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 inline mr-1 animate-spin"></i>Fetching...';
+                    fetchBtn.disabled = true;
+                    if (window.lucide) {
+                        window.lucide.createIcons();
+                    }
+                }
+
+                // Strategy 1: Check if there's a PDF file selected
+                const pdfFile = contentItem.querySelector('.content-file')?.files[0];
+                const existingPdfUrl = contentItem.querySelector('.content-file')?.dataset.existingUrl;
+                
+                let pdfUrl = null;
+                if (pdfFile) {
+                    console.log('autoFetchPdfHighlights: New PDF file detected, will need to wait for upload');
+                    pdfUrl = `placeholder:${pdfFile.name}`;
+                } else if (existingPdfUrl) {
+                    pdfUrl = existingPdfUrl;
+                    console.log('autoFetchPdfHighlights: Using existing PDF URL:', pdfUrl);
+                } else {
+                    // Strategy 2: Find any PDF for this course (for existing courses like Elementry)
+                    pdfUrl = await findAnyPdfForCourse(courseId);
+                    if (pdfUrl) {
+                        console.log('autoFetchPdfHighlights: Found PDF for course:', pdfUrl);
+                    }
+                }
+
+                // Strategy 3: If still no PDF URL, check if we're editing and try to find based on content title
+                if (!pdfUrl || pdfUrl.startsWith('placeholder:')) {
+                    pdfUrl = await findExistingPdfUrl(contentItem, courseId);
+                    if (pdfUrl) {
+                        console.log('autoFetchPdfHighlights: Found PDF by title matching:', pdfUrl);
+                    }
+                }
+
+                if (!pdfUrl || pdfUrl.startsWith('placeholder:')) {
+                    console.log('autoFetchPdfHighlights: No valid PDF URL found, but will still try to find any highlights for course');
+                    // Try to fetch highlights for any PDF in this course
+                    await fetchAnyHighlightsForCourse(contentItem, courseId);
+                } else {
+                    console.log('autoFetchPdfHighlights: Attempting to fetch highlights for PDF:', pdfUrl);
+                    // Fetch and populate highlights for specific PDF
+                    await populatePdfHighlightsTable(contentItem, courseId, pdfUrl);
+                }
+
+            } catch (e) {
+                console.error('autoFetchPdfHighlights: Error:', e?.message || e);
+            } finally {
+                // Restore fetch button
+                const fetchBtn = contentItem.querySelector('.auto-fetch-btn');
+                if (fetchBtn) {
+                    fetchBtn.innerHTML = '<i data-lucide="download" class="w-3 h-3 inline mr-1"></i>Fetch Existing';
+                    fetchBtn.disabled = false;
+                    if (window.lucide) {
+                        window.lucide.createIcons();
+                    }
+                }
+            }
+        }
+        window.updateContentFields = window.updateContentFields || updateContentFields;
+
+        // Get current course ID from various sources
+        function getCurrentCourseId() {
+            // Try to get from form dataset (when editing)
+            const courseForm = document.getElementById('courseForm');
+            if (courseForm?.dataset?.courseId) {
+                return courseForm.dataset.courseId;
+            }
+
+            // Try to get from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseIdFromUrl = urlParams.get('courseId');
+            if (courseIdFromUrl) {
+                return courseIdFromUrl;
+            }
+
+            // Try to get from global variable (if set)
+            if (window.currentCourseId) {
+                return window.currentCourseId;
+            }
+
+            return null;
+        }
+
+        // Find existing PDF URL for content item when editing
+        async function findExistingPdfUrl(contentItem, courseId) {
+            try {
+                // This would be called when editing existing content
+                // For now, we'll check if there's any indication of an existing PDF
+                const titleInput = contentItem.querySelector('.content-title');
+                const title = titleInput?.value || '';
+                
+                if (!title) {
+                    return null;
+                }
+
+                // Try to find books with similar titles for this course
+                const client = supabaseAdmin || supabase;
+                const { data: books, error } = await client
+                    .from('books')
+                    .select('pdf_url, title')
+                    .eq('course_id', courseId)
+                    .ilike('title', `%${title}%`)
+                    .limit(1);
+
+                if (error || !books || books.length === 0) {
+                    return null;
+                }
+
+                return books[0].pdf_url;
+            } catch (e) {
+                console.error('findExistingPdfUrl: Error:', e?.message || e);
+                return null;
+            }
+        }
+
+        // Find any PDF for a course (useful for auto-fetching)
+        async function findAnyPdfForCourse(courseId) {
+            try {
+                const client = supabaseAdmin || supabase;
+                const { data: books, error } = await client
+                    .from('books')
+                    .select('pdf_url')
+                    .eq('course_id', courseId)
+                    .limit(1);
+
+                if (error || !books || books.length === 0) {
+                    return null;
+                }
+
+                return books[0].pdf_url;
+            } catch (e) {
+                console.error('findAnyPdfForCourse: Error:', e?.message || e);
+                return null;
+            }
+        }
+
+        // Fetch any highlights for a course (when no specific PDF URL is known)
+        async function fetchAnyHighlightsForCourse(contentItem, courseId) {
+            try {
+                const client = supabaseAdmin || supabase;
+                
+                // Get all books for this course
+                const { data: books, error: booksError } = await client
+                    .from('books')
+                    .select('id, title, pdf_url')
+                    .eq('course_id', courseId);
+
+                if (booksError || !books || books.length === 0) {
+                    console.log('fetchAnyHighlightsForCourse: No books found for course');
+                    return;
+                }
+
+                console.log(`fetchAnyHighlightsForCourse: Found ${books.length} books for course`);
+
+                // Get all highlights for all books in this course
+                const bookIds = books.map(book => book.id);
+                const { data: highlights, error: highlightsError } = await client
+                    .from('word_highlights')
+                    .select('id, word, synonyms, page_number, position, book_id')
+                    .in('book_id', bookIds)
+                    .order('page_number', { ascending: true });
+
+                if (highlightsError || !highlights || highlights.length === 0) {
+                    console.log('fetchAnyHighlightsForCourse: No highlights found for any books in course');
+                    return;
+                }
+
+                console.log(`fetchAnyHighlightsForCourse: Found ${highlights.length} highlights across all books`);
+
+                // Convert to UI format and populate table
+                const formattedHighlights = highlights.map(h => {
+                    const position = h.position || {};
+                    const rect = position.rect || {};
+                    const refs = position.refs || {};
+                    
+                    return {
+                        id: h.id,
+                        word: h.word || '',
+                        synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                        page: h.page_number || 1,
+                        rect: {
+                            x: rect.x || 0,
+                            y: rect.y || 0,
+                            w: rect.w || rect.width || 0.1,
+                            h: rect.h || rect.height || 0.03
+                        },
+                        refs: {
+                            images: Array.isArray(refs.images) ? refs.images : [],
+                            audio: Array.isArray(refs.audio) ? refs.audio : [],
+                            video: Array.isArray(refs.video) ? refs.video : []
+                        }
+                    };
+                });
+
+                // Clear existing table and populate with all highlights
+                const tbody = contentItem.querySelector('.pdf-highlights-table tbody');
+                if (tbody) {
+                    tbody.innerHTML = '';
+                }
+
+                formattedHighlights.forEach(highlight => {
+                    appendPdfHighlightRowWithValues(contentItem, highlight);
+                });
+
+                console.log(`fetchAnyHighlightsForCourse: Populated ${formattedHighlights.length} highlights`);
+
+            } catch (e) {
+                console.error('fetchAnyHighlightsForCourse: Error:', e?.message || e);
+            }
+        }
+
+        // Enhanced PDF highlights table with auto-fetch button
+        function addAutoFetchButton(contentItem) {
+            try {
+                const pdfHighlightsDiv = contentItem.querySelector('.pdf-highlights');
+                if (!pdfHighlightsDiv) {
+                    return;
+                }
+
+                // Check if auto-fetch button already exists
+                if (pdfHighlightsDiv.querySelector('.auto-fetch-btn')) {
+                    return;
+                }
+
+                // Add auto-fetch button next to "Add Row" button
+                const headerDiv = pdfHighlightsDiv.querySelector('.flex.items-center.justify-between');
+                if (headerDiv) {
+                    const autoFetchBtn = document.createElement('button');
+                    autoFetchBtn.type = 'button';
+                    autoFetchBtn.className = 'auto-fetch-btn px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 mr-2';
+                    autoFetchBtn.innerHTML = '<i data-lucide="download" class="w-3 h-3 inline mr-1"></i>Fetch Existing';
+                    autoFetchBtn.onclick = () => autoFetchPdfHighlights(contentItem);
+                    
+                    // Insert before the "Add Row" button
+                    const addRowBtn = headerDiv.querySelector('button');
+                    if (addRowBtn) {
+                        addRowBtn.parentNode.insertBefore(autoFetchBtn, addRowBtn);
+                        // Refresh lucide icons
+                        if (window.lucide) {
+                            window.lucide.createIcons();
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('addAutoFetchButton: Error:', e?.message || e);
+            }
+
+            const contentType = contentItem.querySelector('.content-type').value;
+            const contentTitle = contentItem.querySelector('.content-title').value;
+            
+            // Create a simple preview modal or alert
             createToast({ type: 'info', message: `Preview: ${contentType.toUpperCase()} - ${contentTitle || 'Untitled'}` });
         }
         window.previewContent = window.previewContent || previewContent;
+
 
         function moveContentUp(button) {
             if (!button) {
@@ -5184,6 +6127,7 @@
                                 const result = await window.electronAPI.invoke('db:createLessons', createdCourse.id, lessonsData);
                                 if (result.success) {
                                     console.log('✅ Lessons saved successfully via Electron IPC');
+                                    try { await persistPdfHighlightsToDb(createdCourse.id, lessonsData); } catch (e) { console.warn('persistPdfHighlightsToDb warning:', e?.message || e); }
                                 } else {
                                     console.error('❌ Failed to save lessons via IPC:', result.error);
                                     throw new Error(result.error);
@@ -5213,6 +6157,7 @@
                                 }
                                 
                                 console.log('✅ Lessons saved successfully via direct Supabase');
+                                try { await persistPdfHighlightsToDb(createdCourse.id, lessonsData); } catch (e) { console.warn('persistPdfHighlightsToDb warning:', e?.message || e); }
                             }
                         }
                     } catch (lessonError) {
@@ -5526,6 +6471,138 @@ After running this SQL, refresh the admin dashboard to see the user management w
              return uploadedFiles;
          }
 
+         // Persist PDF highlights to database tables (books, word_highlights) in addition to lesson_materials metadata
+         async function persistPdfHighlightsToDb(courseId, lessonsData) {
+             try {
+                 if (!Array.isArray(lessonsData) || lessonsData.length === 0) {
+                     console.log('persistPdfHighlightsToDb: No lessons data provided');
+                     return;
+                 }
+                 
+                 // Use admin client if available, otherwise regular client
+                 const client = supabaseAdmin || supabase;
+                 if (!client?.from) {
+                     console.error('persistPdfHighlightsToDb: No Supabase client available');
+                     return;
+                 }
+                 
+                 console.log('persistPdfHighlightsToDb: Starting with courseId:', courseId, 'lessons:', lessonsData.length);
+                 
+                 // Verify course exists first
+                 const { data: courseExists, error: courseError } = await client
+                     .from('courses')
+                     .select('id')
+                     .eq('id', courseId)
+                     .single();
+                 
+                 if (courseError) {
+                     console.error('persistPdfHighlightsToDb: Course not found:', courseError.message);
+                     return;
+                 }
+
+                 for (const lesson of lessonsData) {
+                     const materials = Array.isArray(lesson.materials) ? lesson.materials : [];
+                     for (const m of materials) {
+                         if ((m.type || '').toLowerCase() !== 'pdf') continue;
+                         const meta = m.metadata || {};
+                         const hs = Array.isArray(meta.highlights) ? meta.highlights : [];
+                         if (!hs.length) continue;
+
+                         // Ensure a book row exists for this PDF (books: course_id, title, pdf_url)
+                         let bookId = null;
+                         const pdfUrl = m.file_url || m.url || null;
+                         console.log('persistPdfHighlightsToDb: Processing PDF:', pdfUrl);
+                         
+                         if (!pdfUrl) {
+                             console.warn('persistPdfHighlightsToDb: No PDF URL found, skipping highlights');
+                             continue;
+                         }
+                         
+                         try {
+                             // Try find existing by course_id + pdf_url
+                             const { data: existingBooks, error: selectError } = await client
+                                 .from('books')
+                                 .select('id,pdf_url')
+                                 .eq('course_id', courseId)
+                                 .eq('pdf_url', pdfUrl)
+                                 .limit(1);
+                             
+                             if (selectError) {
+                                 console.error('persistPdfHighlightsToDb: Error querying books:', selectError.message);
+                                 continue;
+                             }
+                             
+                             const existing = Array.isArray(existingBooks) ? existingBooks[0] : null;
+                             if (existing?.id) {
+                                 bookId = existing.id;
+                                 console.log('persistPdfHighlightsToDb: Found existing book:', bookId);
+                             } else {
+                                 console.log('persistPdfHighlightsToDb: Creating new book entry...');
+                                 const { data: ins, error: insErr } = await client
+                                     .from('books')
+                                     .insert({ 
+                                         course_id: courseId, 
+                                         title: lesson.title || 'Lesson PDF', 
+                                         pdf_url: pdfUrl 
+                                     })
+                                     .select('id')
+                                     .single();
+                                 
+                                 if (insErr) {
+                                     console.error('persistPdfHighlightsToDb: Error creating book:', insErr.message);
+                                     continue;
+                                 }
+                                 
+                                 if (ins?.id) {
+                                     bookId = ins.id;
+                                     console.log('persistPdfHighlightsToDb: Created book:', bookId);
+                                 }
+                             }
+                         } catch (e) {
+                             console.error('persistPdfHighlightsToDb: Book operation failed:', e?.message || e);
+                             continue;
+                         }
+
+                         if (!bookId) {
+                             console.warn('persistPdfHighlightsToDb: Could not create or fetch books row; skipping structured highlight rows');
+                             continue;
+                         }
+
+                         // Insert highlights as rows in word_highlights
+                         console.log('persistPdfHighlightsToDb: Inserting', hs.length, 'highlights for book:', bookId);
+                         
+                         for (const h of hs) {
+                             try {
+                                 const payload = {
+                                     book_id: bookId,
+                                     word: h.word || '',
+                                     synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                                     page_number: Number(h.page) || 1,
+                                     position: { rect: h.rect || null, refs: h.refs || null }
+                                 };
+                                 
+                                 console.log('persistPdfHighlightsToDb: Inserting highlight:', payload);
+                                 
+                                 const { error: hlErr } = await client
+                                     .from('word_highlights')
+                                     .insert(payload);
+                                 
+                                 if (hlErr) {
+                                     console.error('persistPdfHighlightsToDb: word_highlights insert error:', hlErr.message, hlErr);
+                                 } else {
+                                     console.log('persistPdfHighlightsToDb: Successfully inserted highlight for word:', h.word);
+                                 }
+                             } catch (e) {
+                                 console.error('persistPdfHighlightsToDb: word_highlights insert failed:', e?.message || e);
+                             }
+                         }
+                     }
+                 }
+             } catch (e) {
+                 console.warn('persistPdfHighlightsToDb failed (non-fatal):', e?.message || e);
+             }
+         }
+
          // Course form submission
          document.getElementById('courseForm').addEventListener('submit', async function(e) {
             console.log('Form submission triggered!');
@@ -5639,22 +6716,24 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 if (lessonsData && lessonsData.length > 0 && createdCourse) {
                     console.log('📚 Creating lessons for course:', createdCourse.id);
                     try {
-                        if (window.isElectron) {
+                            if (window.isElectron) {
                             const lessonResult = await window.electronAPI.invoke('db:createLessons', createdCourse.id, lessonsData);
                             if (lessonResult && lessonResult.error) {
                                 console.error('❌ Failed to create lessons via IPC:', lessonResult.error);
                                 showError('Course saved but lessons failed: ' + lessonResult.error);
                             } else {
                                 console.log('✅ Lessons created via IPC:', lessonResult);
+                                    try { await persistPdfHighlightsToDb(createdCourse.id, lessonsData); } catch (e) { console.warn('persistPdfHighlightsToDb warning:', e?.message || e); }
                             }
                         } else {
                             const { data: lessonData, error: lessonError } = await supabase
-                                .rpc('create_lessons_with_materials', { p_course_id: createdCourse.id, p_lessons: lessonsData });
+                                .rpc('upsert_lessons_with_materials', { p_course_id: createdCourse.id, p_lessons: lessonsData });
                             if (lessonError) {
                                 console.error('❌ Failed to create lessons via Supabase:', lessonError);
                                 showError('Course saved but lessons failed: ' + lessonError.message);
                             } else {
                                 console.log('✅ Lessons created via Supabase:', lessonData);
+                                    try { await persistPdfHighlightsToDb(createdCourse.id, lessonsData); } catch (e) { console.warn('persistPdfHighlightsToDb warning:', e?.message || e); }
                             }
                         }
                     } catch (lessonError) {
@@ -5780,7 +6859,9 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             const imageFile = contentItem.querySelector('.content-file')?.files[0];
                             if (imageFile) {
                                 try {
-                                    materialData.file_url = await uploadSingleFile(imageFile, 'lessons', sectionNameForPath, lessonNameForPath, i);
+                                    const lessonDbId = lessonItem.getAttribute('data-lesson-db-id');
+                                    const opts = lessonDbId ? { lessonId: lessonDbId, contentIndex: j } : {};
+                                    materialData.file_url = await uploadSingleFile(imageFile, 'lessons', sectionNameForPath, lessonNameForPath, i, opts);
                                     materialData.file_size = imageFile.size;
                                     materialData.file_type = imageFile.type;
                                     materialData.metadata = {
@@ -5842,15 +6923,21 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                     materialData.file_url = await uploadSingleFile(pdfFile, 'lessons', sectionNameForPath, lessonNameForPath, i);
                                     materialData.file_size = pdfFile.size;
                                     materialData.file_type = pdfFile.type;
-                                    materialData.metadata = {
-                                        title: materialTitle,
-                                        page_range: contentItem.querySelector('.content-pages')?.value || '',
-                                        instructions: contentItem.querySelector('.content-instructions')?.value || '',
-                                        page_count: 0 // Would need PDF parsing to get actual count
-                                    };
                                 } catch (error) {
                                     console.error('Failed to upload PDF file:', error);
                                 }
+                            }
+                            const hl = collectPdfHighlightsFromContentItem(contentItem);
+                            console.log('collectLessonsData: PDF highlights collected for material:', materialTitle, '- Count:', hl.length);
+                            materialData.metadata = {
+                                title: materialTitle,
+                                page_range: contentItem.querySelector('.content-pages')?.value || '',
+                                instructions: contentItem.querySelector('.content-instructions')?.value || '',
+                                page_count: 0,
+                                highlights: hl
+                            };
+                            if (hl.length > 0) {
+                                console.log('collectLessonsData: PDF highlights data:', hl);
                             }
                             break;
                             
@@ -5878,6 +6965,9 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     materials.push(materialData);
                 }
                 
+                // Get database ID if this is an existing lesson
+                const databaseId = lessonItem.getAttribute('data-lesson-db-id');
+                
                 // Create lesson data structure that matches the enhanced database schema
                 const lessonData = {
                     title: titleElement.value,
@@ -5885,6 +6975,11 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     order_number: i + 1,
                     materials: materials
                 };
+                
+                // Add database ID if this is an existing lesson
+                if (databaseId && databaseId !== '') {
+                    lessonData.id = databaseId;
+                }
                 
                 lessons.push(lessonData);
             }
@@ -5897,26 +6992,38 @@ After running this SQL, refresh the admin dashboard to see the user management w
          window.collectLessonsData = collectLessonsData;
 
          // Helper function to upload a single file with organized folder structure
-         async function uploadSingleFile(file, folder, sectionName = '', lessonName = '', lessonIndex = 0) {
+         async function uploadSingleFile(file, folder, sectionName = '', lessonName = '', lessonIndex = 0, options = {}) {
             try {
-                const fileName = `${Date.now()}_${file.name}`;
-                
-                // Get course name from DOM
-                let courseName = '';
-                const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
-                if (courseTitleInput && courseTitleInput.value) {
-                    courseName = courseTitleInput.value.trim();
-                }
-                
-                // Create organized path structure: courseName/lesson_number/fileName
+                let fileName = '';
                 let filePath = '';
-                if (courseName) {
-                    const sanitizedCourse = courseName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
-                    filePath = sanitizedCourse;
+                
+                if (options && options.lessonId && (options.contentIndex !== undefined && options.contentIndex !== null)) {
+                    const ext = file.name.split('.').pop();
+                    const safeLessonId = options.lessonId;
+                    const idx = options.contentIndex; // 0-based index
+                    fileName = `lesson-${safeLessonId}-content-${idx}-${Date.now()}.${ext}`;
+                    filePath = `lessons/${safeLessonId}/content/${fileName}`;
                 } else {
-                    filePath = 'course_content'; // fallback if no course name
+                    const generated = `${Date.now()}_${file.name}`;
+                    
+                    // Get course name from DOM
+                    let courseName = '';
+                    const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+                    if (courseTitleInput && courseTitleInput.value) {
+                        courseName = courseTitleInput.value.trim();
+                    }
+                    
+                    // Create organized path structure: courseName/lesson_number/fileName
+                    if (courseName) {
+                        const sanitizedCourse = courseName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
+                        filePath = `${sanitizedCourse}/lesson_${lessonIndex + 1}/${generated}`;
+                    } else {
+                        filePath = `course_content/lesson_${lessonIndex + 1}/${generated}`;
+                    }
+                    fileName = generated;
                 }
                 
+
                 // Add lesson number (1-based index)
                 const lessonNumber = lessonIndex + 1;
                 filePath += `/lesson_${lessonNumber}`;
@@ -5925,6 +7032,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
 
                 // Ensure the bucket exists before uploading
                 await supabaseStorageService.ensureBucket('course-materials');
+
 
                 // Use IPC for file upload if in Electron environment
                 if (window.isElectron) {
@@ -6303,7 +7411,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     modalElement.classList.remove('hidden');
                     console.log('Test modal should be visible now');
                 }
-                return;
+                return; // Early return to prevent executing the real course loading code
             }
             
             try {
@@ -6668,7 +7776,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             id: row.material_id,
                             type: row.material_type,
                             content: row.material_content,
-                            url: row.file_url,
+                            url: row.file_url || row.url,
                             metadata: row.metadata
                         });
                     }
@@ -6681,7 +7789,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                 
                 // Populate each lesson in the form
                 for (const lesson of lessons) {
-                    addLesson();
+                    addLesson(lesson.id);
                     
                     // Get the last added lesson container
                     const lessonContainers = document.querySelectorAll('.lesson-item');
@@ -6776,7 +7884,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                             if (objectivesTextarea) objectivesTextarea.value = lesson.objectives || '';
                             
                             // Load lesson materials/content if available (await to ensure DOM is populated sequentially)
-                            await loadLessonMaterials(lesson.id, currentLesson);
+                            await loadLessonMaterials(lesson.id, currentLesson, courseId);
                         }
                     }
 
@@ -6804,6 +7912,67 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
         
         // Function to populate materials for a lesson using pre-fetched data
+        // Function to check and load existing images from Supabase storage
+        async function checkAndLoadExistingImage(lessonId, contentIndex, contentItem) {
+            try {
+                const client = window.supabaseAdminClient || window.supabaseClient || supabase;
+                if (!client) {
+                    console.warn('Supabase not initialized');
+                    return null;
+                }
+                
+                // List files in the standardized content directory
+                const { data: files, error } = await client.storage
+                    .from('course-materials')
+                    .list(`lessons/${lessonId}/content`, {
+                        limit: 100,
+                        offset: 0
+                    });
+                
+                if (error) {
+                    console.log('No existing images found or error:', error.message || error);
+                    return null;
+                }
+                
+                // Find a file that matches this content index pattern
+                const matching = (files || []).filter(file => 
+                    file.name.includes(`content-${contentIndex}`) && 
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+                );
+                
+                if (matching.length) {
+                    // Get the most recent image by name
+                    const latest = matching.sort((a,b) => b.name.localeCompare(a.name))[0];
+                    const path = `lessons/${lessonId}/content/${latest.name}`;
+                    // Get public URL for the image
+                    const { data: { publicUrl } } = client.storage
+                        .from('course-materials')
+                        .getPublicUrl(path);
+                    
+                    if (publicUrl) {
+                        const fieldsContainer = contentItem.querySelector('.content-fields');
+                        if (fieldsContainer) {
+                            let preview = fieldsContainer.querySelector('.image-loaded-preview');
+                            if (preview) {
+                                preview.style.display = 'block';
+                                const imgEl = preview.querySelector('img');
+                                const urlInput = preview.querySelector('.current-image-url');
+                                if (imgEl) imgEl.src = publicUrl;
+                                if (urlInput) urlInput.value = publicUrl;
+                                console.log('✅ Loaded existing image:', latest.name);
+                                return publicUrl;
+                            }
+                        }
+                    }
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Error checking for existing image:', error);
+                return null;
+            }
+        }
+
         async function populateLessonMaterials(materials, lessonContainer) {
             try {
                 if (!materials || materials.length === 0) {
@@ -6819,52 +7988,108 @@ After running this SQL, refresh the admin dashboard to see the user management w
                     return;
                 }
                 
-                // Add each material as content
-                materials.forEach((material, index) => {
+                // Add each material as content synchronously
+                for (let index = 0; index < materials.length; index++) {
+                    const material = materials[index];
+                    
                     // Click the existing Add Content button in this lesson item
                     const addMaterialBtn = lessonContainer.querySelector('button[onclick^="addLessonContent"]');
                     if (addMaterialBtn) {
                         addMaterialBtn.click();
                         
+                        // Wait for DOM to update
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                        
                         // Get the last added content item
-                        setTimeout(() => {
-                            const contentItems = contentContainer.querySelectorAll('.content-item');
-                            const lastContentItem = contentItems[contentItems.length - 1];
+                        const contentItems = contentContainer.querySelectorAll('.content-item');
+                        const lastContentItem = contentItems[contentItems.length - 1];
+                        
+                        if (lastContentItem) {
+                            console.log(`📝 Populating material ${index + 1}:`, material);
                             
-                            if (lastContentItem) {
-                                // Populate material data
-                                const titleInput = lastContentItem.querySelector('.content-title');
-                                const typeSelect = lastContentItem.querySelector('.content-type');
+                            // Populate material data
+                            const titleInput = lastContentItem.querySelector('.content-title');
+                            const typeSelect = lastContentItem.querySelector('.content-type');
+                            
+                            if (titleInput) titleInput.value = `Material ${index + 1}`;
+                            if (typeSelect) {
+                                const materialType = (material.type || 'text').toLowerCase();
+                                typeSelect.value = materialType;
                                 
-                                if (titleInput) titleInput.value = `Material ${index + 1}`;
-                                if (typeSelect) {
-                                    const materialType = (material.type || 'text').toLowerCase();
-                                    typeSelect.value = materialType;
-                                    updateContentFields(typeSelect);
-                                    
-                                    // Populate type-specific fields
-                                    setTimeout(() => {
-                                        const fieldsContainer = lastContentItem.querySelector('.content-fields');
-                                        if (fieldsContainer) {
-                                            // Parse content data
-                                            let contentData = {};
-                                            if (material.content) {
-                                                if (typeof material.content === 'string') {
-                                                    try {
-                                                        contentData = JSON.parse(material.content);
-                                                    } catch (e) {
-                                                        if (materialType === 'text') {
-                                                            contentData = { text: material.content };
-                                                        }
-                                                    }
-                                                } else {
-                                                    contentData = material.content;
+                                // Trigger the change event to update fields
+                                const changeEvent = new Event('change', { bubbles: true });
+                                typeSelect.dispatchEvent(changeEvent);
+                                
+                                // Wait for fields to update
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                
+                                // Populate type-specific fields
+                                const fieldsContainer = lastContentItem.querySelector('.content-fields');
+                                if (fieldsContainer) {
+                                    // Parse content data
+                                    let contentData = {};
+                                    if (material.content) {
+                                        if (typeof material.content === 'string') {
+                                            try {
+                                                contentData = JSON.parse(material.content);
+                                            } catch (e) {
+                                                if (materialType === 'text') {
+                                                    contentData = { text: material.content };
                                                 }
                                             }
-                                            if (!contentData || Object.keys(contentData).length === 0) {
-                                                contentData = material.metadata || {};
+                                        } else {
+                                            contentData = material.content;
+                                        }
+                                    }
+                                    if (!contentData || Object.keys(contentData).length === 0) {
+                                        contentData = material.metadata || {};
+                                    }
+                                    
+                                    console.log(`📄 Content data for material ${index + 1}:`, contentData);
+                                    
+                                    // Populate based on material type
+                                    switch (materialType) {
+                                        case 'text':
+                                            const textArea = fieldsContainer.querySelector('textarea');
+                                            if (textArea) {
+                                                const textContent = typeof material.content === 'string' ? material.content : (contentData.text || contentData.content || '');
+                                                textArea.value = textContent;
+                                                console.log('✅ Text content populated:', textContent);
                                             }
+                                            break;
+                                        case 'video':
+                                            const videoDuration = fieldsContainer.querySelector('.content-duration');
+                                            const videoDesc = fieldsContainer.querySelector('.content-description');
+                                            if (videoDuration) videoDuration.value = contentData.duration || '';
+                                            if (videoDesc) videoDesc.value = contentData.description || '';
+                                            break;
+                                        case 'audio':
+                                            const audioDuration = fieldsContainer.querySelector('.content-duration');
+                                            const transcript = fieldsContainer.querySelector('.content-transcript');
+                                            if (audioDuration) audioDuration.value = contentData.duration || '';
+                                            if (transcript) transcript.value = contentData.transcript || '';
+                                            break;
+                                        case 'pdf':
+                                            const pages = fieldsContainer.querySelector('.content-pages');
+                                            const synonym = fieldsContainer.querySelector('.content-synonym');
+                                            const instructions = fieldsContainer.querySelector('.content-instructions');
+                                            if (pages) pages.value = contentData.page_range || '';
+                                            if (synonym) synonym.value = contentData.synonym || '';
+                                            if (instructions) instructions.value = contentData.instructions || '';
+                                            break;
+                                        case 'quiz':
+                                            const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
+                                            const questions = fieldsContainer.querySelector('input[placeholder*="questions"]');
+                                            if (quizTitle) quizTitle.value = contentData.title || '';
+                                            if (questions) questions.value = contentData.questions || '';
+                                            break;
+                                        case 'image':
+                                            const altInput = fieldsContainer.querySelector('.content-alt');
+                                            const captionInput = fieldsContainer.querySelector('.content-caption');
+                                            if (altInput) altInput.value = contentData.alt_text || '';
+                                            if (captionInput) captionInput.value = contentData.caption || '';
                                             
+
                                             // Populate based on material type
                                             switch (materialType) {
                                                 case 'text':
@@ -6925,17 +8150,17 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                         if (imgEl) imgEl.src = imageUrl;
                                                     }
                                                     break;
+
                                             }
-                                        }
-                                    }, 200);
+                                            break;
+                                    }
                                 }
                             }
-                        }, 100 * (index + 1)); // Stagger the population to avoid DOM conflicts
+                        }
                     }
-                });
-
-                // Wait for all materials to be populated
-                await new Promise(resolve => setTimeout(resolve, 350 + (materials.length * 100)));
+                }
+                
+                console.log('✅ All materials populated successfully');
                 return true;
                 
             } catch (error) {
@@ -6944,7 +8169,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
         }
         
         // Function to load lesson materials for a specific lesson
-        async function loadLessonMaterials(lessonId, lessonContainer) {
+        async function loadLessonMaterials(lessonId, lessonContainer, courseId) {
             try {
                 if (!supabase) {
                     console.error('Supabase not initialized');
@@ -7041,6 +8266,29 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                             if (pages) pages.value = contentData.page_range || '';
                                                             if (synonym) synonym.value = contentData.synonym || '';
                                                             if (instructions) instructions.value = contentData.instructions || '';
+                                                            
+                                                            // Hydrate PDF highlights table from database
+                                                            try {
+                                                                // First try to load from metadata (for backward compatibility)
+                                                                const metadataHighlights = Array.isArray(material.metadata?.highlights) ? material.metadata.highlights : (Array.isArray(contentData.highlights) ? contentData.highlights : []);
+                                                                
+                                                                if (metadataHighlights && metadataHighlights.length) {
+                                                                    console.log('Loading highlights from metadata:', metadataHighlights.length);
+                                                                    metadataHighlights.forEach(h => appendPdfHighlightRowWithValues(lastContentItem, h));
+                                                                } else {
+                                                                    // If no metadata highlights, try to fetch from database
+                                                                    const pdfUrl = material.url || material.file_url;
+                                                                    if (pdfUrl && courseId) {
+                                                                        console.log('No metadata highlights found, fetching from database for PDF:', pdfUrl);
+                                                                        // Use setTimeout to ensure the content item is fully rendered
+                                                                        setTimeout(async () => {
+                                                                            await populatePdfHighlightsTable(lastContentItem, courseId, pdfUrl);
+                                                                        }, 100);
+                                                                    }
+                                                                }
+                                                            } catch (e) {
+                                                                console.warn('Error loading PDF highlights:', e);
+                                                            }
                                                             break;
                                                         case 'quiz':
                                                             const quizTitle = fieldsContainer.querySelector('input[placeholder*="title"]');
@@ -7068,7 +8316,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                                 if (!preview) {
                                                     preview = document.createElement('div');
                                                     preview.className = 'image-loaded-preview mt-2';
-                                                    preview.innerHTML = `<img class=\"max-h-40 rounded border\" alt=\"Image preview\">`;
+                                                    preview.innerHTML = `<img class=\"max-h-40 rounded border\" alt=\"Image preview\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\" crossorigin=\"anonymous\" fetchpriority=\"low\" onerror=\"this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';\">`;
                                                     fieldsContainer.appendChild(preview);
                                                 }
                                                 const imgEl = preview.querySelector('img');
@@ -7147,6 +8395,163 @@ After running this SQL, refresh the admin dashboard to see the user management w
             showTab('files');
             await loadFiles();
             await loadStorageStats();
+        }
+
+        // Verify uploaded files in lessons
+        async function verifyLessonFiles() {
+            try {
+                // Get course name from DOM
+                let courseName = '';
+                const courseTitleInput = document.getElementById('courseTitle') || document.querySelector('input[name="title"]');
+                if (courseTitleInput && courseTitleInput.value) {
+                    courseName = courseTitleInput.value.trim().replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').toLowerCase();
+                } else {
+                    showError('Please enter a course title first');
+                    return;
+                }
+
+                // Get all lessons from the current course
+                const lessons = document.querySelectorAll('.lesson-item');
+                const verificationResults = [];
+
+                for (let i = 0; i < lessons.length; i++) {
+                    const lessonNumber = i + 1;
+                    const lessonPath = `${courseName}/lesson_${lessonNumber}`;
+                    
+                    try {
+                        // List files in this lesson folder
+                        const { data: files, error } = await supabase.storage
+                            .from('course-materials')
+                            .list(lessonPath, {
+                                limit: 100,
+                                offset: 0
+                            });
+
+                        if (error) {
+                            console.warn(`Error accessing lesson ${lessonNumber}:`, error);
+                            verificationResults.push({
+                                lessonNumber,
+                                lessonPath,
+                                files: [],
+                                error: error.message
+                            });
+                            continue;
+                        }
+
+                        // Get public URLs for each file
+                        const filesWithUrls = [];
+                        if (files && files.length > 0) {
+                            for (const file of files) {
+                                if (file.name && !file.name.includes('.emptyFolderPlaceholder')) {
+                                    const { data: { publicUrl } } = supabase.storage
+                                        .from('course-materials')
+                                        .getPublicUrl(`${lessonPath}/${file.name}`);
+                                    
+                                    filesWithUrls.push({
+                                        name: file.name,
+                                        url: publicUrl,
+                                        size: file.metadata?.size || 0,
+                                        created: file.created_at || file.updated_at
+                                    });
+                                }
+                            }
+                        }
+
+                        verificationResults.push({
+                            lessonNumber,
+                            lessonPath,
+                            files: filesWithUrls,
+                            error: null
+                        });
+
+                    } catch (lessonError) {
+                        console.error(`Error checking lesson ${lessonNumber}:`, lessonError);
+                        verificationResults.push({
+                            lessonNumber,
+                            lessonPath,
+                            files: [],
+                            error: lessonError.message
+                        });
+                    }
+                }
+
+                // Display verification results
+                displayVerificationResults(courseName, verificationResults);
+                
+            } catch (error) {
+                console.error('Error verifying lesson files:', error);
+                showError('Failed to verify lesson files: ' + error.message);
+            }
+        }
+
+        // Display verification results
+        function displayVerificationResults(courseName, results) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            <i data-lucide="folder-check" class="w-5 h-5 inline mr-2"></i>
+                            File Verification - ${courseName.replace(/_/g, ' ').toUpperCase()}
+                        </h3>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 overflow-y-auto max-h-[70vh]">
+                        ${results.map(result => `
+                            <div class="mb-6 border border-gray-200 rounded-lg">
+                                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                    <h4 class="font-medium text-gray-900">
+                                        <i data-lucide="book-open" class="w-4 h-4 inline mr-2"></i>
+                                        Lesson ${result.lessonNumber}
+                                    </h4>
+                                    <p class="text-sm text-gray-600 mt-1">Storage Path: ${result.lessonPath}</p>
+                                </div>
+                                <div class="p-4">
+                                    ${result.error ? `
+                                        <div class="text-red-600 text-sm">
+                                            <i data-lucide="alert-circle" class="w-4 h-4 inline mr-1"></i>
+                                            Error: ${result.error}
+                                        </div>
+                                    ` : ''}
+                                    ${result.files.length === 0 ? `
+                                        <div class="text-gray-500 text-sm">
+                                            <i data-lucide="folder-open" class="w-4 h-4 inline mr-1"></i>
+                                            No files found in this lesson
+                                        </div>
+                                    ` : `
+                                        <div class="space-y-2">
+                                            ${result.files.map(file => `
+                                                <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                                    <div class="flex items-center">
+                                                        <i data-lucide="${getFileIcon(file.name)}" class="w-4 h-4 text-gray-400 mr-2"></i>
+                                                        <span class="text-sm font-medium text-gray-900">${file.name}</span>
+                                                        <span class="text-xs text-gray-500 ml-2">(${formatFileSize(file.size)})</span>
+                                                    </div>
+                                                    <a href="${file.url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm">
+                                                        <i data-lucide="external-link" class="w-4 h-4 inline mr-1"></i>
+                                                        View
+                                                    </a>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="flex justify-end p-6 border-t border-gray-200">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            lucide.createIcons();
         }
 
         // Load files from Supabase Storage
@@ -8891,7 +10296,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                 </button>
                             </div>
                         </div>
-                        <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                        <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview" loading="lazy" decoding="async" referrerpolicy="no-referrer" crossorigin="anonymous" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">
                         <input type="hidden" class="current-image-url" value="">
                         <input type="hidden" class="material-id" value="">
                     </div>
@@ -8941,7 +10346,7 @@ After running this SQL, refresh the admin dashboard to see the user management w
                                     </button>
                                 </div>
                             </div>
-                            <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview">
+                            <img class="max-h-40 w-auto rounded border shadow-sm" alt="Image preview" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" fetchpriority="low" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22160%22><rect width=%22240%22 height=%22160%22 fill=%23f3f4f6/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2212%22 fill=%22%236b7280%22>Image unavailable</text></svg>';">
                             <input type="hidden" class="current-image-url" value="">
                             <input type="hidden" class="material-id" value="">
                         </div>
@@ -8984,13 +10389,19 @@ After running this SQL, refresh the admin dashboard to see the user management w
             const preview = fieldsContainer.querySelector('.image-loaded-preview');
 
             try {
-                // Get lesson index for upload path
+                // Determine lessonId and contentIndex
                 const lessonItem = contentItem.closest('.lesson-item');
-                const allLessons = document.querySelectorAll('.lesson-item');
-                const lessonIndex = Array.from(allLessons).indexOf(lessonItem);
+                const lessonId = lessonItem?.getAttribute('data-lesson-db-id');
+                if (!lessonId) {
+                    showError('Cannot replace image: lesson ID not found');
+                    return;
+                }
+                const contentContainer = lessonItem.querySelector('.lesson-content-container');
+                const contentItems = contentContainer.querySelectorAll('.content-item');
+                const contentIndex = Array.from(contentItems).indexOf(contentItem);
 
-                // Upload new file
-                const newUrl = await uploadSingleFile(newFile, 'lessons', 'Course Content', `lesson_${lessonIndex + 1}`, lessonIndex);
+                // Upload new file with standardized options
+                const newUrl = await uploadSingleFile(newFile, 'lessons', '', '', 0, { lessonId, contentIndex });
 
                 // Delete old file if it exists
                 const oldUrl = currentUrlInput.value;

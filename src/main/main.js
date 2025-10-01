@@ -2,7 +2,7 @@
 process.noDeprecation = true;
 process.env.NODE_NO_WARNINGS = '1';
 
-const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, session } = require('electron');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const isDev = process.env.NODE_ENV === 'development';
@@ -111,6 +111,15 @@ function createWindow() {
   // Show window when ready to prevent flickering
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+  });
+
+  // Ensure microphone permission is granted for getUserMedia in Electron
+  const ses = session.fromPartition('default');
+  ses.setPermissionRequestHandler((wc, permission, callback) => {
+    if (permission === 'media') {
+      return callback(true);
+    }
+    callback(false);
   });
 
   // Handle window closed
@@ -491,6 +500,52 @@ function setupIPC() {
     } catch (error) {
       console.error('Error processing audio:', error);
       return { success: false, error: error.message };
+    }
+  });
+
+  // Audio analysis handler for pronunciation feedback
+  ipcMain.handle('audio:analyze', async (event, audioData, targetText) => {
+    try {
+      console.log('Analyzing audio for pronunciation feedback:', { audioData: !!audioData, targetText });
+      
+      // TODO: Implement actual pronunciation analysis
+      // This could use speech recognition APIs, phonetic analysis, etc.
+      
+      // For now, return a mock analysis with realistic feedback
+      const mockAccuracy = Math.random() * 0.3 + 0.7; // 70-100% accuracy
+      const words = targetText ? targetText.split(' ') : [];
+      
+      return {
+        success: true,
+        accuracy: mockAccuracy,
+        overallScore: Math.round(mockAccuracy * 100),
+        feedback: mockAccuracy > 0.85 
+          ? 'Excellent pronunciation! Keep up the good work.'
+          : mockAccuracy > 0.75
+          ? 'Good pronunciation. Try to speak a bit more clearly.'
+          : 'Practice makes perfect. Focus on clear articulation.',
+        wordAnalysis: words.map(word => ({
+          word,
+          accuracy: Math.random() * 0.4 + 0.6,
+          phonetic: `/${word.toLowerCase()}/`, // Mock phonetic
+          suggestions: mockAccuracy < 0.8 ? ['Try speaking slower', 'Focus on vowel sounds'] : []
+        })),
+        suggestions: mockAccuracy < 0.8 ? [
+          'Speak more slowly and clearly',
+          'Practice individual word pronunciation',
+          'Record yourself and compare with native speakers'
+        ] : [
+          'Great job! Keep practicing to maintain fluency'
+        ]
+      };
+    } catch (error) {
+      console.error('Audio analysis error:', error);
+      return {
+        success: false,
+        error: error.message,
+        accuracy: 0,
+        feedback: 'Unable to analyze audio at this time'
+      };
     }
   });
 

@@ -60,102 +60,101 @@ const AssessmentPage = () => {
           .from('user_profiles')
           .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
           .eq('id', user.id)
-          .single();
+          .limit(1);
 
         if (error) {
-          if (error.code === 'PGRST116') {
-            // User profile doesn't exist, try to create one using the helper function
-            console.log('User profile not found, creating new profile for user:', user.id, 'Email:', user.email);
-            
-            try {
-              // Try using the helper function first
-              const { data: functionResult, error: functionError } = await supabaseService.client
-                .rpc('create_missing_user_profile', {
-                  user_id: user.id,
-                  user_email: user.email,
-                  user_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User'
-                });
-              
-              if (functionError) {
-                console.log('Helper function error:', functionError.message, 'Trying direct insert with proper auth context');
-                
-                // Fallback: Create profile with proper auth context
-                const newProfile = {
-                  id: user.id,
-                  email: user.email,
-                  full_name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-                  preferred_language: 'en',
-                  target_languages: '{}',
-                  target_language: 'English',
-                  native_language: 'Unknown',
-                  learning_level: 'beginner',
-                  assessment_completed: false,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                };
-                
-                console.log('Creating profile with data:', newProfile);
-                
-                // Use upsert instead of insert to handle conflicts
-                const { data: createdProfile, error: createError } = await supabaseService.client
-                  .from('user_profiles')
-                  .upsert([newProfile], { onConflict: 'id' })
-                  .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
-                  .single();
-                  
-                if (createError) {
-                  console.error('Error creating user profile:', createError);
-                  // Create a minimal profile for the session
-                  const fallbackProfile = {
-                    id: user.id,
-                    email: user.email,
-                    full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-                    target_language: 'English',
-                    native_language: 'Unknown',
-                    learning_level: 'beginner',
-                    assessment_completed: false
-                  };
-                  setUserProfile(fallbackProfile);
-                  console.log('Using fallback profile for session');
-                } else {
-                  setUserProfile(createdProfile);
-                }
-              } else {
-                // Function succeeded, now fetch the created profile
-                const { data: fetchedProfile, error: fetchError } = await supabaseService.client
-                  .from('user_profiles')
-                  .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
-                  .eq('id', user.id)
-                  .single();
-                  
-                if (fetchError) {
-                  console.error('Error fetching created profile:', fetchError);
-                  setError('Profile created but failed to load');
-                } else {
-                  setUserProfile(fetchedProfile);
-                }
-              }
-            } catch (err) {
-              console.error('Error in profile creation process:', err);
-              // Create a minimal profile for the session
-              const fallbackProfile = {
+          console.error('Error fetching user profile:', error);
+          setError('Failed to load user profile');
+        } else if (Array.isArray(data) && data.length > 0) {
+          setUserProfile(data[0]);
+        } else {
+          // User profile doesn't exist, try to create one using the helper function
+          console.log('User profile not found, creating new profile for user:', user.id, 'Email:', user.email);
+
+          try {
+            // Try using the helper function first
+            const { data: functionResult, error: functionError } = await supabaseService.client
+              .rpc('create_missing_user_profile', {
+                user_id: user.id,
+                user_email: user.email,
+                user_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User'
+              });
+
+            if (functionError) {
+              console.log('Helper function error:', functionError.message, 'Trying direct insert with proper auth context');
+
+              // Fallback: Create profile with proper auth context
+              const newProfile = {
                 id: user.id,
                 email: user.email,
-                full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+                full_name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+                preferred_language: 'en',
+                target_languages: '{}',
                 target_language: 'English',
                 native_language: 'Unknown',
                 learning_level: 'beginner',
-                assessment_completed: false
+                assessment_completed: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
               };
-              setUserProfile(fallbackProfile);
-              console.log('Using fallback profile due to creation error');
+
+              console.log('Creating profile with data:', newProfile);
+
+              // Use upsert instead of insert to handle conflicts
+              const { data: createdProfileRows, error: createError } = await supabaseService.client
+                .from('user_profiles')
+                .upsert([newProfile], { onConflict: 'id' })
+                .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level');
+
+              if (createError) {
+                console.error('Error creating user profile:', createError);
+                // Create a minimal profile for the session
+                const fallbackProfile = {
+                  id: user.id,
+                  email: user.email,
+                  full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+                  target_language: 'English',
+                  native_language: 'Unknown',
+                  learning_level: 'beginner',
+                  assessment_completed: false
+                };
+                setUserProfile(fallbackProfile);
+                console.log('Using fallback profile for session');
+              } else {
+                const createdProfile = Array.isArray(createdProfileRows) ? createdProfileRows[0] : createdProfileRows;
+                setUserProfile(createdProfile);
+              }
+            } else {
+              // Function succeeded, now fetch the created profile
+              const { data: fetchedRows, error: fetchError } = await supabaseService.client
+                .from('user_profiles')
+                .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
+                .eq('id', user.id)
+                .limit(1);
+
+              if (fetchError) {
+                console.error('Error fetching created profile:', fetchError);
+                setError('Profile created but failed to load');
+              } else {
+                const fetchedProfile = Array.isArray(fetchedRows) && fetchedRows.length > 0 ? fetchedRows[0] : null;
+                if (fetchedProfile) setUserProfile(fetchedProfile);
+              }
             }
-          } else {
-            console.error('Error fetching user profile:', error);
-            setError('Failed to load user profile');
+          } catch (err) {
+            console.error('Error in profile creation process:', err);
+            // Create a minimal profile for the session
+            const fallbackProfile = {
+              id: user.id,
+              email: user.email,
+              full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+              target_language: 'English',
+              native_language: 'Unknown',
+              learning_level: 'beginner',
+              assessment_completed: false
+            };
+            setUserProfile(fallbackProfile);
+            console.log('Using fallback profile due to creation error');
           }
-        } else {
-          setUserProfile(data);
         }
       } catch (err) {
         console.error('Error:', err);

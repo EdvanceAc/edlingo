@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin Dashboard PDF Highlights</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="env.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #007cba; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #005a8b; }
+        .step { margin: 20px 0; padding: 15px; border-left: 4px solid #007cba; background: white; }
+        .step h3 { margin-top: 0; color: #007cba; }
+        
+        /* Copy exact styles from admin dashboard for PDF highlights */
+        .pdf-highlights { margin-top: 16px; }
+        .pdf-highlights-table { 
+            min-width: 100%; 
+            font-size: 14px; 
+            border-collapse: collapse;
+            text-align: left;
+        }
+        .pdf-highlights-table th, .pdf-highlights-table td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        .pdf-highlights-table th { background: #f9fafb; font-weight: 500; }
+        .pdf-highlights-table input { 
+            margin: 2px; 
+            padding: 5px; 
+            border: 1px solid #ccc; 
+            border-radius: 3px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 12px;
+        }
+        .overflow-x-auto { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 5px; }
+        
+        .hl-word { width: 10rem; }
+        .hl-synonyms { width: 12rem; }
+        .hl-page, .hl-x, .hl-y, .hl-w, .hl-h { width: 4rem; }
+        
+        .bg-green-600 { background-color: #059669; }
+        .bg-green-600:hover { background-color: #047857; }
+        .bg-red-600 { background-color: #dc2626; }
+        .bg-red-600:hover { background-color: #b91c1c; }
+        .bg-gray-100 { background-color: #f3f4f6; }
+        .text-white { color: white; }
+        .px-2 { padding-left: 8px; padding-right: 8px; }
+        .py-1 { padding-top: 4px; padding-bottom: 4px; }
+        .py-2 { padding-top: 8px; padding-bottom: 8px; }
+        .rounded { border-radius: 4px; }
+        .text-xs { font-size: 12px; }
+        .text-sm { font-size: 14px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .mb-2 { margin-bottom: 8px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-4 { margin-top: 16px; }
+        .text-gray-500 { color: #6b7280; }
+        .text-gray-800 { color: #1f2937; }
+        .font-medium { font-weight: 500; }
+        .block { display: block; }
+        .border { border: 1px solid #d1d5db; }
+        .border-gray-200 { border-color: #e5e7eb; }
+        .hidden { display: none; }
+        .min-w-full { min-width: 100%; }
+        .bg-gray-50 { background-color: #f9fafb; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Admin Dashboard PDF Highlights Test</h1>
+    <p>This test simulates the exact workflow of editing a course in the admin dashboard and verifying that PDF highlights are fetched and displayed.</p>
+    
+    <div class="test-section">
+        <h2>Test Overview</h2>
+        <p><strong>Scenario:</strong> Edit the "Elementry" course and verify that existing PDF highlights are automatically loaded into the highlights table.</p>
+        <p><strong>Expected:</strong> The "Banan" → "Christ Follower" highlight should appear in the table automatically.</p>
+        
+        <button onclick="runFullWorkflowTest()">🚀 Run Complete Workflow Test</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 1: Database Connection & Course Verification</h3>
+        <button onclick="testDatabaseConnection()">Test Database Connection</button>
+        <button onclick="findElementryCourse()">Find Elementry Course</button>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Simulate Course Editing</h3>
+        <button onclick="simulateCourseEdit()">Simulate Edit Course</button>
+        <button onclick="loadLessonMaterials()">Load Lesson Materials</button>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: PDF Highlights Table</h3>
+        <p>This simulates the exact PDF highlights table from the admin dashboard:</p>
+        
+        <!-- Exact replica of PDF highlights table from admin dashboard -->
+        <div class="mt-4 pdf-highlights">
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-800">PDF Highlights</label>
+                <button type="button" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700" onclick="addPdfHighlightRow(this)">Add Row</button>
+            </div>
+            <div class="overflow-x-auto border border-gray-200 rounded">
+                <table class="min-w-full text-sm pdf-highlights-table">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-2 py-2 text-left">Word/Phrase</th>
+                            <th class="px-2 py-2 text-left">Synonyms (comma)</th>
+                            <th class="px-2 py-2 text-left">Page</th>
+                            <th class="px-2 py-2 text-left">X</th>
+                            <th class="px-2 py-2 text-left">Y</th>
+                            <th class="px-2 py-2 text-left">W</th>
+                            <th class="px-2 py-2 text-left">H</th>
+                            <th class="px-2 py-2 text-left">Image</th>
+                            <th class="px-2 py-2 text-left">Audio</th>
+                            <th class="px-2 py-2 text-left">Video</th>
+                            <th class="px-2 py-2 text-left">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">Note: X,Y,W,H are normalized (0–1) relative to the PDF page.</p>
+        </div>
+        
+        <button onclick="testHighlightsPopulation()">🎯 Test Highlights Population</button>
+        <button onclick="clearHighlightsTable()">Clear Table</button>
+        <button onclick="showTableContents()">Show Current Table Contents</button>
+    </div>
+
+    <script>
+        // Initialize Supabase with same config as admin dashboard
+        const supabaseUrl = window.ENV.SUPABASE_URL;
+        const supabaseAnonKey = window.ENV.SUPABASE_ANON_KEY;
+        const supabaseServiceKey = window.ENV.SUPABASE_SERVICE_ROLE_KEY;
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const supabaseAdmin = window.supabase.createClient(supabaseUrl, supabaseServiceKey);
+        
+        // Test data from our previous tests
+        const ELEMENTRY_COURSE_ID = '56d725cc-ca41-453e-8909-7c760f2c5851';
+        const SEEDED_BOOK_PDF_URL = 'https://example.com/sample.pdf';
+        
+        console.log('🔧 Admin Dashboard Test initialized');
+
+        function logResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+            console.log(message);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Copy exact functions from admin-dashboard.html
+        function addPdfHighlightRow(button) {
+            const container = button.closest('.pdf-highlights');
+            const tbody = container.querySelector('.pdf-highlights-table tbody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-2 py-1"><input type="text" class="hl-word w-40 px-2 py-1 border rounded" placeholder="word"></td>
+                <td class="px-2 py-1"><input type="text" class="hl-synonyms w-48 px-2 py-1 border rounded" placeholder="fast, quick"></td>
+                <td class="px-2 py-1"><input type="number" class="hl-page w-16 px-2 py-1 border rounded" min="1" value="1"></td>
+                <td class="px-2 py-1"><input type="number" step="0.001" class="hl-x w-16 px-2 py-1 border rounded" min="0" max="1" value="0"></td>
+                <td class="px-2 py-1"><input type="number" step="0.001" class="hl-y w-16 px-2 py-1 border rounded" min="0" max="1" value="0"></td>
+                <td class="px-2 py-1"><input type="number" step="0.001" class="hl-w w-16 px-2 py-1 border rounded" min="0" max="1" value="0.1"></td>
+                <td class="px-2 py-1"><input type="number" step="0.001" class="hl-h w-16 px-2 py-1 border rounded" min="0" max="1" value="0.03"></td>
+                <td class="px-2 py-1">
+                  <input type="file" accept="image/*" class="hl-img-file hidden">
+                  <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs">Upload</button>
+                  <input type="hidden" class="hl-image-url" value="">
+                </td>
+                <td class="px-2 py-1">
+                  <input type="file" accept="audio/*" class="hl-audio-file hidden">
+                  <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs">Upload</button>
+                  <input type="hidden" class="hl-audio-url" value="">
+                </td>
+                <td class="px-2 py-1">
+                  <input type="file" accept="video/*" class="hl-video-file hidden">
+                  <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs">Upload</button>
+                  <input type="hidden" class="hl-video-url" value="">
+                </td>
+                <td class="px-2 py-1">
+                  <button type="button" class="px-2 py-1 bg-red-600 text-white rounded text-xs" onclick="this.closest('tr').remove()">Remove</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function appendPdfHighlightRowWithValues(contentItem, h = {}) {
+            try {
+                const tbody = contentItem?.querySelector('.pdf-highlights-table tbody');
+                if (!tbody) {
+                    logResult('❌ Could not find table tbody', 'error');
+                    return;
+                }
+                
+                const row = document.createElement('tr');
+                const rect = h.rect || {};
+                const refs = h.refs || {};
+                const imageUrl = Array.isArray(refs.images) && refs.images.length ? refs.images[0] : '';
+                const audioUrl = Array.isArray(refs.audio) && refs.audio.length ? refs.audio[0] : '';
+                const videoUrl = Array.isArray(refs.video) && refs.video.length ? refs.video[0] : '';
+                
+                row.innerHTML = `
+                    <td class="px-2 py-1"><input type="text" class="hl-word w-40 px-2 py-1 border rounded" placeholder="word" value="${(h.word || '').replace(/"/g,'&quot;')}"></td>
+                    <td class="px-2 py-1"><input type="text" class="hl-synonyms w-48 px-2 py-1 border rounded" placeholder="fast, quick" value="${Array.isArray(h.synonyms) ? h.synonyms.join(', ') : (h.synonyms || '')}"></td>
+                    <td class="px-2 py-1"><input type="number" class="hl-page w-16 px-2 py-1 border rounded" min="1" value="${Number(h.page||1)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-x w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.x||0)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-y w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.y||0)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-w w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.w||0.1)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-h w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.h||0.03)}"></td>
+                    <td class="px-2 py-1">
+                      <input type="file" accept="image/*" class="hl-img-file hidden">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs">Upload</button>
+                      <input type="hidden" class="hl-image-url" value="${imageUrl}">
+                    </td>
+                    <td class="px-2 py-1">
+                      <input type="file" accept="audio/*" class="hl-audio-file hidden">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs">Upload</button>
+                      <input type="hidden" class="hl-audio-url" value="${audioUrl}">
+                    </td>
+                    <td class="px-2 py-1">
+                      <input type="file" accept="video/*" class="hl-video-file hidden">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs">Upload</button>
+                      <input type="hidden" class="hl-video-url" value="${videoUrl}">
+                    </td>
+                    <td class="px-2 py-1">
+                      <button type="button" class="px-2 py-1 bg-red-600 text-white rounded text-xs" onclick="this.closest('tr').remove()">Remove</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                
+                logResult(`✅ Added highlight row: "${h.word}" → [${Array.isArray(h.synonyms) ? h.synonyms.join(', ') : h.synonyms}]`, 'success');
+            } catch (e) {
+                logResult(`❌ Error adding highlight row: ${e.message}`, 'error');
+            }
+        }
+
+        // Copy exact fetchPdfHighlightsFromDatabase function from admin-dashboard.html
+        async function fetchPdfHighlightsFromDatabase(courseId, pdfUrl) {
+            try {
+                const client = supabaseAdmin || supabase;
+                if (!client?.from) {
+                    logResult('❌ No Supabase client available', 'error');
+                    return [];
+                }
+
+                logResult(`📡 Fetching highlights for course: ${courseId}, PDF: ${pdfUrl}`);
+
+                // First, find the book for this course and PDF URL
+                const { data: books, error: booksError } = await client
+                    .from('books')
+                    .select('id')
+                    .eq('course_id', courseId)
+                    .eq('pdf_url', pdfUrl)
+                    .limit(1);
+
+                if (booksError) {
+                    logResult(`❌ Error fetching books: ${booksError.message}`, 'error');
+                    return [];
+                }
+
+                if (!books || books.length === 0) {
+                    logResult('📭 No book found for this PDF', 'warning');
+                    return [];
+                }
+
+                const bookId = books[0].id;
+                logResult(`✅ Found book ID: ${bookId}`, 'success');
+
+                // Fetch highlights for this book
+                const { data: highlights, error: highlightsError } = await client
+                    .from('word_highlights')
+                    .select('id, word, synonyms, page_number, position')
+                    .eq('book_id', bookId)
+                    .order('page_number', { ascending: true });
+
+                if (highlightsError) {
+                    logResult(`❌ Error fetching highlights: ${highlightsError.message}`, 'error');
+                    return [];
+                }
+
+                if (!highlights || highlights.length === 0) {
+                    logResult('📭 No highlights found for this book', 'warning');
+                    return [];
+                }
+
+                logResult(`✅ Found ${highlights.length} highlights in database`, 'success');
+
+                // Convert database format to UI format
+                const formattedHighlights = highlights.map(h => {
+                    const position = h.position || {};
+                    const rect = position.rect || {};
+                    const refs = position.refs || {};
+                    
+                    return {
+                        id: h.id,
+                        word: h.word || '',
+                        synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                        page: h.page_number || 1,
+                        rect: {
+                            x: rect.x || 0,
+                            y: rect.y || 0,
+                            w: rect.w || rect.width || 0.1,
+                            h: rect.h || rect.height || 0.03
+                        },
+                        refs: {
+                            images: Array.isArray(refs.images) ? refs.images : [],
+                            audio: Array.isArray(refs.audio) ? refs.audio : [],
+                            video: Array.isArray(refs.video) ? refs.video : []
+                        }
+                    };
+                });
+
+                return formattedHighlights;
+
+            } catch (e) {
+                logResult(`❌ fetchPdfHighlightsFromDatabase error: ${e.message}`, 'error');
+                return [];
+            }
+        }
+
+        // Test functions
+        async function testDatabaseConnection() {
+            logResult('🔌 Testing database connection...');
+            
+            try {
+                const { data, error } = await supabaseAdmin.from('courses').select('count').limit(1);
+                if (error) {
+                    logResult(`❌ Database connection failed: ${error.message}`, 'error');
+                } else {
+                    logResult('✅ Database connection successful', 'success');
+                }
+            } catch (e) {
+                logResult(`❌ Database connection error: ${e.message}`, 'error');
+            }
+        }
+
+        async function findElementryCourse() {
+            logResult('🔍 Finding Elementry course...');
+            
+            try {
+                const { data: course, error } = await supabaseAdmin
+                    .from('courses')
+                    .select('id, title')
+                    .eq('id', ELEMENTRY_COURSE_ID)
+                    .single();
+                
+                if (error) {
+                    logResult(`❌ Error finding course: ${error.message}`, 'error');
+                } else {
+                    logResult(`✅ Found course: "${course.title}" (${course.id})`, 'success');
+                }
+            } catch (e) {
+                logResult(`❌ Course lookup error: ${e.message}`, 'error');
+            }
+        }
+
+        async function simulateCourseEdit() {
+            logResult('📝 Simulating course edit workflow...');
+            
+            try {
+                // This simulates what happens when editCourse() is called
+                logResult('1️⃣ Loading course data...');
+                const { data: course, error } = await supabaseAdmin
+                    .from('courses')
+                    .select('*')
+                    .eq('id', ELEMENTRY_COURSE_ID)
+                    .single();
+                
+                if (error) {
+                    logResult(`❌ Error loading course: ${error.message}`, 'error');
+                    return;
+                }
+                
+                logResult(`✅ Course loaded: ${course.title}`, 'success');
+                
+                // This simulates loadLessonContentFromDatabase being called
+                logResult('2️⃣ Simulating lesson content loading...');
+                await simulateLoadLessonContent();
+                
+            } catch (e) {
+                logResult(`❌ Course edit simulation error: ${e.message}`, 'error');
+            }
+        }
+
+        async function simulateLoadLessonContent() {
+            logResult('📚 Simulating loadLessonContentFromDatabase...');
+            
+            // This simulates finding books for the course
+            const { data: books, error } = await supabaseAdmin
+                .from('books')
+                .select('*')
+                .eq('course_id', ELEMENTRY_COURSE_ID);
+            
+            if (error) {
+                logResult(`❌ Error loading books: ${error.message}`, 'error');
+                return;
+            }
+            
+            if (books && books.length > 0) {
+                logResult(`✅ Found ${books.length} book(s) for course`, 'success');
+                books.forEach(book => {
+                    logResult(`   📖 Book: "${book.title}" (${book.pdf_url})`);
+                });
+            } else {
+                logResult('📭 No books found for course', 'warning');
+            }
+        }
+
+        async function testHighlightsPopulation() {
+            logResult('🎯 Testing PDF highlights population...');
+            
+            try {
+                // Clear existing table
+                clearHighlightsTable();
+                
+                // Fetch highlights from database
+                const highlights = await fetchPdfHighlightsFromDatabase(ELEMENTRY_COURSE_ID, SEEDED_BOOK_PDF_URL);
+                
+                if (highlights.length === 0) {
+                    logResult('📭 No highlights found to populate', 'warning');
+                    return;
+                }
+                
+                logResult(`📥 Populating table with ${highlights.length} highlights...`);
+                
+                // Get the PDF highlights container
+                const contentItem = document.querySelector('.pdf-highlights');
+                
+                // Populate each highlight (this simulates what happens in admin dashboard)
+                highlights.forEach(highlight => {
+                    appendPdfHighlightRowWithValues(contentItem, highlight);
+                });
+                
+                logResult(`🎉 Successfully populated PDF highlights table!`, 'success');
+                logResult(`👆 Check the table above to see the populated data.`);
+                
+            } catch (e) {
+                logResult(`❌ Highlights population error: ${e.message}`, 'error');
+            }
+        }
+
+        function clearHighlightsTable() {
+            const tbody = document.querySelector('.pdf-highlights-table tbody');
+            if (tbody) {
+                tbody.innerHTML = '';
+                logResult('🧹 Cleared highlights table', 'success');
+            }
+        }
+
+        function showTableContents() {
+            const rows = document.querySelectorAll('.pdf-highlights-table tbody tr');
+            
+            if (rows.length === 0) {
+                logResult('📋 Table is empty', 'warning');
+                return;
+            }
+            
+            logResult(`📋 Current table contains ${rows.length} row(s):`);
+            rows.forEach((row, index) => {
+                const word = row.querySelector('.hl-word')?.value || '';
+                const synonyms = row.querySelector('.hl-synonyms')?.value || '';
+                const page = row.querySelector('.hl-page')?.value || '';
+                logResult(`   ${index + 1}. "${word}" → [${synonyms}] (Page ${page})`);
+            });
+        }
+
+        async function runFullWorkflowTest() {
+            logResult('🚀 Starting complete admin dashboard workflow test...');
+            logResult('='.repeat(60));
+            
+            // Step 1: Test database connection
+            await testDatabaseConnection();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Step 2: Find course
+            await findElementryCourse();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Step 3: Simulate course edit
+            await simulateCourseEdit();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Step 4: Test highlights population
+            await testHighlightsPopulation();
+            
+            logResult('='.repeat(60));
+            logResult('🏁 Complete workflow test finished!', 'success');
+            logResult('🔍 The table above should now show the "Banan" → "Christ Follower" highlight');
+        }
+    </script>
+</body>
+</html>

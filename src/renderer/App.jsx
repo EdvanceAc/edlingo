@@ -27,7 +27,7 @@ import Courses from './pages/Courses';
 import SupabaseGeminiTest from './components/SupabaseGeminiTest';
 
 // Course Components
-import LessonsSection from '../components/Course/LessonsSection';
+import CourseDetailsPage from '../components/Course/CourseDetailsPage';
 
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -341,13 +341,13 @@ function App() {
                         element={
                           <ProtectedRoute>
                             <motion.div
-                              key="course-lessons"
+                              key="course-details"
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: -20 }}
                               transition={{ duration: 0.3 }}
                             >
-                              <LessonsSection />
+                              <CourseDetailsPage />
                             </motion.div>
                           </ProtectedRoute>
                         } 

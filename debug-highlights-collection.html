@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug PDF Highlights Collection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f5f5f5; }
+        input { margin: 2px; padding: 5px; width: 100%; box-sizing: border-box; }
+        button { margin: 5px; padding: 8px 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Debug PDF Highlights Collection</h1>
+    
+    <div class="test-section">
+        <h2>Test Highlights Collection</h2>
+        <p>Add some words and synonyms to test the collection process:</p>
+        
+        <!-- Simulate the PDF highlights table from admin dashboard -->
+        <div class="mt-4 pdf-highlights">
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-800">PDF Highlights</label>
+                <button type="button" onclick="addPdfHighlightRow(this)">Add Row</button>
+            </div>
+            <div class="overflow-x-auto border border-gray-200 rounded">
+                <table class="min-w-full text-sm pdf-highlights-table">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-2 py-2 text-left">Word/Phrase</th>
+                            <th class="px-2 py-2 text-left">Synonyms (comma)</th>
+                            <th class="px-2 py-2 text-left">Page</th>
+                            <th class="px-2 py-2 text-left">X</th>
+                            <th class="px-2 py-2 text-left">Y</th>
+                            <th class="px-2 py-2 text-left">W</th>
+                            <th class="px-2 py-2 text-left">H</th>
+                            <th class="px-2 py-2 text-left">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="text" class="hl-word" placeholder="word" value="example"></td>
+                            <td><input type="text" class="hl-synonyms" placeholder="fast, quick" value="sample, instance"></td>
+                            <td><input type="number" class="hl-page" min="1" value="1"></td>
+                            <td><input type="number" step="0.001" class="hl-x" min="0" max="1" value="0.1"></td>
+                            <td><input type="number" step="0.001" class="hl-y" min="0" max="1" value="0.2"></td>
+                            <td><input type="number" step="0.001" class="hl-w" min="0" max="1" value="0.15"></td>
+                            <td><input type="number" step="0.001" class="hl-h" min="0" max="1" value="0.05"></td>
+                            <td><button type="button" onclick="this.closest('tr').remove()">Remove</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <button onclick="testCollectHighlights()">Test Collect Highlights</button>
+        <button onclick="testDatabaseConnection()">Test Database Connection</button>
+        <button onclick="testPersistHighlights()">Test Persist to Database</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Initialize Supabase (using the same configuration as env.js)
+        const supabaseUrl = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        function addPdfHighlightRow(button) {
+            const container = button.closest('.pdf-highlights');
+            const tbody = container.querySelector('.pdf-highlights-table tbody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="hl-word" placeholder="word"></td>
+                <td><input type="text" class="hl-synonyms" placeholder="fast, quick"></td>
+                <td><input type="number" class="hl-page" min="1" value="1"></td>
+                <td><input type="number" step="0.001" class="hl-x" min="0" max="1" value="0"></td>
+                <td><input type="number" step="0.001" class="hl-y" min="0" max="1" value="0"></td>
+                <td><input type="number" step="0.001" class="hl-w" min="0" max="1" value="0.1"></td>
+                <td><input type="number" step="0.001" class="hl-h" min="0" max="1" value="0.03"></td>
+                <td><button type="button" onclick="this.closest('tr').remove()">Remove</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function collectPdfHighlightsFromContentItem(contentItem) {
+            try {
+                const rows = contentItem?.querySelectorAll('.pdf-highlights-table tbody tr') || [];
+                const out = [];
+                console.log('Found rows:', rows.length);
+                
+                rows.forEach((tr, idx) => {
+                    const word = tr.querySelector('.hl-word')?.value?.trim();
+                    console.log(`Row ${idx}: word = "${word}"`);
+                    
+                    if (!word) {
+                        console.log(`Skipping row ${idx} - no word`);
+                        return;
+                    }
+                    
+                    const synonymsRaw = tr.querySelector('.hl-synonyms')?.value || '';
+                    const synonyms = synonymsRaw.split(',').map(s => s.trim()).filter(Boolean);
+                    const page = Number(tr.querySelector('.hl-page')?.value || 1);
+                    const x = Number(tr.querySelector('.hl-x')?.value || 0);
+                    const y = Number(tr.querySelector('.hl-y')?.value || 0);
+                    const w = Number(tr.querySelector('.hl-w')?.value || 0.1);
+                    const h = Number(tr.querySelector('.hl-h')?.value || 0.03);
+                    
+                    const id = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `hl_${Date.now()}_${idx}`;
+                    
+                    const highlight = {
+                        id, 
+                        word, 
+                        synonyms, 
+                        page, 
+                        rect: { x, y, w, h }, 
+                        refs: { images: [], audio: [], video: [] }
+                    };
+                    
+                    console.log(`Row ${idx} collected:`, highlight);
+                    out.push(highlight);
+                });
+                
+                console.log('Total highlights collected:', out.length);
+                return out;
+            } catch (e) {
+                console.warn('collectPdfHighlightsFromContentItem error:', e);
+                return [];
+            }
+        }
+
+        function showResult(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(div);
+            console.log(message);
+        }
+
+        function testCollectHighlights() {
+            const container = document.querySelector('.pdf-highlights');
+            const highlights = collectPdfHighlightsFromContentItem(container);
+            
+            showResult(`Collected ${highlights.length} highlights: ${JSON.stringify(highlights, null, 2)}`);
+        }
+
+        async function testDatabaseConnection() {
+            try {
+                // Test basic connection
+                const { data, error } = await supabase.from('courses').select('count').limit(1);
+                if (error) {
+                    showResult(`Database connection error: ${error.message}`, true);
+                } else {
+                    showResult('Database connection successful!');
+                    
+                    // Test books table access
+                    const { data: booksData, error: booksError } = await supabase.from('books').select('count').limit(1);
+                    if (booksError) {
+                        showResult(`Books table error: ${booksError.message}`, true);
+                    } else {
+                        showResult('Books table accessible!');
+                    }
+                    
+                    // Test word_highlights table access
+                    const { data: hlData, error: hlError } = await supabase.from('word_highlights').select('count').limit(1);
+                    if (hlError) {
+                        showResult(`Word highlights table error: ${hlError.message}`, true);
+                    } else {
+                        showResult('Word highlights table accessible!');
+                    }
+                }
+            } catch (e) {
+                showResult(`Connection test failed: ${e.message}`, true);
+            }
+        }
+
+        async function testPersistHighlights() {
+            try {
+                const container = document.querySelector('.pdf-highlights');
+                const highlights = collectPdfHighlightsFromContentItem(container);
+                
+                if (highlights.length === 0) {
+                    showResult('No highlights to persist!', true);
+                    return;
+                }
+                
+                showResult(`Attempting to persist ${highlights.length} highlights...`);
+                
+                // Create a test course if it doesn't exist
+                let courseId = '123e4567-e89b-12d3-a456-426614174000'; // Test UUID
+                const { data: courseData, error: courseError } = await supabase
+                    .from('courses')
+                    .select('id')
+                    .eq('id', courseId)
+                    .single();
+                
+                if (courseError && courseError.code === 'PGRST116') {
+                    // Course doesn't exist, create it
+                    const { data: newCourse, error: createError } = await supabase
+                        .from('courses')
+                        .insert({
+                            id: courseId,
+                            title: 'Test Course for Highlights',
+                            description: 'Test course',
+                            language: 'en',
+                            level: 'beginner'
+                        })
+                        .select('id')
+                        .single();
+                    
+                    if (createError) {
+                        showResult(`Failed to create test course: ${createError.message}`, true);
+                        return;
+                    }
+                    showResult('Created test course');
+                }
+                
+                // Simulate lesson data structure
+                const lessonsData = [{
+                    title: 'Test Lesson',
+                    materials: [{
+                        type: 'pdf',
+                        file_url: 'https://example.com/test.pdf',
+                        metadata: {
+                            highlights: highlights
+                        }
+                    }]
+                }];
+                
+                // Call the persistence function
+                await persistPdfHighlightsToDb(courseId, lessonsData);
+                showResult('Highlights persistence completed - check console for detailed logs');
+                
+            } catch (e) {
+                showResult(`Persist test failed: ${e.message}`, true);
+            }
+        }
+
+        // Copy the persistPdfHighlightsToDb function from admin dashboard
+        async function persistPdfHighlightsToDb(courseId, lessonsData) {
+            try {
+                if (!Array.isArray(lessonsData) || lessonsData.length === 0) {
+                    console.log('No lessons data provided');
+                    return;
+                }
+                
+                const client = supabase;
+                if (!client?.from) {
+                    console.error('No Supabase client available');
+                    return;
+                }
+
+                console.log('Starting persistPdfHighlightsToDb with:', { courseId, lessonsData });
+
+                for (const lesson of lessonsData) {
+                    const materials = Array.isArray(lesson.materials) ? lesson.materials : [];
+                    console.log('Processing lesson materials:', materials);
+                    
+                    for (const m of materials) {
+                        console.log('Processing material:', m);
+                        
+                        if ((m.type || '').toLowerCase() !== 'pdf') {
+                            console.log('Skipping non-PDF material');
+                            continue;
+                        }
+                        
+                        const meta = m.metadata || {};
+                        const hs = Array.isArray(meta.highlights) ? meta.highlights : [];
+                        console.log('Found highlights:', hs);
+                        
+                        if (!hs.length) {
+                            console.log('No highlights to process');
+                            continue;
+                        }
+
+                        // Ensure a book row exists for this PDF
+                        let bookId = null;
+                        const pdfUrl = m.file_url || m.url || null;
+                        console.log('PDF URL:', pdfUrl);
+                        
+                        try {
+                            const { data: existingBooks } = await client
+                                .from('books')
+                                .select('id,pdf_url')
+                                .eq('course_id', courseId)
+                                .eq('pdf_url', pdfUrl)
+                                .limit(1);
+                            
+                            console.log('Existing books query result:', existingBooks);
+                            
+                            const existing = Array.isArray(existingBooks) ? existingBooks[0] : null;
+                            if (existing?.id) {
+                                bookId = existing.id;
+                                console.log('Found existing book:', bookId);
+                            } else {
+                                console.log('Creating new book entry...');
+                                const { data: ins, error: insErr } = await client
+                                    .from('books')
+                                    .insert({ 
+                                        course_id: courseId, 
+                                        title: lesson.title || 'Lesson PDF', 
+                                        pdf_url: pdfUrl 
+                                    })
+                                    .select('id')
+                                    .single();
+                                
+                                console.log('Book insert result:', { ins, insErr });
+                                
+                                if (!insErr && ins?.id) {
+                                    bookId = ins.id;
+                                    console.log('Created book with ID:', bookId);
+                                } else {
+                                    console.error('Failed to create book:', insErr);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('books upsert failed (non-fatal):', e?.message || e);
+                        }
+
+                        if (!bookId) {
+                            console.warn('Could not create or fetch books row; skipping structured highlight rows');
+                            continue;
+                        }
+
+                        // Insert highlights as rows in word_highlights
+                        console.log('Inserting highlights for book ID:', bookId);
+                        for (const h of hs) {
+                            try {
+                                const payload = {
+                                    book_id: bookId,
+                                    word: h.word || '',
+                                    synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                                    page_number: Number(h.page) || 1,
+                                    position: { rect: h.rect || null, refs: h.refs || null }
+                                };
+                                
+                                console.log('Inserting highlight payload:', payload);
+                                
+                                const { error: hlErr } = await client
+                                    .from('word_highlights')
+                                    .insert(payload);
+                                
+                                if (hlErr) {
+                                    console.warn('word_highlights insert warning:', hlErr.message || hlErr);
+                                    showResult(`Highlight insert warning: ${hlErr.message}`, true);
+                                } else {
+                                    console.log('Successfully inserted highlight for word:', h.word);
+                                    showResult(`✅ Inserted highlight for word: ${h.word}`);
+                                }
+                            } catch (e) {
+                                console.warn('word_highlights insert failed (non-fatal):', e?.message || e);
+                                showResult(`Highlight insert failed: ${e.message}`, true);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('persistPdfHighlightsToDb failed (non-fatal):', e?.message || e);
+                showResult(`persistPdfHighlightsToDb failed: ${e.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>

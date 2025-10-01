@@ -9,6 +9,20 @@ const StreamingChat = ({ userLevel = 'beginner', focusArea = 'conversation' }) =
   const messagesEndRef = useRef(null);
   const abortControllerRef = useRef(null);
 
+  // Mirror message content to any external elements that opt-in
+  const syncToExternalDisplays = (content) => {
+    try {
+      const nodes = document.querySelectorAll('[data-message-display]');
+      nodes.forEach((el) => {
+        // Prefer textContent to avoid injecting HTML
+        el.textContent = content ?? '';
+      });
+    } catch (err) {
+      // Ignore errors if document is not available (SSR or non-DOM contexts)
+      console.warn('External display sync skipped:', err?.message || err);
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -35,6 +49,9 @@ const StreamingChat = ({ userLevel = 'beginner', focusArea = 'conversation' }) =
     setIsStreaming(true);
     setStreamingResponse('');
 
+    // Immediately mirror the user's message to external displays
+    syncToExternalDisplays(userMessage);
+
     try {
       // Send streaming message
       const result = await supabaseGeminiService.sendMessage(userMessage, {
@@ -42,6 +59,8 @@ const StreamingChat = ({ userLevel = 'beginner', focusArea = 'conversation' }) =
         userLevel,
         focusArea
       });
+      
+      console.log('Streaming result:', result);
 
       if (result.success && result.stream) {
         let fullResponse = '';
@@ -56,6 +75,8 @@ const StreamingChat = ({ userLevel = 'beginner', focusArea = 'conversation' }) =
             // Update immediately for first few chunks, then batch for performance
             if (chunkCount <= 3 || chunkCount % 2 === 0) {
               setStreamingResponse(fullResponse);
+              // Mirror partial assistant response while streaming
+              syncToExternalDisplays(fullResponse);
             }
           }
           
@@ -71,20 +92,27 @@ const StreamingChat = ({ userLevel = 'beginner', focusArea = 'conversation' }) =
             
             setMessages(prev => [...prev, aiMessage]);
             setStreamingResponse('');
+            
+            // Mirror final assistant response
+            syncToExternalDisplays(fullResponse);
             break;
           }
         }
       } else {
         // Fallback to non-streaming response
+        console.log('Fallback result:', result);
         const aiMessage = {
           id: Date.now() + 1,
           type: 'assistant',
-          content: result.message || 'Sorry, I encountered an error.',
+          content: result.response || result.message || 'Sorry, I encountered an error.',
           timestamp: new Date(),
           provider: result.provider || 'fallback'
         };
+        console.log('AI message content:', aiMessage.content);
         
         setMessages(prev => [...prev, aiMessage]);
+        // Mirror fallback assistant response
+        syncToExternalDisplays(aiMessage.content);
       }
     } catch (error) {
       console.error('Streaming chat error:', error);
@@ -100,6 +128,9 @@ const StreamingChat = ({ userLevel = 'beginner', focusArea = 'conversation' }) =
       
       setMessages(prev => [...prev, errorMessage]);
       setStreamingResponse('');
+      
+      // Mirror error message
+      syncToExternalDisplays(errorMessage.content);
     } finally {
       setIsStreaming(false);
     }
@@ -116,6 +147,8 @@ const StreamingChat = ({ userLevel = 'beginner', focusArea = 'conversation' }) =
     setMessages([]);
     setStreamingResponse('');
     supabaseGeminiService.startNewSession();
+    // Clear external displays
+    syncToExternalDisplays('');
   };
 
   return (

@@ -5,7 +5,8 @@ class SupabaseStorageService {
     this.buckets = {
       courses: 'course-materials',
       assignments: 'assignment-materials',
-      shared: 'shared-resources'
+      shared: 'shared-resources',
+      answers: 'lesson-answers'
     };
   }
 
@@ -163,7 +164,19 @@ class SupabaseStorageService {
 
       const { data, error } = await supabase.storage
         .from(bucketName)
-        .upload(fileName, file, uploadOptions);
+const { contentType, ...meta } = metadata || {};
+const uploadOptions = {
+  cacheControl: '3600',
+  upsert: false,
+  // مهم: مطمئن شو یه MIME درست ست می‌شه تا لود اول از کراس-اوریجین گیر نکنه
+  contentType: contentType || file.type || 'application/octet-stream',
+  metadata: meta,
+};
+
+const { data, error } = await supabase.storage
+  .from(bucketName)
+  .upload(fileName, file, uploadOptions);
+
 
       if (error) {
         throw new Error(`Upload failed: ${error.message}`);
@@ -236,6 +249,19 @@ class SupabaseStorageService {
   async uploadCourseFiles(files, courseId = null, subcategory = null) {
     const category = subcategory || 'general';
     return await this.uploadFiles(files, this.buckets.courses, category);
+  }
+
+  /**
+   * Upload lesson answer attachments
+   * @param {File[]} files 
+   * @param {string} lessonId 
+   * @param {string} userId
+   * @returns {Promise<Object>}
+   */
+  async uploadAnswerFiles(files, lessonId, userId) {
+    const folder = `lesson_${lessonId}/${userId}`;
+    // Prepend folder into filename via category
+    return await this.uploadFiles(files, this.buckets.answers, folder);
   }
 
   /**

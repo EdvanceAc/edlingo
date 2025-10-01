@@ -18,7 +18,9 @@ import {
 import { useProgress } from '../providers/ProgressProvider';
 import { useToast } from '../hooks/use-toast';
 import { useAI } from '../providers/AIProvider';
-import modernGeminiLiveService from '../services/modernGeminiLiveService';
+import supabaseGeminiService from '../services/supabaseGeminiService';
+import ModernGeminiLiveService from '../services/modernGeminiLiveService';
+import { createClient } from '@supabase/supabase-js';
 
 const LiveConversation = () => {
   // Session state
@@ -46,6 +48,7 @@ const LiveConversation = () => {
     messagesExchanged: 0,
     wordsSpoken: 0
   });
+  const [sttWarning, setSttWarning] = useState(null);
 
   // Voice settings
   const [voiceSettings, setVoiceSettings] = useState({
@@ -61,10 +64,39 @@ const LiveConversation = () => {
   const mediaRecorderRef = useRef(null);
   const audioStreamRef = useRef(null);
   const sessionStartTime = useRef(null);
+  const liveServiceRef = useRef(null);
+  const userEndedRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
 
   const { addXP, level } = useProgress();
   const { toast } = useToast();
-  const { isGeminiAvailable } = useAI();
+  const { isGeminiAvailable, getApiKey } = useAI();
+
+  // Initialize live service
+  useEffect(() => {
+    if (!liveServiceRef.current) {
+      liveServiceRef.current = ModernGeminiLiveService;
+    }
+    // Hydrate UI state if a session is already active (e.g., StrictMode remounts)
+    const svc = liveServiceRef.current;
+    try {
+      if (svc && svc.isSessionActive && svc.isSessionActive()) {
+        setIsSessionActive(true);
+        setConnectionStatus('connected');
+        if (svc.getSessionId) setSessionId(svc.getSessionId());
+      }
+    } catch {}
+    // Gracefully end session on window unload (not during React StrictMode re-mounts)
+    const handleBeforeUnload = () => {
+      if (liveServiceRef.current && liveServiceRef.current.isSessionActive && liveServiceRef.current.isSessionActive()) {
+        liveServiceRef.current.endLiveSession();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
   // Duplicate handleLiveMessage removed
 
@@ -73,12 +105,120 @@ const LiveConversation = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Handle live message from Gemini (defined before effect to avoid TDZ)
+  const handleLiveMessage = useCallback(async (message) => {
+    if (message.type === 'text') {
+      if (message.isComplete) {
+        let shouldPlayAudio = false;
+        let audioDataToPlay = null;
+        
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          
+          // Check if we already have this exact message to prevent duplicates
+          const isDuplicate = newMessages.some(msg => 
+            msg.type === 'ai' && 
+            msg.content === message.content && 
+            !msg.isStreaming
+          );
+          
+          if (isDuplicate) {
+            console.log('🚫 Duplicate message detected, skipping');
+            return newMessages; // Don't add duplicate
+          }
+          
+          if (lastMessage && lastMessage.isStreaming) {
+            // Update existing streaming message
+            lastMessage.content = message.content;
+            lastMessage.isStreaming = false;
+            lastMessage.timestamp = new Date().toLocaleTimeString();
+            lastMessage.audioData = message.audioData; // Store audio data
+            audioDataToPlay = message.audioData;
+            shouldPlayAudio = true;
+          } else {
+            // Add new message
+            const newMessage = {
+              id: Date.now(),
+              type: 'ai',
+              content: message.content,
+              timestamp: new Date().toLocaleTimeString(),
+              isStreaming: false,
+              audioData: message.audioData
+            };
+            newMessages.push(newMessage);
+            audioDataToPlay = message.audioData;
+            shouldPlayAudio = true;
+          }
+          return newMessages;
+        });
+        
+        setIsAIResponding(false);
+        setIsStreaming(false);
+        setStreamingMessage('');
+        addXP(10, 'conversation');
+        
+        // Store AI message in database
+        if (sessionId && message.content) {
+          try {
+            await supabaseGeminiService.supabase
+              .from('live_conversation_messages')
+              .insert({
+                session_id: sessionId,
+                message_type: 'assistant',
+                content: message.content
+              });
+          } catch (dbError) {
+            console.warn('Failed to store AI message in database:', dbError);
+          }
+        }
+        
+        // Play TTS if speaker is enabled - prefer Zephyr audio over browser TTS
+        if (isSpeakerEnabled && message.content && shouldPlayAudio) {
+          const liveService = liveServiceRef.current;
+          
+          if (audioDataToPlay && liveService) {
+            console.log('🎙️ Playing Zephyr voice from message');
+            liveService.playZephyrAudio(audioDataToPlay);
+          } else {
+            console.log('🔊 Using browser TTS - no Zephyr audio available');
+            const utterance = new SpeechSynthesisUtterance(message.content);
+            window.speechSynthesis.speak(utterance);
+          }
+        }
+      } else {
+        setIsStreaming(true);
+        setStreamingMessage(message.content);
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage && lastMessage.isStreaming) {
+            lastMessage.content = message.content;
+          } else {
+            newMessages.push({
+              id: Date.now(),
+              type: 'ai',
+              content: message.content,
+              timestamp: new Date().toLocaleTimeString(),
+              isStreaming: true
+            });
+          }
+          return newMessages;
+        });
+      }
+    }
+  }, [addXP, isSpeakerEnabled, sessionId]);
+
   // Set up enhanced STT/TTS event listeners
   useEffect(() => {
+    const liveService = liveServiceRef.current;
+    if (!liveService) return;
+
     // STT Event Handlers
     const handleSTTStart = () => {
       console.log('STT started');
       setIsRecording(true);
+      setSttWarning(null);
     };
 
     const handleSTTInterim = (data) => {
@@ -86,7 +226,7 @@ const LiveConversation = () => {
       setCurrentMessage(data.transcript);
     };
 
-    const handleSTTFinal = (data) => {
+    const handleSTTFinal = async (data) => {
       console.log('STT final:', data.transcript);
       setCurrentMessage('');
       
@@ -104,6 +244,22 @@ const LiveConversation = () => {
         messagesExchanged: prev.messagesExchanged + 1,
         wordsSpoken: prev.wordsSpoken + data.transcript.split(' ').length
       }));
+      
+      // Store message in database
+      if (sessionId) {
+        try {
+          await supabaseGeminiService.supabase
+            .from('live_conversation_messages')
+            .insert({
+              session_id: sessionId,
+              message_type: 'user',
+              content: data.transcript,
+              transcript: data.transcript
+            });
+        } catch (dbError) {
+          console.warn('Failed to store message in database:', dbError);
+        }
+      }
     };
 
     const handleSTTEnd = () => {
@@ -112,13 +268,17 @@ const LiveConversation = () => {
     };
 
     const handleSTTError = (data) => {
-      console.error('STT error:', data.error);
+      const level = data?.severity || 'error';
+      const desc = data?.message || `Failed to recognize speech: ${data?.error || 'unknown'}`;
+      if (level === 'warning') {
+        console.warn('STT warning:', data?.error);
+        setSttWarning(desc);
+        toast({ title: 'Speech Warning', description: desc, variant: 'default' });
+        return; // do not flip recording state for warnings
+      }
+      console.error('STT error:', data?.error);
       setIsRecording(false);
-      toast({
-        title: "Speech Recognition Error",
-        description: `Failed to recognize speech: ${data.error}`,
-        variant: "destructive"
-      });
+      toast({ title: 'Speech Recognition Error', description: desc, variant: 'destructive' });
     };
 
     // TTS Event Handlers
@@ -146,22 +306,33 @@ const LiveConversation = () => {
 
     const handleLiveError = (error) => {
       console.error('Live session error:', error);
+      // Keep the session alive on transient errors; mark status as error but do not flip isSessionActive
       setConnectionStatus('error');
-      setIsSessionActive(false);
+      setIsAIResponding(false);
       setIsConnecting(false);
       toast({
-        title: "Session Error",
-        description: error.error || "An error occurred during the live session.",
+        title: "Live Session Warning",
+        description: error?.error || "A temporary issue occurred. The session is still active.",
         variant: "destructive"
       });
     };
 
     const handleLiveClose = (data) => {
       console.log('Live session closed:', data);
-      setConnectionStatus('disconnected');
-      setIsSessionActive(false);
+      // Only mark closed if this is our current session or service reports inactive
+      const svc = liveServiceRef.current;
+      const stillActive = svc && svc.isSessionActive && svc.isSessionActive();
+      const sameSession = data?.sessionId && data.sessionId === sessionId;
+      if (!stillActive || sameSession) {
+        setConnectionStatus('disconnected');
+        setIsSessionActive(false);
+        setSessionId(null);
+        // If not a user-initiated end, attempt auto-reconnect
+        if (!userEndedRef.current) {
+          attemptReconnect();
+        }
+      }
       setIsConnecting(false);
-      setSessionId(null);
       setIsRecording(false);
       setIsAIResponding(false);
     };
@@ -194,108 +365,43 @@ const LiveConversation = () => {
       });
     };
 
-    // Set up Modern Gemini Live Service event listeners
-    if (modernGeminiLiveService) {
-      modernGeminiLiveService.on('stt-start', handleSTTStart);
-      modernGeminiLiveService.on('stt-interim', handleSTTInterim);
-      modernGeminiLiveService.on('stt-final', handleSTTFinal);
-      modernGeminiLiveService.on('stt-end', handleSTTEnd);
-      modernGeminiLiveService.on('stt-error', handleSTTError);
-      modernGeminiLiveService.on('tts-start', handleTTSStart);
-      modernGeminiLiveService.on('tts-end', handleTTSEnd);
-      modernGeminiLiveService.on('tts-error', handleTTSError);
-      modernGeminiLiveService.on('message', handleLiveMessage);
-      modernGeminiLiveService.on('error', handleLiveError);
-      modernGeminiLiveService.on('close', handleLiveClose);
-      modernGeminiLiveService.on('audio-queued', handleAudioQueued);
-      modernGeminiLiveService.on('audio-error', handleAudioError);
-      modernGeminiLiveService.on('audio-enabled', handleAudioEnabled);
-    }
+    // Set up live service event listeners
+    // Align with service event names using kebab-case
+    liveService.on('stt-start', handleSTTStart);
+    liveService.on('stt-interim', handleSTTInterim);
+    liveService.on('stt-final', handleSTTFinal);
+    liveService.on('stt-end', handleSTTEnd);
+    liveService.on('stt-error', handleSTTError);
+    liveService.on('tts-start', handleTTSStart);
+    liveService.on('tts-end', handleTTSEnd);
+    liveService.on('tts-error', handleTTSError);
+    liveService.on('message', handleLiveMessage);
+    liveService.on('error', handleLiveError);
+    liveService.on('close', handleLiveClose);
+    liveService.on('audioQueued', handleAudioQueued);
+    liveService.on('audioError', handleAudioError);
+    liveService.on('audioEnabled', handleAudioEnabled);
 
     return () => {
-      // Cleanup Modern Gemini Live Service event listeners
-      if (modernGeminiLiveService) {
-        modernGeminiLiveService.off('stt-start', handleSTTStart);
-        modernGeminiLiveService.off('stt-interim', handleSTTInterim);
-        modernGeminiLiveService.off('stt-final', handleSTTFinal);
-        modernGeminiLiveService.off('stt-end', handleSTTEnd);
-        modernGeminiLiveService.off('stt-error', handleSTTError);
-        modernGeminiLiveService.off('tts-start', handleTTSStart);
-        modernGeminiLiveService.off('tts-end', handleTTSEnd);
-        modernGeminiLiveService.off('tts-error', handleTTSError);
-        modernGeminiLiveService.off('message', handleLiveMessage);
-        modernGeminiLiveService.off('error', handleLiveError);
-        modernGeminiLiveService.off('close', handleLiveClose);
-        modernGeminiLiveService.off('audio-queued', handleAudioQueued);
-        modernGeminiLiveService.off('audio-error', handleAudioError);
-        modernGeminiLiveService.off('audio-enabled', handleAudioEnabled);
-      }
-      
-      // Cleanup on unmount
-      if (isSessionActive) {
-        endLiveSession();
-      }
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop());
-      }
+      // Remove event listeners only; do not end the session here to avoid unintended closures on re-renders
+      liveService.off('stt-start', handleSTTStart);
+      liveService.off('stt-interim', handleSTTInterim);
+      liveService.off('stt-final', handleSTTFinal);
+      liveService.off('stt-end', handleSTTEnd);
+      liveService.off('stt-error', handleSTTError);
+      liveService.off('tts-start', handleTTSStart);
+      liveService.off('tts-end', handleTTSEnd);
+      liveService.off('tts-error', handleTTSError);
+      liveService.off('message', handleLiveMessage);
+      liveService.off('error', handleLiveError);
+      liveService.off('close', handleLiveClose);
+      liveService.off('audioQueued', handleAudioQueued);
+      liveService.off('audioError', handleAudioError);
+      liveService.off('audioEnabled', handleAudioEnabled);
     };
-  }, [addXP, toast]);
+  }, [addXP, toast, handleLiveMessage]);
 
-  // Handle live message from Gemini
-  const handleLiveMessage = useCallback((message) => {
-    if (message.type === 'text') {
-      if (message.isComplete) {
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage && lastMessage.isStreaming) {
-            lastMessage.content = message.content;
-            lastMessage.isStreaming = false;
-            lastMessage.timestamp = new Date().toLocaleTimeString();
-          } else {
-            newMessages.push({
-              id: Date.now(),
-              type: 'ai',
-              content: message.content,
-              timestamp: new Date().toLocaleTimeString(),
-              isStreaming: false
-            });
-          }
-          return newMessages;
-        });
-        setIsAIResponding(false);
-        setIsStreaming(false);
-        setStreamingMessage('');
-        addXP(10, 'conversation');
-        
-        // Play TTS if speaker is enabled
-        if (isSpeakerEnabled && message.content) {
-          modernGeminiLiveService.playTTS(message.content).catch(error => {
-            console.error('Failed to play TTS:', error);
-          });
-        }
-      } else {
-        setIsStreaming(true);
-        setStreamingMessage(message.content);
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage && lastMessage.isStreaming) {
-            lastMessage.content = message.content;
-          } else {
-            newMessages.push({
-              id: Date.now(),
-              type: 'ai',
-              content: message.content,
-              timestamp: new Date().toLocaleTimeString(),
-              isStreaming: true
-            });
-          }
-          return newMessages;
-        });
-      }
-    }
-  }, [addXP, isSpeakerEnabled]);
+  
 
   // Handle audio response
   const handleAudioResponse = useCallback((audioData) => {
@@ -306,7 +412,8 @@ const LiveConversation = () => {
 
   // Enable audio on user interaction
   const enableAudio = useCallback(() => {
-    modernGeminiLiveService.enableAudio();
+    // Audio enabling now handled through browser APIs
+    console.log('Audio interaction enabled');
   }, []);
 
   // Start live session with enhanced STT/TTS
@@ -323,61 +430,103 @@ const LiveConversation = () => {
       return;
     }
 
+    const liveService = liveServiceRef.current;
+    if (!liveService) {
+      toast({
+        title: "Service Error",
+        description: "Live service is not available.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       console.log('Setting connection status to connecting...');
       setConnectionStatus('connecting');
       setIsConnecting(true);
       setIsLoading(true);
+      userEndedRef.current = false;
+      reconnectAttemptsRef.current = 0;
       
-      // Get API key from environment variables
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      console.log('API key available:', !!apiKey);
+      // Get API key and initialize live service
+      const apiKey = getApiKey();
       if (!apiKey) {
-        throw new Error('Gemini API key not configured in environment variables');
+        throw new Error('API key not available');
       }
       
-      // Initialize Modern Gemini STT/TTS Service
-      console.log('Initializing modernGeminiLiveService...');
-      const initResult = await modernGeminiLiveService.initialize(apiKey);
-      console.log('Initialization result:', initResult);
-      
-      // Initialize audio context
-      await modernGeminiLiveService.initializeAudioContext();
-      console.log('Audio context initialized');
-      
-      // Start enhanced STT/TTS session
-      console.log('Starting live session with options...');
-      const result = await modernGeminiLiveService.startLiveSession({
-        targetLanguage: 'English',
-        userLevel: level ? level.toString() : 'intermediate',
-        language: voiceSettings.language,
-        temperature: 0.7,
-        autoStartSTT: isMicEnabled
+      console.log('Initializing live service...');
+      const initResult = await liveService.initialize(apiKey, {
+        model: 'models/gemini-2.0-flash-exp',
+        voiceName: 'Zephyr',
+        systemInstruction: `You are a helpful language learning assistant. User level: ${level ? level.toString() : 'intermediate'}. Language focus: ${voiceSettings.language}.`
       });
-      console.log('Live session start result:', result);
       
-      if (result.success) {
-        setSessionId(result.sessionId);
-        setConnectionStatus('connected');
-        setIsSessionActive(true);
-        
-        setMessages([{
-          id: Date.now(),
-          type: 'system',
-          content: '🎙️ Live conversation with voice started! Speak naturally or type your messages. The AI will respond with realistic voice.',
-          timestamp: new Date().toLocaleTimeString()
-        }]);
-        
-        // Start session timer
-        sessionStartTime.current = Date.now();
-        
-        toast({
-          title: "Voice Session Started",
-          description: "Live conversation with STT/TTS is now active. Start speaking!"
-        });
-      } else {
-        throw new Error(result.error || 'Failed to start session');
+      if (!initResult.success) {
+        throw new Error(initResult.error || 'Failed to initialize live service');
       }
+      
+      console.log('Live service initialized, starting session...');
+      const sessionResult = await liveService.startLiveSession({
+        autoStartSTT: false,
+        language: voiceSettings.language
+      });
+      
+      if (!sessionResult.success) {
+        throw new Error(sessionResult.error || 'Failed to start live session');
+      }
+      
+      console.log('Live session started successfully');
+      
+      // Create a new session for live conversation
+      const newSessionId = sessionResult.sessionId || crypto.randomUUID();
+      console.log('Created new session:', newSessionId);
+      
+      // Track session in database
+      try {
+        // Ensure supabaseGeminiService is initialized
+        await supabaseGeminiService.initialize();
+        
+        const { data: { user } } = await supabaseGeminiService.supabase.auth.getUser();
+        if (user) {
+          await supabaseGeminiService.supabase
+            .from('live_conversation_sessions')
+            .insert({
+              user_id: user.id,
+              session_id: newSessionId,
+              language: voiceSettings.language,
+              user_level: level || 'intermediate',
+              focus_area: 'conversation'
+            });
+        }
+      } catch (dbError) {
+        console.warn('Failed to track session in database:', dbError);
+      }
+      
+      setSessionId(newSessionId);
+      setConnectionStatus('connected');
+      setIsSessionActive(true);
+      
+      setMessages([{
+        id: Date.now(),
+        type: 'system',
+        content: '🎙️ Live conversation started! You can now use voice or text to practice English conversation.',
+        timestamp: new Date().toLocaleTimeString()
+      }]);
+      
+      // Start session timer and auto-start STT with small delay (uses fallback if needed)
+      sessionStartTime.current = Date.now();
+      setTimeout(async () => {
+        try {
+          await liveService.startRecording();
+        } catch (sttErr) {
+          console.warn('Failed to auto-start STT:', sttErr);
+        }
+      }, 400);
+      
+      toast({
+        title: "Live Session Started",
+        description: "Voice and text conversation is now active!"
+      });
     } catch (error) {
       console.error('Failed to start session:', error);
       setConnectionStatus('error');
@@ -396,10 +545,12 @@ const LiveConversation = () => {
   const endLiveSession = useCallback(async () => {
     try {
       setIsLoading(true);
+      userEndedRef.current = true;
       
-      // Stop any ongoing recording
-      if (isRecording) {
-        stopRecording();
+      // End live service session
+      const liveService = liveServiceRef.current;
+      if (liveService) {
+        await liveService.endLiveSession();
       }
       
       // Calculate final session stats
@@ -408,9 +559,32 @@ const LiveConversation = () => {
         setSessionStats(prev => ({ ...prev, duration }));
       }
       
-      // End Modern Gemini STT/TTS session
-      if (modernGeminiLiveService.isSessionActive()) {
-        await modernGeminiLiveService.endSession();
+      // Clear Supabase session and update database
+      if (sessionId) {
+        try {
+          // Ensure supabaseGeminiService is initialized
+          await supabaseGeminiService.initialize();
+          
+          // Update session end time and stats in database
+          const { data: { user } } = await supabaseGeminiService.supabase.auth.getUser();
+          if (user) {
+            await supabaseGeminiService.supabase
+              .from('live_conversation_sessions')
+              .update({
+                ended_at: new Date().toISOString(),
+                messages_exchanged: sessionStats.messagesExchanged,
+                words_spoken: sessionStats.wordsSpoken,
+                is_active: false
+              })
+              .eq('session_id', sessionId)
+              .eq('user_id', user.id);
+          }
+          
+          await supabaseGeminiService.clearSession(sessionId);
+          console.log('Supabase session cleared and database updated');
+        } catch (error) {
+          console.warn('Failed to clear Supabase session:', error);
+        }
       }
       
       // Reset state
@@ -443,7 +617,54 @@ const LiveConversation = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isRecording, sessionStats.messagesExchanged, toast]);
+  }, [sessionStats.messagesExchanged, toast]);
+
+  // Attempt to automatically reconnect the live session after unexpected close
+  const attemptReconnect = useCallback(async () => {
+    if (userEndedRef.current) return; // do not auto-reconnect after user ends
+    const maxAttempts = 3;
+    if (reconnectAttemptsRef.current >= maxAttempts) {
+      console.warn('Max auto-reconnect attempts reached');
+      return;
+    }
+    reconnectAttemptsRef.current += 1;
+    const backoffMs = 1000 * reconnectAttemptsRef.current; // 1s, 2s, 3s
+    console.log(`Attempting live session auto-reconnect in ${backoffMs}ms (attempt ${reconnectAttemptsRef.current}/${maxAttempts})`);
+    setConnectionStatus('connecting');
+    setIsConnecting(true);
+    setTimeout(async () => {
+      try {
+        const liveService = liveServiceRef.current;
+        if (!liveService) return;
+        const apiKey = getApiKey();
+        if (!apiKey) throw new Error('API key not available');
+        const initResult = await liveService.initialize(apiKey, {
+          model: 'models/gemini-2.0-flash-exp',
+          voiceName: 'Zephyr',
+          systemInstruction: `You are a helpful language learning assistant. User level: ${level ? level.toString() : 'intermediate'}. Language focus: ${voiceSettings.language}.`
+        });
+        if (!initResult?.success) throw new Error(initResult?.error || 'Init failed');
+        const sessionResult = await liveService.startLiveSession({ language: voiceSettings.language });
+        if (!sessionResult?.success) throw new Error(sessionResult?.error || 'Start failed');
+        const newSessionId = sessionResult.sessionId || crypto.randomUUID();
+        setSessionId(newSessionId);
+        setConnectionStatus('connected');
+        setIsSessionActive(true);
+        sessionStartTime.current = Date.now();
+        toast({ title: 'Reconnected', description: 'Live session has been restored.' });
+      } catch (err) {
+        console.error('Auto-reconnect failed:', err);
+        // Try again if under max attempts
+        if (!userEndedRef.current && reconnectAttemptsRef.current < 3) {
+          attemptReconnect();
+        } else {
+          setConnectionStatus('error');
+          setIsConnecting(false);
+          toast({ title: 'Connection Lost', description: 'Could not restore the live session.', variant: 'destructive' });
+        }
+      }
+    }, backoffMs);
+  }, [getApiKey, level, toast, voiceSettings.language]);
 
   // Toggle speech recognition
   const toggleRecording = async () => {
@@ -465,29 +686,30 @@ const LiveConversation = () => {
       return;
     }
 
-    try {
-      const result = await modernGeminiLiveService.toggleSpeechRecognition({
-        language: voiceSettings.language
+    const liveService = liveServiceRef.current;
+    if (!liveService) {
+      toast({
+        title: "Service Error",
+        description: "Live service is not available.",
+        variant: "destructive"
       });
-      
-      if (result.success) {
-        if (result.status === 'stopped') {
-          setIsRecording(false);
-          toast({
-            title: "Speech Recognition Stopped",
-            description: "Voice input has been disabled."
-          });
-        } else {
-          setIsRecording(true);
-          toast({
-            title: "Speech Recognition Started",
-            description: "Listening for your voice input..."
-          });
-        }
+      return;
+    }
+
+    try {
+      if (isRecording) {
+        await liveService.stopRecording();
+        toast({
+          title: "Speech Recognition Stopped",
+          description: "Voice input has been disabled."
+        });
       } else {
-        throw new Error(result.error || 'Failed to toggle speech recognition');
+        await liveService.startRecording();
+        toast({
+          title: "Speech Recognition Started",
+          description: "Listening for your voice input..."
+        });
       }
-      
     } catch (error) {
       console.error('Failed to toggle recording:', error);
       setIsRecording(false);
@@ -501,14 +723,29 @@ const LiveConversation = () => {
 
   // Stop TTS playback
   const stopTTS = () => {
-    if (modernGeminiLiveService) {
-      modernGeminiLiveService.stopTTS();
+    // TTS functionality will be handled by browser's built-in speech synthesis
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
     }
     setIsAIResponding(false);
     toast({
       title: "Audio Stopped",
       description: "Text-to-speech playback has been stopped."
     });
+  };
+
+  // Retry STT after warning
+  const retrySTT = async () => {
+    const liveService = liveServiceRef.current;
+    if (!isSessionActive || !liveService) return;
+    try {
+      await liveService.startRecording();
+      setSttWarning(null);
+      toast({ title: 'Listening Resumed', description: 'Speech recognition restarted.' });
+    } catch (error) {
+      console.error('Failed to retry STT:', error);
+      toast({ title: 'Retry Failed', description: error.message || 'Could not restart listening.', variant: 'destructive' });
+    }
   };
 
   // Play audio response (handled automatically by TTS service)
@@ -521,6 +758,16 @@ const LiveConversation = () => {
   // Send text message
   const sendTextMessage = async (text) => {
     if (!text.trim() || !sessionId || !isSessionActive) return;
+    
+    const liveService = liveServiceRef.current;
+    if (!liveService) {
+      toast({
+        title: "Service Error",
+        description: "Live service is not available.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       setIsAIResponding(true);
@@ -544,18 +791,19 @@ const LiveConversation = () => {
         }));
       }
       
-      // Send message via Modern Gemini STT/TTS Service
-        const response = await modernGeminiLiveService.sendMessage(text);
+      // Send message via live service
+      const response = await liveService.sendMessage(text);
       
-      if (response.success) {
-        // Award XP for sending message
-        addXP(5, 'conversation');
-        
-        // The response will be handled by the message event listener
-        // which will add the AI message and play TTS if enabled
-      } else {
+      if (!response.success) {
         throw new Error(response.error || 'Failed to send message');
       }
+      
+      // Award XP for sending message
+      addXP(5, 'conversation');
+      
+      // The live service handles responses through event listeners
+      // Response will come through handleLiveMessage callback
+      setIsAIResponding(false);
       
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -664,6 +912,17 @@ const LiveConversation = () => {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
+        {sttWarning && (
+          <div className="mb-2 p-3 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800 flex items-center justify-between">
+            <span className="text-sm">{sttWarning}</span>
+            <button
+              onClick={retrySTT}
+              className="ml-3 px-3 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700 text-xs"
+            >
+              Retry now
+            </button>
+          </div>
+        )}
         <AnimatePresence>
           {messages.map((message) => (
             <motion.div

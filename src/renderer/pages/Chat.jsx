@@ -139,6 +139,7 @@ const Chat = () => {
       let response;
       if (isReady) {
         // Use AI provider with processed message
+        console.log('Calling generateResponse with:', processedMessage);
         response = await generateResponse(processedMessage, {
           targetLanguage: 'English',
           userLevel: currentLevel ? currentLevel.toString() : 'intermediate',
@@ -146,9 +147,12 @@ const Chat = () => {
           signal: controller.signal,
           complexity: complexity.complexity
         });
+        console.log('Received response from generateResponse:', response);
       } else {
         // Fallback to mock response if AI not ready
+        console.log('AI not ready, using mock response');
         response = await simulateAIResponse(processedMessage);
+        console.log('Mock response:', response);
       }
       
       // Clear all timeouts and intervals
@@ -187,7 +191,12 @@ const Chat = () => {
         responseTime: responseTime
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      console.log('Adding AI message to chat:', aiMessage);
+      setMessages(prev => {
+        const newMessages = [...prev, aiMessage];
+        console.log('Updated messages array:', newMessages);
+        return newMessages;
+      });
       setIsLoading(false);
       setCurrentRequestController(null);
       setLoadingProgress(0);

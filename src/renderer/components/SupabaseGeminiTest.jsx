@@ -12,25 +12,33 @@ const SupabaseGeminiTest = () => {
   const handleSendMessage = async () => {
     if (!message.trim()) return;
     
+    console.log('🧪 SupabaseGeminiTest: Starting message send:', message);
     setLoading(true);
     setError('');
     setResponse('');
     
     try {
+      console.log('🧪 SupabaseGeminiTest: Calling supabaseGeminiService.sendMessage');
       const result = await supabaseGeminiService.sendMessage(message, {
         userLevel: 'intermediate',
         focusArea: 'conversation'
       });
       
+      console.log('🧪 SupabaseGeminiTest: Received result:', result);
+      
       if (result.success) {
         setResponse(result.message);
+        console.log('🧪 SupabaseGeminiTest: Success - message set');
       } else {
         setError(result.error || 'Failed to get response');
+        console.log('🧪 SupabaseGeminiTest: Error in result:', result.error);
       }
     } catch (err) {
+      console.log('🧪 SupabaseGeminiTest: Caught exception:', err);
       setError(err.message);
     } finally {
       setLoading(false);
+      console.log('🧪 SupabaseGeminiTest: Message send completed');
     }
   };
 

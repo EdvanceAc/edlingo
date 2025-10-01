@@ -8,7 +8,7 @@
  * @param {Object} args - Arguments for the tool
  * @returns {Promise<any>} Tool execution result
  */
-export async function run_mcp(serverName, toolName, args) {
+async function run_mcp(serverName, toolName, args) {
   try {
     // For PostgREST operations, we'll use direct HTTP requests
     if (serverName === 'mcp.config.usrlocalmcp.Postgrest') {
@@ -51,18 +51,21 @@ export async function run_mcp(serverName, toolName, args) {
  */
 async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
   try {
-    const response = await fetchWithRetry(url, options);
+    const response = await fetch(url, options);
+    if (!response.ok && retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchWithRetry(url, options, retries - 1, Math.floor(delay * 1.5));
+    }
     return response;
   } catch (error) {
-    if (retries <= 1) throw error;
-    
+    if (retries <= 0) throw error;
     await new Promise(resolve => setTimeout(resolve, delay));
-    return fetchWithRetry(url, options, retries - 1, delay * 1.5);
+    return fetchWithRetry(url, options, retries - 1, Math.floor(delay * 1.5));
   }
 }
 async function handlePostgrestRequest(toolName, args) {
-  const baseUrl = process.env.REACT_APP_SUPABASE_URL || 'http://localhost:3000';
-  const apiKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  const baseUrl = process.env.REACT_APP_SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'http://localhost:3000';
+  const apiKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
   
   if (toolName === 'postgrestRequest') {
     const { method, path, body } = args;
@@ -674,7 +677,7 @@ function getAuthToken() {
  * Set authentication token for API requests
  * @param {string} token - Auth token
  */
-export function setAuthToken(token) {
+function setAuthToken(token) {
   if (token) {
     localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: token }));
   } else {
@@ -685,7 +688,7 @@ export function setAuthToken(token) {
 /**
  * Clear authentication token
  */
-export function clearAuthToken() {
+function clearAuthToken() {
   localStorage.removeItem('supabase.auth.token');
 }
 
@@ -1062,7 +1065,7 @@ async function getPageInfo(baseUrl) {
   return result.result.value;
 }
 
-export default {
+module.exports = {
   run_mcp,
   setAuthToken,
   clearAuthToken

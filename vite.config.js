@@ -5,6 +5,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 
+
 // Load environment variables for server-side API usage
 dotenv.config();
 
@@ -29,6 +30,7 @@ async function readJsonBody(req) {
 
 // Plugin to serve admin-dashboard.html at /admin route and provide API middleware
 const adminRoutePlugin = () => {
+
   return {
     name: 'admin-route',
     configureServer(server) {
@@ -141,8 +143,23 @@ const adminRoutePlugin = () => {
   };
 };
 
+// Custom plugin to serve admin routes to index.html during dev
+function adminRoutePlugin() {
+  return {
+    name: 'admin-route-plugin',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url.startsWith('/admin')) {
+          req.url = '/index.html';
+        }
+        next();
+      });
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), adminRoutePlugin()],
+  plugins: [react(), adminStaticRoutePlugin(), adminRoutePlugin()],
   base: '/',
   publicDir: 'public',
   build: {
@@ -202,12 +219,9 @@ export default defineConfig({
   },
   server: {
     port: 3002,
-    strictPort: true,
-    host: '127.0.0.1',
-    hmr: {
-      host: 'localhost',
-      port: 3002
-    },
+    strictPort: false,
+    host: true,
+    // Removed hardcoded HMR host/port to let Vite infer correct websocket settings
     cors: {
       origin: ['http://localhost:3002', 'http://127.0.0.1:3002', 'file://', 'app://'],
       credentials: true
@@ -246,6 +260,18 @@ export default defineConfig({
     'process.stderr': JSON.stringify({ isTTY: false })
   },
   optimizeDeps: {
-    include: ['googleapis', 'google-auth-library']
+    include: ['googleapis', 'google-auth-library', 'react', 'react-dom', 'framer-motion'],
+    exclude: []
+  },
+  define: {
+    __IS_DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
+    global: 'globalThis',
+    'process.env': {
+      NODE_ENV: JSON.stringify(process.env.NODE_ENV)
+    },
+    'process.stdout': JSON.stringify({ isTTY: false }),
+    'process.stderr': JSON.stringify({ isTTY: false }),
+    // Ensure React is properly available globally
+    'React': 'React'
   }
 });
