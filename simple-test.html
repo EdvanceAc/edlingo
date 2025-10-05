@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase EdLingo to Gemini Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .testing { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; }
+        .test-btn { background: #007bff; color: white; }
+        .test-btn:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Supabase EdLingo ↔ Gemini Connection Test</h1>
+        <p><strong>Updated:</strong> Now using <code>@google/genai</code> with <code>models/gemini-2.5-flash-native-audio-preview-09-2025</code></p>
+        
+        <div class="test-section">
+            <h3>🤖 Text Chat Test</h3>
+            <button class="test-btn" onclick="testGeminiChat()">Test Gemini Chat</button>
+            <div id="chat-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎙️ Live Conversation Test</h3>
+            <button class="test-btn" onclick="testLiveConversation()">Test Live Conversation</button>
+            <div id="live-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎤 Audio Transcription Test</h3>
+            <button class="test-btn" onclick="testAudioTranscription()">Test Audio Transcription</button>
+            <div id="audio-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Overall Results</h3>
+            <div id="overall-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+
+        let testResults = {};
+
+        async function testGeminiChat() {
+            const resultDiv = document.getElementById('chat-result');
+            resultDiv.className = 'testing';
+            resultDiv.innerHTML = '🔄 Testing Gemini Chat...';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/process-gemini-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        message: "Hello! Can you help me practice English conversation?",
+                        user_id: "test-user-123",
+                        session_id: "test-session-456",
+                        user_level: "intermediate",
+                        focus_area: "conversation"
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Gemini Chat SUCCESS</h4>
+                        <p><strong>🤖 Gemini Response:</strong></p>
+                        <pre>${data.response}</pre>
+                        <p><strong>Status:</strong> ${data.success}</p>
+                    `;
+                    testResults.chat = true;
+                } else {
+                    const errorData = await response.text();
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Gemini Chat FAILED</h4>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <pre>${errorData}</pre>
+                    `;
+                    testResults.chat = false;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Gemini Chat ERROR</h4>
+                    <pre>${error.message}</pre>
+                `;
+                testResults.chat = false;
+            }
+            updateOverallResult();
+        }
+
+        async function testLiveConversation() {
+            const resultDiv = document.getElementById('live-result');
+            resultDiv.className = 'testing';
+            resultDiv.innerHTML = '🔄 Testing Live Conversation...';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/process-live-conversation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        message: "Hi! I want to practice speaking English. Can you help me?",
+                        user_id: "test-user-123",
+                        session_id: "test-session-456",
+                        user_level: "intermediate",
+                        focus_area: "conversation",
+                        streaming: false
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Live Conversation SUCCESS</h4>
+                        <p><strong>🎙️ Live Response:</strong></p>
+                        <pre>${data.response}</pre>
+                    `;
+                    testResults.live = true;
+                } else {
+                    const errorData = await response.text();
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Live Conversation FAILED</h4>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <pre>${errorData}</pre>
+                    `;
+                    testResults.live = false;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Live Conversation ERROR</h4>
+                    <pre>${error.message}</pre>
+                `;
+                testResults.live = false;
+            }
+            updateOverallResult();
+        }
+
+        async function testAudioTranscription() {
+            const resultDiv = document.getElementById('audio-result');
+            resultDiv.className = 'testing';
+            resultDiv.innerHTML = '🔄 Testing Audio Transcription...';
+
+            try {
+                // Create a simple test audio blob
+                const testText = "Hello, this is a test audio file";
+                const testBlob = new Blob([testText], { type: 'audio/webm' });
+                
+                const formData = new FormData();
+                formData.append('audio', testBlob, 'test.webm');
+                formData.append('language', 'en-US');
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/transcribe-audio`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Audio Transcription SUCCESS</h4>
+                        <p><strong>🎤 Transcribed Text:</strong></p>
+                        <pre>${data.text}</pre>
+                    `;
+                    testResults.audio = true;
+                } else {
+                    const errorData = await response.text();
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Audio Transcription FAILED</h4>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <pre>${errorData}</pre>
+                    `;
+                    testResults.audio = false;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Audio Transcription ERROR</h4>
+                    <pre>${error.message}</pre>
+                `;
+                testResults.audio = false;
+            }
+            updateOverallResult();
+        }
+
+        function updateOverallResult() {
+            const overallDiv = document.getElementById('overall-result');
+            const testCount = Object.keys(testResults).length;
+            const successCount = Object.values(testResults).filter(Boolean).length;
+            
+            if (testCount === 0) return;
+
+            if (successCount === testCount && testCount === 3) {
+                overallDiv.className = 'success';
+                overallDiv.innerHTML = `
+                    <h4>🎉 ALL TESTS PASSED!</h4>
+                    <p>✅ Supabase EdLingo is successfully connected to Gemini!</p>
+                    <p>🎯 STT, Text Chat, and Live Conversation are all working.</p>
+                `;
+            } else if (successCount > 0) {
+                overallDiv.className = 'testing';
+                overallDiv.innerHTML = `
+                    <h4>⚠️ PARTIAL SUCCESS</h4>
+                    <p>${successCount}/${testCount} tests passing</p>
+                    <p>Some functions are working, check individual results above.</p>
+                `;
+            } else {
+                overallDiv.className = 'error';
+                overallDiv.innerHTML = `
+                    <h4>❌ TESTS FAILED</h4>
+                    <p>Connection issues detected. Check API key and model access.</p>
+                `;
+            }
+        }
+
+        // Auto-run all tests on page load
+        window.onload = function() {
+            setTimeout(() => {
+                console.log('🔄 Starting updated tests with gemini-1.5-flash model...');
+                testGeminiChat();
+                setTimeout(() => testLiveConversation(), 1000);
+                setTimeout(() => testAudioTranscription(), 2000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>

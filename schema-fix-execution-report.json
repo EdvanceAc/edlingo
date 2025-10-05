@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-08-02T23:08:25.636Z",
+  "fixResults": [
+    {
+      "name": "Add lessons_completed to user_progress",
+      "success": false,
+      "error": "Could not find the function public.exec_sql(sql) in the schema cache"
+    },
+    {
+      "name": "Add difficulty_level to courses",
+      "success": false,
+      "error": "Could not find the function public.exec_sql(sql) in the schema cache"
+    },
+    {
+      "name": "Add course_id to lessons",
+      "success": false,
+      "error": "Could not find the function public.exec_sql(sql) in the schema cache"
+    },
+    {
+      "name": "Add content to lessons",
+      "success": false,
+      "error": "Could not find the function public.exec_sql(sql) in the schema cache"
+    },
+    {
+      "name": "Add order_index to lessons",
+      "success": false,
+      "error": "Could not find the function public.exec_sql(sql) in the schema cache"
+    },
+    {
+      "name": "Update user_progress default values",
+      "success": false,
+      "error": "Could not find the function public.exec_sql(sql) in the schema cache"
+    },
+    {
+      "name": "Update courses default difficulty",
+      "success": false,
+      "error": "Could not find the function public.exec_sql(sql) in the schema cache"
+    }
+  ],
+  "testResults": [
+    {
+      "name": "Test user_progress with lessons_completed",
+      "success": false,
+      "error": "column user_progress.lessons_completed does not exist"
+    },
+    {
+      "name": "Test courses with difficulty_level",
+      "success": false,
+      "error": "column courses.difficulty_level does not exist"
+    },
+    {
+      "name": "Test lessons with new columns",
+      "success": false,
+      "error": "column lessons.course_id does not exist"
+    },
+    {
+      "name": "Test notifications table",
+      "success": true,
+      "recordCount": 0
+    }
+  ],
+  "summary": {
+    "totalFixes": 7,
+    "successfulFixes": 0,
+    "failedFixes": 7,
+    "totalTests": 4,
+    "passedTests": 1,
+    "failedTests": 3
+  }
+}

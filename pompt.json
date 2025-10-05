@@ -1,0 +1,288 @@
+{
+  "task": "Create AI-Driven Assessment System Management",
+  "context": {
+    "domain": "Educational Technology",
+    "purpose": "CEFR language level assessment with personalized learning",
+    "target_users": ["students", "teachers", "administrators"],
+    "framework": "Common European Framework of Reference for Languages (CEFR)"
+  },
+  "requirements": {
+    "primary_objectives": [
+      "Determine student CEFR level through comprehensive assessment",
+      "Personalize entire application experience based on CEFR results",
+      "Provide assessment creation and management interface for teachers",
+      "Implement multimedia file integration for questions",
+      "Create analytics dashboard for progress tracking"
+    ],
+    "cefr_levels": ["A1", "A2", "B1", "B2", "C1", "C2"],
+    "assessment_types": ["placement", "progress", "diagnostic", "achievement"]
+  },
+  "system_components": {
+    "assessment_engine": {
+      "description": "Core assessment functionality for CEFR level determination",
+      "features": [
+        "Adaptive questioning algorithm",
+        "Multi-skill assessment (reading, writing, listening, speaking)",
+        "Real-time scoring system",
+        "CEFR level calculation",
+        "Progress tracking"
+      ],
+      "data_structure": {
+        "assessment_session": {
+          "id": "string",
+          "student_id": "string",
+          "start_time": "datetime",
+          "end_time": "datetime",
+          "current_cefr_level": "string",
+          "skills_assessed": ["reading", "writing", "listening", "speaking"],
+          "questions_answered": "array",
+          "current_score": "number",
+          "completion_status": "enum[in_progress, completed, suspended]"
+        },
+        "question_response": {
+          "question_id": "string",
+          "response": "mixed",
+          "time_spent": "number",
+          "confidence_level": "number",
+          "skill_type": "string",
+          "difficulty_level": "string"
+        }
+      }
+    },
+    "teacher_interface": {
+      "description": "Assessment creation and management interface for educators",
+      "features": [
+        "Question bank management",
+        "Assessment template creation",
+        "Multimedia content integration",
+        "Student progress monitoring",
+        "Class performance analytics"
+      ],
+      "question_management": {
+        "question_types": [
+          "multiple_choice",
+          "true_false",
+          "fill_in_blank",
+          "essay",
+          "listening_comprehension",
+          "speaking_prompt"
+        ],
+        "multimedia_support": {
+          "pdf_viewer": {
+            "supported_formats": [".pdf"],
+            "features": ["zoom", "navigation", "annotation"],
+            "integration": "embedded_viewer"
+          },
+          "image_viewer": {
+            "supported_formats": [".jpg", ".png", ".gif", ".svg"],
+            "features": ["zoom", "pan", "fullscreen"],
+            "integration": "modal_display"
+          },
+          "video_player": {
+            "supported_formats": [".mp4", ".webm", ".ogg"],
+            "features": ["play", "pause", "seek", "volume", "subtitles"],
+            "integration": "embedded_player"
+          },
+          "audio_player": {
+            "supported_formats": [".mp3", ".wav", ".ogg"],
+            "features": ["play", "pause", "seek", "volume", "transcript"],
+            "integration": "embedded_player"
+          }
+        }
+      },
+      "data_structure": {
+        "question": {
+          "id": "string",
+          "title": "string",
+          "content": "string",
+          "question_type": "string",
+          "skill_category": "string",
+          "cefr_level": "string",
+          "difficulty_weight": "number",
+          "media_attachments": {
+            "type": "array",
+            "items": {
+              "media_type": "enum[pdf, image, video, audio]",
+              "file_path": "string",
+              "file_size": "number",
+              "duration": "number",
+              "metadata": "object"
+            }
+          },
+          "answer_options": "array",
+          "correct_answer": "mixed",
+          "explanation": "string",
+          "tags": "array",
+          "created_by": "string",
+          "created_at": "datetime",
+          "updated_at": "datetime"
+        }
+      }
+    },
+    "analytics_dashboard": {
+      "description": "Comprehensive analytics for teachers and administrators",
+      "target_users": ["teachers", "administrators"],
+      "features": [
+        "Individual student progress tracking",
+        "Class performance overview",
+        "CEFR level distribution analysis",
+        "Skill-specific performance metrics",
+        "Assessment completion rates",
+        "Learning progression visualization"
+      ],
+      "data_structure": {
+        "student_analytics": {
+          "student_id": "string",
+          "current_cefr_level": "string",
+          "previous_levels": "array",
+          "skill_breakdown": {
+            "reading": {
+              "current_level": "string",
+              "progress_percentage": "number",
+              "recent_scores": "array"
+            },
+            "writing": {
+              "current_level": "string",
+              "progress_percentage": "number",
+              "recent_scores": "array"
+            },
+            "listening": {
+              "current_level": "string",
+              "progress_percentage": "number",
+              "recent_scores": "array"
+            },
+            "speaking": {
+              "current_level": "string",
+              "progress_percentage": "number",
+              "recent_scores": "array"
+            }
+          },
+          "assessment_history": "array",
+          "time_spent_learning": "number",
+          "last_activity": "datetime"
+        },
+        "class_analytics": {
+          "class_id": "string",
+          "total_students": "number",
+          "cefr_distribution": {
+            "A1": "number",
+            "A2": "number",
+            "B1": "number",
+            "B2": "number",
+            "C1": "number",
+            "C2": "number"
+          },
+          "average_progress": "number",
+          "completion_rates": "object",
+          "performance_trends": "array"
+        }
+      }
+    },
+    "personalization_engine": {
+      "description": "System personalization based on CEFR assessment results",
+      "features": [
+        "Content difficulty adjustment",
+        "Interface language adaptation",
+        "Learning path customization",
+        "Recommendation system",
+        "Adaptive navigation"
+      ],
+      "personalization_rules": {
+        "content_filtering": {
+          "rule": "Filter content based on current CEFR level",
+          "implementation": "Show content at or slightly above current level"
+        },
+        "interface_adaptation": {
+          "rule": "Adjust UI complexity based on proficiency",
+          "implementation": "Simplified UI for lower levels, advanced features for higher levels"
+        },
+        "learning_recommendations": {
+          "rule": "Suggest appropriate learning materials",
+          "implementation": "Match content difficulty to CEFR level progression"
+        }
+      }
+    }
+  },
+  "technical_specifications": {
+    "file_integration": {
+      "storage": "cloud_storage",
+      "supported_formats": {
+        "documents": [".pdf", ".doc", ".docx"],
+        "images": [".jpg", ".jpeg", ".png", ".gif", ".svg"],
+        "videos": [".mp4", ".webm", ".ogg", ".mov"],
+        "audio": [".mp3", ".wav", ".ogg", ".m4a"]
+      },
+      "viewer_requirements": {
+        "pdf_viewer": "Embedded PDF.js or similar",
+        "image_viewer": "Responsive image gallery",
+        "video_player": "HTML5 video with controls",
+        "audio_player": "HTML5 audio with waveform visualization"
+      }
+    },
+    "database_schema": {
+      "tables": [
+        "users",
+        "assessments",
+        "questions",
+        "student_responses",
+        "cefr_levels",
+        "media_files",
+        "analytics_data",
+        "personalization_settings"
+      ]
+    },
+    "api_endpoints": {
+      "assessment": "/api/v1/assessment",
+      "questions": "/api/v1/questions",
+      "analytics": "/api/v1/analytics",
+      "media": "/api/v1/media",
+      "personalization": "/api/v1/personalization"
+    }
+  },
+  "implementation_guidelines": {
+    "development_approach": "Agile/Scrum methodology",
+    "technology_stack": {
+      "frontend": "React/Vue.js with responsive design",
+      "backend": "Node.js/Python with REST API",
+      "database": "PostgreSQL/MongoDB",
+      "file_storage": "AWS S3/Google Cloud Storage",
+      "authentication": "JWT tokens with role-based access"
+    },
+    "security_requirements": [
+      "Data encryption at rest and in transit",
+      "Secure file upload validation",
+      "Role-based access control",
+      "Regular security audits",
+      "GDPR compliance for student data"
+    ],
+    "performance_requirements": [
+      "Fast assessment loading (<2 seconds)",
+      "Efficient media file streaming",
+      "Real-time analytics updates",
+      "Scalable architecture for multiple concurrent users"
+    ]
+  },
+  "success_metrics": {
+    "user_engagement": [
+      "Assessment completion rates",
+      "Time spent in system",
+      "Return user percentage"
+    ],
+    "educational_effectiveness": [
+      "CEFR level progression accuracy",
+      "Learning outcome improvements",
+      "Teacher satisfaction ratings"
+    ],
+    "system_performance": [
+      "Response time metrics",
+      "System availability",
+      "Error rates"
+    ]
+  },
+  "output_format": {
+    "code_structure": "Modular architecture with clear separation of concerns",
+    "documentation": "Comprehensive API documentation and user guides",
+    "testing": "Unit tests, integration tests, and user acceptance testing",
+    "deployment": "Containerized deployment with CI/CD pipeline"
+  }
+}

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Lesson Saving Functionality</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Lesson Saving Functionality Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Status</h3>
+        <div id="status">Initializing...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>1. Database Connection Test</h3>
+        <button onclick="testConnection()">Test Connection</button>
+        <div id="connection-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Create Test Course</h3>
+        <button onclick="createTestCourse()">Create Test Course</button>
+        <div id="course-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Lesson Creation Function</h3>
+        <button onclick="testLessonFunction()">Test create_lessons_with_materials</button>
+        <div id="lesson-function-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Test Complete Lesson Saving</h3>
+        <button onclick="testCompleteLessonSaving()">Test Complete Flow</button>
+        <div id="complete-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>5. Verify Saved Data</h3>
+        <button onclick="verifySavedData()">Verify Lessons in Database</button>
+        <div id="verify-result"></div>
+    </div>
+
+    <script>
+        let supabase, supabaseAdmin;
+        let testCourseId = null;
+
+        // Initialize Supabase clients
+        async function initializeSupabase() {
+            try {
+                // Load environment variables
+                const envUrl = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+                const envKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+                const envServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTgxMTI5MCwiZXhwIjoyMDY3Mzg3MjkwfQ.kVkiHxUJG4EbTjxWZwXK6SrfG6wPBgkKJhHeCIQ0Cpg';
+
+                supabase = window.supabase.createClient(envUrl, envKey);
+                supabaseAdmin = window.supabase.createClient(envUrl, envServiceKey);
+                
+                // Expose to global scope for compatibility
+                window.supabaseClient = supabase;
+                window.supabaseAdminClient = supabaseAdmin;
+                
+                document.getElementById('status').innerHTML = '✅ Supabase clients initialized successfully';
+                return true;
+            } catch (error) {
+                document.getElementById('status').innerHTML = `❌ Failed to initialize Supabase: ${error.message}`;
+                return false;
+            }
+        }
+
+        // Test database connection
+        async function testConnection() {
+            const resultDiv = document.getElementById('connection-result');
+            resultDiv.innerHTML = 'Testing connection...';
+            
+            try {
+                const { data, error } = await supabase.from('courses').select('id').limit(1);
+                if (error) {
+                    throw error;
+                }
+                resultDiv.innerHTML = '<div class="success">✅ Database connection successful</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Connection failed: ${error.message}</div>`;
+            }
+        }
+
+        // Create a test course
+        async function createTestCourse() {
+            const resultDiv = document.getElementById('course-result');
+            resultDiv.innerHTML = 'Creating test course...';
+            
+            try {
+                const courseData = {
+                    title: 'Test Course for Lesson Saving',
+                    description: 'A test course to verify lesson saving functionality',
+                    level: 'beginner',
+                    category: 'test',
+                    language: 'English',
+                    is_active: true
+                };
+
+                const { data, error } = await supabaseAdmin
+                    .from('courses')
+                    .insert([courseData])
+                    .select()
+                    .single();
+                
+                if (error) {
+                    throw error;
+                }
+                
+                testCourseId = data.id;
+                resultDiv.innerHTML = `<div class="success">✅ Test course created successfully<br>Course ID: ${testCourseId}</div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Failed to create test course: ${error.message}</div>`;
+            }
+        }
+
+        // Test the lesson creation function
+        async function testLessonFunction() {
+            const resultDiv = document.getElementById('lesson-function-result');
+            resultDiv.innerHTML = 'Testing lesson creation function...';
+            
+            if (!testCourseId) {
+                resultDiv.innerHTML = '<div class="error">❌ Please create a test course first</div>';
+                return;
+            }
+            
+            try {
+                const testLessonsData = [
+                    {
+                        title: 'Test Lesson 1',
+                        level: 'A1',
+                        duration: 30,
+                        contentType: 'text',
+                        objectives: 'Learn basic vocabulary',
+                        materials: [
+                            {
+                                type: 'text',
+                                content: 'This is test lesson content',
+                                metadata: { order: 1 }
+                            },
+                            {
+                                type: 'image',
+                                file_url: 'https://example.com/test-image.jpg',
+                                content: 'Test image description',
+                                metadata: { order: 2 }
+                            }
+                        ]
+                    },
+                    {
+                        title: 'Test Lesson 2',
+                        level: 'A1',
+                        duration: 45,
+                        contentType: 'video',
+                        objectives: 'Practice listening skills',
+                        materials: [
+                            {
+                                type: 'video',
+                                file_url: 'https://example.com/test-video.mp4',
+                                content: 'Test video lesson',
+                                metadata: { order: 1, duration: 300 }
+                            }
+                        ]
+                    }
+                ];
+
+                const { data, error } = await supabaseAdmin
+                    .rpc('create_lessons_with_materials', {
+                        p_course_id: testCourseId,
+                        p_lessons: testLessonsData
+                    });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                resultDiv.innerHTML = `<div class="success">✅ Lessons created successfully<br><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Failed to create lessons: ${error.message}<br><pre>${error.stack || ''}</pre></div>`;
+            }
+        }
+
+        // Test complete lesson saving flow
+        async function testCompleteLessonSaving() {
+            const resultDiv = document.getElementById('complete-test-result');
+            resultDiv.innerHTML = 'Testing complete lesson saving flow...';
+            
+            if (!testCourseId) {
+                resultDiv.innerHTML = '<div class="error">❌ Please create a test course first</div>';
+                return;
+            }
+            
+            try {
+                // Simulate the collectLessonsData function
+                const mockLessonsData = [
+                    {
+                        title: 'Complete Flow Test Lesson',
+                        level: 'A2',
+                        duration: 60,
+                        contentType: 'mixed',
+                        objectives: 'Test complete lesson saving flow',
+                        materials: [
+                            {
+                                type: 'text',
+                                content: 'Introduction to the lesson',
+                                metadata: { order: 1 }
+                            },
+                            {
+                                type: 'quiz',
+                                content: JSON.stringify({
+                                    question: 'What is 2+2?',
+                                    options: ['3', '4', '5', '6'],
+                                    correct: 1
+                                }),
+                                metadata: { order: 2 }
+                            }
+                        ]
+                    }
+                ];
+
+                // Test the same logic as in admin-scripts.js
+                const client = window.supabaseAdminClient || window.supabaseClient;
+                const { data, error } = await client
+                    .rpc('create_lessons_with_materials', {
+                        p_course_id: testCourseId,
+                        p_lessons: mockLessonsData
+                    });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                resultDiv.innerHTML = `<div class="success">✅ Complete lesson saving flow successful<br><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Complete flow test failed: ${error.message}<br><pre>${error.stack || ''}</pre></div>`;
+            }
+        }
+
+        // Verify saved data
+        async function verifySavedData() {
+            const resultDiv = document.getElementById('verify-result');
+            resultDiv.innerHTML = 'Verifying saved lessons...';
+            
+            if (!testCourseId) {
+                resultDiv.innerHTML = '<div class="error">❌ Please create a test course first</div>';
+                return;
+            }
+            
+            try {
+                // Get lessons for the test course
+                const { data: lessons, error: lessonsError } = await supabase
+                    .from('lessons')
+                    .select(`
+                        *,
+                        lesson_materials(*)
+                    `)
+                    .eq('term_id', (await supabase.from('terms').select('id').eq('course_id', testCourseId).single()).data.id);
+                
+                if (lessonsError) {
+                    throw lessonsError;
+                }
+                
+                resultDiv.innerHTML = `<div class="success">✅ Found ${lessons.length} lessons in database<br><pre>${JSON.stringify(lessons, null, 2)}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Failed to verify saved data: ${error.message}</div>`;
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', initializeSupabase);
+    </script>
+</body>
+</html>

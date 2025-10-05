@@ -1,0 +1,342 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Signup with Valid Credentials",
+    "description": "Verify that a user can successfully create a new account using valid signup credentials and that the session is started.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the signup screen."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid user details including email and password."
+      },
+      {
+        "type": "action",
+        "description": "Submit the signup form."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm a successful signup confirmation message is shown."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the user is logged in and redirected to the personalized dashboard."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Login with Correct Credentials",
+    "description": "Check that users can log in successfully using valid registered credentials and that session management works correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login screen."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid registered username/email and password."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm login is successful and the user is redirected to the dashboard."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the session is maintained across page reloads."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "User Login with Invalid Credentials",
+    "description": "Verify that login fails gracefully with incorrect credentials and the user is notified appropriately.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login screen."
+      },
+      {
+        "type": "action",
+        "description": "Enter an invalid email or password combination."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error message describing invalid login credentials is displayed."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm that user is not logged in and remains on the login screen."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "AI-Powered Language Exercise Generation",
+    "description": "Validate that the AI service generates personalized language learning exercises dynamically based on the user's progress and preferences.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in with an existing user account with recorded progress."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the exercise generation section."
+      },
+      {
+        "type": "action",
+        "description": "Request new language exercise."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the exercise content is dynamically generated and differs per request."
+      },
+      {
+        "type": "assertion",
+        "description": "Validate exercise difficulty and topic align with user's prior progress data."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Handle AI Service Failure Gracefully",
+    "description": "Ensure the application handles AI service failures without crashing and informs the user with an appropriate fallback message.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate AI service downtime or failure."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to generate a new language exercise."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the app shows a user-friendly error message or fallback option."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure the application remains responsive and stable without crashing."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Track and Save User Progress after Exercise Completion",
+    "description": "Check that upon completion of language exercises, user progress data is accurately saved and reflected in the progress dashboard.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in and start a language exercise."
+      },
+      {
+        "type": "action",
+        "description": "Complete the exercise with valid answers."
+      },
+      {
+        "type": "action",
+        "description": "Submit exercise completion."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify progress data is saved to the backend and local database."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm progress dashboard updates to reflect new progress and statistics."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Progress Tracking Persistence Across Sessions",
+    "description": "Validate that user progress data can be consistently retrieved and displayed correctly across multiple login sessions.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as a returning user."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that progress dashboard loads and accurately displays historical progress data."
+      },
+      {
+        "type": "action",
+        "description": "Log out and log back in."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the progress data persists and displays correctly after relogin."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Electron App Window Creation and Lifecycle Management",
+    "description": "Test that the Electron main process correctly manages app window creation, lifecycle events including open, close, and minimize on supported platforms.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Launch the Electron app."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify main window is created and visible."
+      },
+      {
+        "type": "action",
+        "description": "Minimize and restore the app window."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the window correctly restores to prior state."
+      },
+      {
+        "type": "action",
+        "description": "Close the app window."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure the app exits cleanly without errors."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Local Database Initialization and Data Storage",
+    "description": "Verify that the application initializes the local database correctly on first run and that data can be stored and retrieved without corruption.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Delete any existing local database files or data."
+      },
+      {
+        "type": "action",
+        "description": "Launch the app to trigger database initialization."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that local database files or store are created successfully."
+      },
+      {
+        "type": "action",
+        "description": "Perform a data save operation such as saving user progress."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify data is accurately stored and can be queried from the local database."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Responsive UI and Component Rendering",
+    "description": "Confirm that UI components render correctly and responsively across different window sizes and devices with correct Tailwind CSS styling and Framer Motion animations.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Launch the app and navigate to dashboard and exercise screens."
+      },
+      {
+        "type": "action",
+        "description": "Resize the application window across a range of sizes including typical desktop and small laptop dimensions."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that components adjust layout responsively and maintain usability."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm animations run smoothly without jank or freezing."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Application Routing Based on Authentication State",
+    "description": "Test that routing using React Router correctly directs the user to login or dashboard views based on authentication status.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start the app with no authenticated user session."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure routing directs the user to the login or signup page."
+      },
+      {
+        "type": "action",
+        "description": "Log in with valid credentials."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm routing navigates user to the personalized dashboard."
+      },
+      {
+        "type": "action",
+        "description": "Log out."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that user is redirected back to the login screen."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Logout Functionality and Session Termination",
+    "description": "Check that users can log out successfully using the provided UI and that the session is invalidated properly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as a valid user."
+      },
+      {
+        "type": "action",
+        "description": "Use the logout feature in the application UI."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the user session is terminated."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the app routes to the login screen post logout."
+      }
+    ]
+  }
+]

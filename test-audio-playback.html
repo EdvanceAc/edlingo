@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Playback Test - Zephyr Voice</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { max-width: 600px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; background: #007bff; color: white; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+        .audio-info { margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎙️ Zephyr Voice Audio Test</h1>
+        <p>This page tests if live conversation can send and play Zephyr voice audio from Gemini.</p>
+        
+        <div class="test-section">
+            <h3>🧪 Live Conversation Audio Test</h3>
+            <button onclick="testLiveConversationAudio()">Send Message & Test Audio</button>
+            <div id="live-test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔊 Audio Playback Test</h3>
+            <button onclick="testAudioPlayback()">Test Sample Audio Playback</button>
+            <div id="audio-test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test Logs</h3>
+            <div id="test-logs"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+
+        function log(message) {
+            const logsDiv = document.getElementById('test-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        async function testLiveConversationAudio() {
+            const resultDiv = document.getElementById('live-test-result');
+            resultDiv.className = 'info';
+            resultDiv.innerHTML = '<h4>🔄 Testing live conversation with audio...</h4>';
+
+            try {
+                log('🚀 Starting live conversation audio test');
+                
+                const testMessage = "Hello! Can you help me practice English? Please respond with your voice.";
+                const requestData = {
+                    message: testMessage,
+                    session_id: `audio_test_${Date.now()}`,
+                    user_id: 'test-user',
+                    user_level: 'intermediate',
+                    focus_area: 'conversation',
+                    language: 'English',
+                    streaming: true
+                };
+
+                log(`📤 Sending message: "${testMessage}"`);
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/process-live-conversation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${ANON_KEY}`,
+                        'Accept': 'text/event-stream'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                log('📡 Streaming response received, processing chunks...');
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let fullResponse = '';
+                let audioData = null;
+                let chunkCount = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+                    
+                    let newlineIndex;
+                    while ((newlineIndex = buffer.indexOf('\\n\\n')) !== -1) {
+                        const line = buffer.slice(0, newlineIndex);
+                        buffer = buffer.slice(newlineIndex + 2);
+                        
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                chunkCount++;
+                                
+                                if (data.content) {
+                                    fullResponse = data.fullResponse || fullResponse + data.content;
+                                    log(`📝 Chunk ${chunkCount}: "${data.content}"`);
+                                }
+                                
+                                if (data.audioData) {
+                                    audioData = data.audioData;
+                                    log(`🎵 Audio data received! Type: ${audioData.mimeType}, Size: ${audioData.data?.length || 0} chars`);
+                                }
+                                
+                                if (data.done) {
+                                    log('✅ Streaming completed');
+                                    break;
+                                }
+                            } catch (e) {
+                                log(`⚠️ Failed to parse chunk: ${e.message}`);
+                            }
+                        }
+                    }
+                }
+
+                log(`📄 Final response: "${fullResponse}"`);
+
+                if (audioData) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Audio Test SUCCESS!</h4>
+                        <p><strong>Response:</strong> ${fullResponse}</p>
+                        <div class="audio-info">
+                            <strong>🎵 Zephyr Audio Data:</strong><br>
+                            Type: ${audioData.mimeType}<br>
+                            Size: ${audioData.data?.length || 0} characters<br>
+                            <button onclick="playReceivedAudio('${audioData.data}', '${audioData.mimeType}')">🔊 Play Zephyr Voice</button>
+                        </div>
+                    `;
+                    log('🎉 SUCCESS: Audio data received and ready to play!');
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <h4>⚠️ No Audio Data</h4>
+                        <p><strong>Response:</strong> ${fullResponse}</p>
+                        <p>Text response received but no Zephyr audio data was included.</p>
+                    `;
+                    log('⚠️ No audio data received from Gemini');
+                }
+
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Test Failed</h4>
+                    <pre>${error.message}</pre>
+                `;
+                log(`❌ Error: ${error.message}`);
+            }
+        }
+
+        async function playReceivedAudio(base64Data, mimeType) {
+            try {
+                log('🎙️ Attempting to play Zephyr voice audio...');
+                
+                // Convert base64 to blob
+                const audioBytes = atob(base64Data);
+                const audioArray = new Uint8Array(audioBytes.length);
+                for (let i = 0; i < audioBytes.length; i++) {
+                    audioArray[i] = audioBytes.charCodeAt(i);
+                }
+                
+                const audioBlob = new Blob([audioArray], { type: mimeType || 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                // Create and play audio
+                const audio = new Audio(audioUrl);
+                
+                audio.onplay = () => log('▶️ Zephyr voice playback started');
+                audio.onended = () => {
+                    log('⏹️ Zephyr voice playback finished');
+                    URL.revokeObjectURL(audioUrl);
+                };
+                audio.onerror = (e) => {
+                    log(`❌ Audio playback error: ${e.message || 'Unknown error'}`);
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+                await audio.play();
+                log('🎵 Audio playback initiated successfully');
+                
+            } catch (error) {
+                log(`❌ Failed to play audio: ${error.message}`);
+            }
+        }
+
+        async function testAudioPlayback() {
+            const resultDiv = document.getElementById('audio-test-result');
+            resultDiv.className = 'info';
+            resultDiv.innerHTML = '<h4>🔄 Testing basic audio playback...</h4>';
+
+            try {
+                log('🧪 Testing basic audio playback functionality');
+                
+                // Test with a simple tone (base64 encoded WAV)
+                const testAudio = 'UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+                const testMimeType = 'audio/wav';
+                
+                await playReceivedAudio(testAudio, testMimeType);
+                
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+                    <h4>✅ Basic Audio Test</h4>
+                    <p>Audio playback mechanism is working. Check console for details.</p>
+                `;
+                log('✅ Basic audio test completed');
+                
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Audio Test Failed</h4>
+                    <pre>${error.message}</pre>
+                `;
+                log(`❌ Basic audio test failed: ${error.message}`);
+            }
+        }
+
+        // Auto-start test on page load
+        window.onload = function() {
+            log('🌟 Audio test page loaded - ready to test Zephyr voice');
+            log('💡 Click "Send Message & Test Audio" to test live conversation with audio');
+        };
+    </script>
+</body>
+</html>

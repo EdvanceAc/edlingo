@@ -1,0 +1,5 @@
+ALTER TABLE user_progress
+ADD COLUMN IF NOT EXISTS course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS completed_lessons JSONB DEFAULT '[]'::JSONB,
+ADD COLUMN IF NOT EXISTS cefr_level TEXT CHECK (cefr_level IN ('A1', 'A2', 'B1', 'B2', 'C1', 'C2')),
+ADD COLUMN IF NOT EXISTS conversation_time INTEGER DEFAULT 0;

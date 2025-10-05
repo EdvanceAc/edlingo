@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <rect x="10" y="10" width="80" height="80" rx="10" fill="#FFF8DC" stroke="#DAA520" stroke-width="2"/>
+  <!-- Plate -->
+  <ellipse cx="50" cy="50" rx="25" ry="20" fill="#FFFFFF" stroke="#C0C0C0" stroke-width="2"/>
+  <!-- Apple -->
+  <circle cx="40" cy="45" r="8" fill="#FF4500"/>
+  <path d="M 40 37 Q 42 35 44 37" stroke="#228B22" stroke-width="2" fill="none"/>
+  <!-- Bread -->
+  <ellipse cx="60" cy="45" rx="10" ry="6" fill="#DEB887"/>
+  <path d="M 52 45 Q 60 40 68 45" stroke="#8B4513" stroke-width="1" fill="none"/>
+  <!-- Carrot -->
+  <path d="M 35 55 Q 40 65 45 55" fill="#FF8C00"/>
+  <path d="M 37 55 L 35 50 M 40 55 L 38 50 M 43 55 L 41 50" stroke="#228B22" stroke-width="1"/>
+  <!-- Cheese -->
+  <path d="M 55 55 L 65 55 L 62 65 L 58 65 Z" fill="#FFD700"/>
+  <circle cx="58" cy="58" r="1" fill="#FFF"/>
+  <circle cx="62" cy="60" r="1" fill="#FFF"/>
+  <text x="50" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#666">Food</text>
+</svg>

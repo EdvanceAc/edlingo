@@ -1,0 +1,427 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Markdown Preview</title>
+      <style>
+        body {
+          font-family: sans-serif;
+          padding: 40px;
+          line-height: 1.6;
+          background: #fdfdfd;
+          color: #333;
+        }
+        pre {
+          background: #f4f4f4;
+          padding: 10px;
+          border-radius: 5px;
+          overflow-x: auto;
+        }
+        code {
+          font-family: monospace;
+          background: #eee;
+          padding: 2px 4px;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-top: 20px;
+        }
+        th, td {
+          border: 1px solid #ccc;
+          padding: 8px 12px;
+          text-align: left;
+        }
+        th {
+          background-color: #f2f2f2;
+          font-weight: bold;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>TestSprite AI Testing Report(MCP)</h1>
+<hr>
+<h2>1️⃣ Document Metadata</h2>
+<ul>
+<li><strong>Project Name:</strong> EdLingo</li>
+<li><strong>Version:</strong> 1.0.0</li>
+<li><strong>Date:</strong> 2025-08-03</li>
+<li><strong>Prepared by:</strong> TestSprite AI Team</li>
+</ul>
+<hr>
+<h2>2️⃣ Requirement Validation Summary</h2>
+<h3>Requirement: User Signup</h3>
+<ul>
+<li><strong>Description:</strong> Allows new users to create accounts with email validation and Supabase authentication.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC001</li>
+<li><strong>Test Name:</strong> User Signup Success with Valid Data</li>
+<li><strong>Test Code:</strong> <a href="./TC001_User_Signup_Success_with_Valid_Data.py">TC001_User_Signup_Success_with_Valid_Data.py</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/adcef4f2-f036-475b-8f82-09d39c9aefc5</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> Low</li>
+<li><strong>Analysis / Findings:</strong> Test passed confirming that the user signup flow works correctly with valid email, password, and required fields, using Supabase authentication backend. Functionality is working as expected. Consider adding additional validations or UX enhancements such as stronger password criteria or social sign-up options.</li>
+</ul>
+<hr>
+<h4>Test 2</h4>
+<ul>
+<li><strong>Test ID:</strong> TC002</li>
+<li><strong>Test Name:</strong> User Signup Failure with Invalid Email Format</li>
+<li><strong>Test Code:</strong> <a href="./TC002_User_Signup_Failure_with_Invalid_Email_Format.py">TC002_User_Signup_Failure_with_Invalid_Email_Format.py</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/910b518e-447c-4da6-bae6-3d059bdc683d</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> Low</li>
+<li><strong>Analysis / Findings:</strong> Test passed verifying that the system properly prevents signup when an invalid email format is submitted, showing relevant validation messages to the user. Validation logic is correctly implemented. Potential improvement could include internationalized email format support or inline validation feedback.</li>
+</ul>
+<hr>
+<h3>Requirement: User Login</h3>
+<ul>
+<li><strong>Description:</strong> Supports email/password login with validation and error handling.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC003</li>
+<li><strong>Test Name:</strong> User Login Success with Correct Credentials</li>
+<li><strong>Test Code:</strong> <a href="./TC003_User_Login_Success_with_Correct_Credentials.py">TC003_User_Login_Success_with_Correct_Credentials.py</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/c2ac277a-70d0-43c9-9ef6-ada538d5ce44</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> Low</li>
+<li><strong>Analysis / Findings:</strong> Test passed confirming successful user login with valid existing credentials via Supabase authentication, proceeding to the authenticated app state. Login functionality is confirmed stable. Additional tests for multi-factor authentication or session expiry could strengthen security testing.</li>
+</ul>
+<hr>
+<h4>Test 2</h4>
+<ul>
+<li><strong>Test ID:</strong> TC004</li>
+<li><strong>Test Name:</strong> User Login Failure with Incorrect Password</li>
+<li><strong>Test Code:</strong> <a href="./TC004_User_Login_Failure_with_Incorrect_Password.py">TC004_User_Login_Failure_with_Incorrect_Password.py</a></li>
+<li><strong>Test Error:</strong> Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/f49214cc-32aa-4be3-8c9a-710ccb50f4cd</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed because clicking login with incorrect password does not produce the expected authentication failure message; likely the error handling or UI feedback for invalid password is broken. Fix the login error handling logic to ensure backend authentication failures (invalid password) properly update the UI with an error message. Verify the error response propagation and UI state update on login failure.</li>
+</ul>
+<hr>
+<h3>Requirement: Session Management</h3>
+<ul>
+<li><strong>Description:</strong> Maintains user authentication state across app restarts and provides logout functionality.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC005</li>
+<li><strong>Test Name:</strong> Session Management Persists User Login</li>
+<li><strong>Test Code:</strong> <a href="./TC005_Session_Management_Persists_User_Login.py">TC005_Session_Management_Persists_User_Login.py</a></li>
+<li><strong>Test Error:</strong> Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/afa1712b-bd09-40e0-b651-d64b48b0392a</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed because user session does not persist after login and app restart; session management or persistence mechanism appears broken, leading to forced re-login. Investigate session storage and restoration logic (e.g., localStorage, cookies, or Supabase session tokens). Ensure session tokens are properly saved and rehydrated on app start. Also verify backend session validation.</li>
+</ul>
+<hr>
+<h4>Test 2</h4>
+<ul>
+<li><strong>Test ID:</strong> TC006</li>
+<li><strong>Test Name:</strong> Logout Successfully Terminates User Session</li>
+<li><strong>Test Code:</strong> <a href="./TC006_Logout_Successfully_Terminates_User_Session.py">TC006_Logout_Successfully_Terminates_User_Session.py</a></li>
+<li><strong>Test Error:</strong> Logout functionality failed: clicking 'Sign Out' does not terminate the session or redirect to the login screen. User remains on the Settings page. Reporting this issue and stopping further actions.
+Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/src/renderer/App.jsx:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/node_modules/.vite/deps/react.js?v=e6b3eef4:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=e6b3eef4:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Running in browser mode - AI features will use fallback responses (at http://127.0.0.1:3002/src/renderer/services/aiService.js:90:16)
+[ERROR] Failed to load resource: the server responded with a status of 406 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress?select=*&amp;user_id=eq.00000000-0000-0000-0000-000000000001:0:0)
+[ERROR] Failed to load resource: the server responded with a status of 400 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress:0:0)
+[ERROR] Failed to fetch progress: {code: PGRST204, details: null, hint: null, message: Could not find the 'last_study_date' column of 'user_progress' in the schema cache} (at http://127.0.0.1:3002/src/renderer/providers/ProgressProvider.jsx:109:16)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/773804b9-d813-44bc-b9c6-2646cf4be429</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed because logout does not terminate the user session or navigate back to the login screen; user remains on settings page indicating logout action is ineffective. Fix logout flow to clear user tokens/sessions and redirect to login screen. Verify that logout triggers proper Supabase sign-out calls and frontend state resets. Address errors related to Supabase connection failures.</li>
+</ul>
+<hr>
+<h3>Requirement: AI Features</h3>
+<ul>
+<li><strong>Description:</strong> AI-powered exercise generation and graceful error handling for AI service failures.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC007</li>
+<li><strong>Test Name:</strong> AI Language Exercise Generation Produces Personalized Content</li>
+<li><strong>Test Code:</strong> <a href="./TC007_AI_Language_Exercise_Generation_Produces_Personalized_Content.py">TC007_AI_Language_Exercise_Generation_Produces_Personalized_Content.py</a></li>
+<li><strong>Test Error:</strong> The application is stuck on the loading screen and does not allow login or navigation to the exercise generation section. Therefore, I cannot verify AI-powered exercise generation tailored to the logged-in user's progress and preferences. Please resolve the loading issue to proceed with testing.
+Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=e6b3eef4:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/node_modules/.vite/deps/chunk-V4OQ3NZ2.js?v=e6b3eef4:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Running in browser mode - AI features will use fallback responses (at http://127.0.0.1:3002/src/renderer/services/aiService.js:90:16)
+[ERROR] Failed to load resource: the server responded with a status of 406 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress?select=*&amp;user_id=eq.00000000-0000-0000-0000-000000000001:0:0)
+[ERROR] Failed to load resource: the server responded with a status of 400 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress:0:0)
+[ERROR] Failed to fetch progress: {code: PGRST204, details: null, hint: null, message: Could not find the 'last_study_date' column of 'user_progress' in the schema cache} (at http://127.0.0.1:3002/src/renderer/providers/ProgressProvider.jsx:109:16)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/ad0f966c-e931-40f9-81f9-5f60221685c2</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed due to the app hanging indefinitely on the loading screen, preventing login or navigation to AI exercise generation. Underlying issues with app startup or backend connectivity block testing of personalized AI content generation. Fix the app loading and initialization problems, including resolving backend Supabase connection and schema cache errors, to allow user login and navigation. Then re-attempt functional testing of AI exercise generation.</li>
+</ul>
+<hr>
+<h4>Test 2</h4>
+<ul>
+<li><strong>Test ID:</strong> TC008</li>
+<li><strong>Test Name:</strong> AI Service Failure is Handled Gracefully</li>
+<li><strong>Test Code:</strong> <a href="./TC008_AI_Service_Failure_is_Handled_Gracefully.py">TC008_AI_Service_Failure_is_Handled_Gracefully.py</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/38c214f8-d6c5-4d91-ab95-2709b32ee421</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> Low</li>
+<li><strong>Analysis / Findings:</strong> Test passed confirming that when the AI service fails, the application handles the error gracefully by showing fallback UI components and continues running without crashes. Implementation is robust against AI service failure. Consider adding user notifications or retry mechanisms to improve user experience during AI downtimes.</li>
+</ul>
+<hr>
+<h3>Requirement: Progress Tracking</h3>
+<ul>
+<li><strong>Description:</strong> Saves and retrieves user learning progress with meaningful dashboard statistics.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC009</li>
+<li><strong>Test Name:</strong> Progress Tracking Accurately Saves and Retrieves Data</li>
+<li><strong>Test Code:</strong> <a href="./TC009_Progress_Tracking_Accurately_Saves_and_Retrieves_Data.py">TC009_Progress_Tracking_Accurately_Saves_and_Retrieves_Data.py</a></li>
+<li><strong>Test Error:</strong> Testing stopped due to a critical issue: The 'Start' button for the 'Food &amp; Dining' course does not work, preventing exercise completion and progress verification. Please fix this issue to continue testing.
+Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/src/renderer/styles/globals.css:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://127.0.0.1:3002/src/renderer/main.jsx:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Running in browser mode - AI features will use fallback responses (at http://127.0.0.1:3002/src/renderer/services/aiService.js:90:16)
+[ERROR] Failed to load resource: the server responded with a status of 406 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress?select=*&amp;user_id=eq.00000000-0000-0000-0000-000000000001:0:0)
+[ERROR] Failed to load resource: the server responded with a status of 400 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress:0:0)
+[ERROR] Failed to fetch progress: {code: PGRST204, details: null, hint: null, message: Could not find the 'last_study_date' column of 'user_progress' in the schema cache} (at http://127.0.0.1:3002/src/renderer/providers/ProgressProvider.jsx:109:16)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/b1ad3dd9-e624-4a8c-85f5-f769b1a707e5</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed because the 'Start' button for exercises does not work, blocking exercise completion and thus preventing progress data saving and verification. Fix the disabled or non-functional 'Start' button issue in the Food &amp; Dining course module. Verify button event handlers and backend connectivity for progress save calls. Resolve Supabase schema errors affecting progress retrieval.</li>
+</ul>
+<hr>
+<h4>Test 2</h4>
+<ul>
+<li><strong>Test ID:</strong> TC010</li>
+<li><strong>Test Name:</strong> Progress Dashboard Displays Meaningful Statistics</li>
+<li><strong>Test Code:</strong> <a href="./TC010_Progress_Dashboard_Displays_Meaningful_Statistics.py">TC010_Progress_Dashboard_Displays_Meaningful_Statistics.py</a></li>
+<li><strong>Test Error:</strong> Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/src/renderer/providers/AIProvider.jsx:0:0)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/76bae603-3155-47fd-93a0-499fbf005820</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed because the progress dashboard does not load or display user learning statistics correctly; likely due to backend data fetch failures or frontend rendering errors. Investigate and fix data fetch issues causing resource load failures. Ensure progress data from backend is correctly retrieved and visualized in dashboard components.</li>
+</ul>
+<hr>
+<h3>Requirement: Electron App Management</h3>
+<ul>
+<li><strong>Description:</strong> Proper Electron application lifecycle, window management, and graceful shutdown.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC011</li>
+<li><strong>Test Name:</strong> Electron App Lifecycle and Window Management</li>
+<li><strong>Test Code:</strong> <a href="./TC011_Electron_App_Lifecycle_and_Window_Management.py">TC011_Electron_App_Lifecycle_and_Window_Management.py</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/f363b29c-4495-4f17-ae46-5ddb85c3ab85</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> Low</li>
+<li><strong>Analysis / Findings:</strong> Test passed confirming that the Electron main process initializes lifecycle events, creates main windows, and shuts down gracefully as expected. Functionality is stable. Consider adding more extensive lifecycle event tests or background task management for future enhancements.</li>
+</ul>
+<hr>
+<h4>Test 2</h4>
+<ul>
+<li><strong>Test ID:</strong> TC015</li>
+<li><strong>Test Name:</strong> Graceful Application Exit via Electron Interface</li>
+<li><strong>Test Code:</strong> <a href="./TC015_Graceful_Application_Exit_via_Electron_Interface.py">TC015_Graceful_Application_Exit_via_Electron_Interface.py</a></li>
+<li><strong>Test Error:</strong> The application does not perform a smooth and graceful shutdown when the user exits through Electron's native interface. Clicking the native window close button does not trigger any exit or shutdown behavior, no prompt for unsaved progress appears, and the app remains on the dashboard without errors or crashes. This indicates a failure in the app's shutdown handling as per the test requirements.
+Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/src/renderer/pages/AdminDashboard.jsx:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/src/renderer/hooks/useDatabase.js:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Running in browser mode - AI features will use fallback responses (at http://127.0.0.1:3002/src/renderer/services/aiService.js:90:16)
+[ERROR] Failed to load resource: the server responded with a status of 406 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress?select=*&amp;user_id=eq.00000000-0000-000000000001:0:0)
+[ERROR] Failed to load resource: the server responded with a status of 400 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress:0:0)
+[ERROR] Failed to fetch progress: {code: PGRST204, details: null, hint: null, message: Could not find the 'last_study_date' column of 'user_progress' in the schema cache} (at http://127.0.0.1:3002/src/renderer/providers/ProgressProvider.jsx:109:16)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/68f83df9-1fab-4190-a344-d601a4d56c07</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed because the app does not shut down smoothly or gracefully via the Electron native interface; no exit triggers or prompts appear and the app remains running on dashboard. Implement proper window close event handling in Electron main process to trigger app exit. Add prompts for unsaved progress and ensure all cleanup processes run during shutdown.</li>
+</ul>
+<hr>
+<h3>Requirement: Database Initialization</h3>
+<ul>
+<li><strong>Description:</strong> Local database initialization and reliable data persistence.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC012</li>
+<li><strong>Test Name:</strong> Local Database Initialization and Data Persistence</li>
+<li><strong>Test Code:</strong> <a href="./TC012_Local_Database_Initialization_and_Data_Persistence.py">TC012_Local_Database_Initialization_and_Data_Persistence.py</a></li>
+<li><strong>Test Error:</strong> Tested app startup and login successfully. However, attempts to save sample data and verify persistence failed as the app did not respond to save or start lesson actions. Unable to confirm local database initialization and reliable data storage/retrieval. Recommend developer investigation.
+Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/node_modules/.vite/deps/react.js?v=e6b3eef4:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/node_modules/vite/dist/client/env.mjs:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://127.0.0.1:3002/src/renderer/components/SupabaseGeminiTest.jsx:0:0)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Supabase not connected, using fallback authentication (at http://127.0.0.1:3002/src/renderer/contexts/AuthContext.jsx:46:18)
+[WARNING] Running in browser mode - AI features will use fallback responses (at http://127.0.0.1:3002/src/renderer/services/aiService.js:90:16)
+[ERROR] Failed to load resource: the server responded with a status of 406 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress?select=*&amp;user_id=eq.00000000-0000-0000-0000-000000000001:0:0)
+[ERROR] Failed to load resource: the server responded with a status of 400 () (at https://ecglfwqylqchdyuhmtuv.supabase.co/rest/v1/user_progress:0:0)
+[ERROR] Failed to fetch progress: {code: PGRST204, details: null, hint: null, message: Could not find the 'last_study_date' column of 'user_progress' in the schema cache} (at http://127.0.0.1:3002/src/renderer/providers/ProgressProvider.jsx:109:16)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/6411ac92-d89c-4cd3-9bd0-d0eb5208b429</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed because attempts to save and retrieve data in the local database are unsuccessful; the app does not respond to save or start lesson actions indicating a persistence or database initialization problem. Investigate initialization and connection logic of local database. Verify data write/read functions and fix failures in saving or starting lessons. Address backend Supabase connection issues if involved.</li>
+</ul>
+<hr>
+<h3>Requirement: UI Responsiveness</h3>
+<ul>
+<li><strong>Description:</strong> Responsive UI components with smooth animations using Tailwind CSS and Framer Motion.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC013</li>
+<li><strong>Test Name:</strong> UI Components Render Responsively and Animate Smoothly</li>
+<li><strong>Test Code:</strong> <a href="./TC013_UI_Components_Render_Responsively_and_Animate_Smoothly.py">TC013_UI_Components_Render_Responsively_and_Animate_Smoothly.py</a></li>
+<li><strong>Test Error:</strong> Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/d0948e66-0f14-419d-8a97-6e0a86d0e108</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> Medium</li>
+<li><strong>Analysis / Findings:</strong> Test failed as UI components do not render responsively or animate smoothly, likely linked to loading resource failures affecting font or style assets. Fix resource loading issues (fonts, CSS) impacting component rendering. Validate responsive breakpoints and animation sequences across devices. Check network/resource delivery setup.</li>
+</ul>
+<hr>
+<h3>Requirement: Application Routing</h3>
+<ul>
+<li><strong>Description:</strong> Correct routing logic based on authentication state using React Router.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC014</li>
+<li><strong>Test Name:</strong> Application Routing According to Authentication State</li>
+<li><strong>Test Code:</strong> <a href="./TC014_Application_Routing_According_to_Authentication_State.py">TC014_Application_Routing_According_to_Authentication_State.py</a></li>
+<li><strong>Test Error:</strong> Browser Console Logs:
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap:0:0)
+[ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE (at http://localhost:3002/src/renderer/services/supabaseStorageService.js:0:0)</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/5d4d0265-2771-4a40-a0fb-71aacfc8feff/16f5d46b-f73d-4b97-b6f6-654f56ece3b3</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> High</li>
+<li><strong>Analysis / Findings:</strong> Test failed because routing logic does not correctly update UI views based on authentication state; navigation and routing changes likely broken due to failed resource loads affecting routing services. Fix resource and service initialization errors impacting React Router functionality. Ensure authentication state changes trigger correct route transitions and guarded views.</li>
+</ul>
+<hr>
+<h2>3️⃣ Coverage &amp; Matching Metrics</h2>
+<ul>
+<li><strong>33% of tests passed</strong></li>
+<li><strong>67% of tests failed</strong></li>
+<li><strong>Key gaps / risks:</strong></li>
+</ul>
+<blockquote>
+<p>33% of tests passed fully (5 out of 15 tests).
+67% of tests failed due to critical issues including resource loading failures, Supabase connectivity problems, and broken UI functionality.
+Major risks: Resource loading failures affecting fonts and components, Supabase schema errors with missing <code>last_study_date</code> column, non-functional logout and session management, broken exercise start buttons, and improper Electron app shutdown handling.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Total Tests</th>
+<th>✅ Passed</th>
+<th>⚠️ Partial</th>
+<th>❌ Failed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User Signup</td>
+<td>2</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>User Login</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Session Management</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>AI Features</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Progress Tracking</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Electron App Management</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Database Initialization</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>UI Responsiveness</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Application Routing</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<hr>
+
+    </body>
+    </html>
+  

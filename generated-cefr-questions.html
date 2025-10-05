@@ -1,0 +1,622 @@
+<!-- CEFR Assessment Questions - Generated from Database -->
+<div id="assessment-questions-content" class="assessment-subtab-content p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-semibold text-gray-900">CEFR Assessment Questions (22 total)</h3>
+        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center" onclick="showCreateAssessmentQuestionModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-2"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+            Create Question
+        </button>
+    </div>
+
+    <!-- CEFR Level Filter -->
+    <div class="flex flex-wrap gap-4 mb-6">
+        <select id="cefr-level-filter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="filterAssessmentQuestions()">
+            <option value="">All CEFR Levels</option>
+            <option value="A1">A1 - Beginner</option>
+            <option value="A2">A2 - Elementary</option>
+            <option value="B1">B1 - Intermediate</option>
+            <option value="B2">B2 - Upper Intermediate</option>
+            <option value="C1">C1 - Advanced</option>
+            <option value="C2">C2 - Proficient</option>
+        </select>
+        <select id="skill-type-filter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="filterAssessmentQuestions()">
+            <option value="">All Skills</option>
+            <option value="reading">Reading</option>
+            <option value="writing">Writing</option>
+            <option value="listening">Listening</option>
+            <option value="speaking">Speaking</option>
+            <option value="grammar">Grammar</option>
+            <option value="vocabulary">Vocabulary</option>
+        </select>
+        <select id="question-type-filter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="filterAssessmentQuestions()">
+            <option value="">All Question Types</option>
+            <option value="multiple-choice">Multiple Choice</option>
+            <option value="true-false">True/False</option>
+            <option value="fill-in-blank">Fill in the Blank</option>
+            <option value="essay">Essay</option>
+            <option value="listening">Listening Comprehension</option>
+            <option value="speaking">Speaking Prompt</option>
+            <option value="short-answer">Short Answer</option>
+        </select>
+    </div>
+
+    <!-- Questions List -->
+    <div id="assessment-questions-list" class="space-y-4">
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A1" data-skill="grammar" data-type="true-false">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">A1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">grammar</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">true false</span>
+                        <span class="text-xs text-gray-500">1 pts</span>
+                        <span class="text-xs text-gray-500">(easy)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">The sentence "I am happy" is grammatically correct.</h4>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> true
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('df53428c-4708-41b5-8c6a-ab769cd8b385')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('df53428c-4708-41b5-8c6a-ab769cd8b385')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A1" data-skill="grammar" data-type="fill-in-blank">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">A1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">grammar</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">fill in-blank</span>
+                        <span class="text-xs text-gray-500">2 pts</span>
+                        <span class="text-xs text-gray-500">(easy)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">My name _____ John.</h4>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> is
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('ed70fe08-25f7-4845-b76d-629bdd3f0d49')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('ed70fe08-25f7-4845-b76d-629bdd3f0d49')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A1" data-skill="reading" data-type="multiple-choice">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">A1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">reading</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">multiple choice</span>
+                        <span class="text-xs text-gray-500">1 pts</span>
+                        <span class="text-xs text-gray-500">(easy)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">What is the correct form of the verb "to be" in this sentence: "She ___ a teacher"?</h4>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <strong>Options:</strong> am, is, are, be
+                    </div>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> is
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('a13fa542-ced6-4900-8c5e-7843b477af38')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('a13fa542-ced6-4900-8c5e-7843b477af38')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A1" data-skill="speaking" data-type="speaking">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">A1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">speaking</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">speaking</span>
+                        <span class="text-xs text-gray-500">10 pts</span>
+                        <span class="text-xs text-gray-500">(easy)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Conversation Assessment: Let's start with a simple conversation. Please introduce yourself and tell me about your hobbies or interests. Speak naturally for about 2-3 minutes.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('e52d26e0-e565-444e-ad4b-2d2c6cecb6e9')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('e52d26e0-e565-444e-ad4b-2d2c6cecb6e9')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A1" data-skill="vocabulary" data-type="multiple-choice">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">A1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">vocabulary</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">multiple choice</span>
+                        <span class="text-xs text-gray-500">1 pts</span>
+                        <span class="text-xs text-gray-500">(easy)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">What do you use to write?</h4>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <strong>Options:</strong> pen, cup, shoe, hat
+                    </div>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> pen
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('1ff80a24-a064-45d4-bca6-156c56afcf15')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('1ff80a24-a064-45d4-bca6-156c56afcf15')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A2" data-skill="grammar" data-type="multiple-choice">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">A2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">grammar</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">multiple choice</span>
+                        <span class="text-xs text-gray-500">3 pts</span>
+                        <span class="text-xs text-gray-500">(medium)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Which sentence uses the past tense correctly?</h4>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <strong>Options:</strong> I go to school yesterday, I went to school yesterday, I going to school yesterday, I goes to school yesterday
+                    </div>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> I went to school yesterday
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('d8c7dc59-d623-411a-b3f0-9322e05755ef')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('d8c7dc59-d623-411a-b3f0-9322e05755ef')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A2" data-skill="reading" data-type="multiple-choice">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">A2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">reading</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">multiple choice</span>
+                        <span class="text-xs text-gray-500">2 pts</span>
+                        <span class="text-xs text-gray-500">(easy)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Read the text: "Maria lives in Madrid. She works as a teacher. She likes her job very much." What is Maria's profession?</h4>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <strong>Options:</strong> doctor, teacher, nurse, student
+                    </div>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> teacher
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('0795b3aa-402f-471e-8b3e-81f5780eac74')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('0795b3aa-402f-471e-8b3e-81f5780eac74')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A2" data-skill="speaking" data-type="speaking">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">A2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">speaking</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">speaking</span>
+                        <span class="text-xs text-gray-500">12 pts</span>
+                        <span class="text-xs text-gray-500">(easy)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Conversation Assessment: Tell me about your daily routine and what you like to do on weekends. Describe your favorite activities and explain why you enjoy them.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('f69b1e08-6e4f-4ee2-b102-2f3ee5ca55af')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('f69b1e08-6e4f-4ee2-b102-2f3ee5ca55af')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="A2" data-skill="writing" data-type="short-answer">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">A2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">writing</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">short answer</span>
+                        <span class="text-xs text-gray-500">5 pts</span>
+                        <span class="text-xs text-gray-500">(medium)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Describe your daily routine in 3-4 sentences.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('6c65464a-8563-47bf-8aed-4e15e556e708')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('6c65464a-8563-47bf-8aed-4e15e556e708')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="B1" data-skill="grammar" data-type="multiple-choice">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">B1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">grammar</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">multiple choice</span>
+                        <span class="text-xs text-gray-500">3 pts</span>
+                        <span class="text-xs text-gray-500">(medium)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">If I _____ more time, I would learn a new language.</h4>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <strong>Options:</strong> have, had, will have, would have
+                    </div>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> had
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('48b14f44-3cae-4d7b-8ed3-8f8090058f96')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('48b14f44-3cae-4d7b-8ed3-8f8090058f96')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="B1" data-skill="listening" data-type="listening">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">B1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">listening</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">listening</span>
+                        <span class="text-xs text-gray-500">4 pts</span>
+                        <span class="text-xs text-gray-500">(medium)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Listen to the audio and answer: What time does the meeting start?</h4>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <strong>Options:</strong> 9:00 AM, 9:30 AM, 10:00 AM, 10:30 AM
+                    </div>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> 9:30 AM
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('14731faa-c552-4100-ac46-50dd45c3f659')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('14731faa-c552-4100-ac46-50dd45c3f659')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="B1" data-skill="speaking" data-type="speaking">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">B1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">speaking</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">speaking</span>
+                        <span class="text-xs text-gray-500">15 pts</span>
+                        <span class="text-xs text-gray-500">(medium)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Conversation Assessment: Discuss a memorable travel experience or a place you would like to visit. Explain what makes it special and how it has influenced or might influence you.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('575d8b0f-9734-48f6-8397-2470257f7518')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('575d8b0f-9734-48f6-8397-2470257f7518')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="B1" data-skill="writing" data-type="essay">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">B1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">writing</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">essay</span>
+                        <span class="text-xs text-gray-500">10 pts</span>
+                        <span class="text-xs text-gray-500">(medium)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Do you think social media has a positive or negative impact on society? Explain your opinion.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('774ffd87-6bf4-468d-8862-9dac97c3eb91')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('774ffd87-6bf4-468d-8862-9dac97c3eb91')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="B2" data-skill="reading" data-type="short-answer">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">B2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">reading</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">short answer</span>
+                        <span class="text-xs text-gray-500">8 pts</span>
+                        <span class="text-xs text-gray-500">(hard)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">After reading the passage, explain the author's main argument and provide your critical assessment.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('e76edd88-117d-44bb-b806-198955660378')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('e76edd88-117d-44bb-b806-198955660378')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="B2" data-skill="speaking" data-type="speaking">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">B2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">speaking</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">speaking</span>
+                        <span class="text-xs text-gray-500">18 pts</span>
+                        <span class="text-xs text-gray-500">(medium)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Conversation Assessment: What are your thoughts on the impact of technology on modern communication? Discuss both advantages and disadvantages, providing specific examples.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('265d1e94-5a25-4cd0-a19a-ea6bc69d2ce5')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('265d1e94-5a25-4cd0-a19a-ea6bc69d2ce5')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="B2" data-skill="vocabulary" data-type="multiple-choice">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">B2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">vocabulary</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">multiple choice</span>
+                        <span class="text-xs text-gray-500">4 pts</span>
+                        <span class="text-xs text-gray-500">(hard)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">The company's decision to expand internationally was quite _____.</h4>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <strong>Options:</strong> ambitious, ambiguous, ambivalent, ambulatory
+                    </div>
+                    <div class="text-sm text-green-600 mb-2">
+                        <strong>Answer:</strong> ambitious
+                    </div>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('bcbf7fbb-a5a5-41f2-b431-7bdaef04613d')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('bcbf7fbb-a5a5-41f2-b431-7bdaef04613d')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="B2" data-skill="writing" data-type="essay">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">B2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">writing</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">essay</span>
+                        <span class="text-xs text-gray-500">15 pts</span>
+                        <span class="text-xs text-gray-500">(hard)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Analyze the advantages and disadvantages of remote work. How has it changed the modern workplace?</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('2fafec98-3e56-4315-ab5a-dabbae50b8bd')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('2fafec98-3e56-4315-ab5a-dabbae50b8bd')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="C1" data-skill="speaking" data-type="short-answer">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">C1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">speaking</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">short answer</span>
+                        <span class="text-xs text-gray-500">12 pts</span>
+                        <span class="text-xs text-gray-500">(hard)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Discuss the implications of climate change on global economic policies. How should governments balance environmental concerns with economic growth?</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('5904788a-aee7-4485-b9bc-aae43ba89d48')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('5904788a-aee7-4485-b9bc-aae43ba89d48')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="C1" data-skill="speaking" data-type="speaking">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">C1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">speaking</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">speaking</span>
+                        <span class="text-xs text-gray-500">22 pts</span>
+                        <span class="text-xs text-gray-500">(hard)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Conversation Assessment: Analyze the role of education in addressing social inequality. How can educational systems be reformed to create more equitable opportunities?</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('b7c675a5-7349-4edd-8ecf-919fa487ea15')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('b7c675a5-7349-4edd-8ecf-919fa487ea15')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="C1" data-skill="writing" data-type="essay">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">C1</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">writing</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">essay</span>
+                        <span class="text-xs text-gray-500">20 pts</span>
+                        <span class="text-xs text-gray-500">(hard)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Evaluate the role of artificial intelligence in education. Consider both the opportunities and challenges it presents.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('45f42d2a-157e-4348-b584-acdd8bf61e62')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('45f42d2a-157e-4348-b584-acdd8bf61e62')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="C2" data-skill="speaking" data-type="speaking">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">C2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">speaking</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">speaking</span>
+                        <span class="text-xs text-gray-500">25 pts</span>
+                        <span class="text-xs text-gray-500">(hard)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Conversation Assessment: Evaluate the philosophical implications of artificial intelligence on human consciousness and identity. How might AI development challenge our understanding of what it means to be human?</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('8c5a8d99-f2bf-4291-9b84-529f314b401c')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('8c5a8d99-f2bf-4291-9b84-529f314b401c')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow" data-cefr="C2" data-skill="writing" data-type="essay">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">C2</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">writing</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">essay</span>
+                        <span class="text-xs text-gray-500">25 pts</span>
+                        <span class="text-xs text-gray-500">(hard)</span>
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-900 mb-2">Critically examine the statement: "Language shapes thought, and thought shapes reality." Draw upon philosophical, linguistic, and cultural perspectives.</h4>
+                    <p class="text-sm text-gray-500">Created: 7/10/2025</p>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                    <button class="text-blue-600 hover:text-blue-800 p-1" onclick="editAssessmentQuestion('0474da40-57d7-4a46-9c46-71c3cdc8d227')" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 p-1" onclick="deleteAssessmentQuestion('0474da40-57d7-4a46-9c46-71c3cdc8d227')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

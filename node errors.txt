@@ -1,0 +1,62 @@
+[plugin:vite:react-babel] C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\src\components\admin\ComprehensiveAdminDashboard.jsx: 'import' and 'export' may only appear at the top level. (1779:0)
+
+  1777 |   };
+  1778 |
+> 1779 | export default ComprehensiveAdminDashboard;
+       | ^
+
+C:/Users/banan/OneDrive/Documents/GitHub/EdLingo/src/components/admin/ComprehensiveAdminDashboard.jsx:1779:0
+
+    at constructor (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:363:19)
+    at JSXParserMixin.raise (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:6612:19)
+    at JSXParserMixin.parseStatementContent (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12804:18)
+    at JSXParserMixin.parseStatementLike (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12699:17)
+    at JSXParserMixin.parseStatementListItem (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12679:17)
+    at JSXParserMixin.parseBlockOrModuleBlockBody (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:13249:61)
+    at JSXParserMixin.parseBlockBody (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:13242:10)
+    at JSXParserMixin.parseBlock (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:13230:10)
+    at JSXParserMixin.parseFunctionBody (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12049:24)
+    at JSXParserMixin.parseArrowExpression (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12024:10)
+    at JSXParserMixin.parseParenAndDistinguishExpression (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:11634:12)
+    at JSXParserMixin.parseExprAtom (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:11276:23)
+    at JSXParserMixin.parseExprAtom (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:4779:20)
+    at JSXParserMixin.parseExprSubscripts (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:11026:23)
+    at JSXParserMixin.parseUpdate (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:11011:21)
+    at JSXParserMixin.parseMaybeUnary (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:10991:23)
+    at JSXParserMixin.parseMaybeUnaryOrPrivate (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:10844:61)
+    at JSXParserMixin.parseExprOps (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:10849:23)
+    at JSXParserMixin.parseMaybeConditional (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:10826:23)
+    at JSXParserMixin.parseMaybeAssign (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:10779:21)
+    at C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:10748:39
+    at JSXParserMixin.allowInAnd (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12370:16)
+    at JSXParserMixin.parseMaybeAssignAllowIn (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:10748:17)
+    at JSXParserMixin.parseVar (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:13317:91)
+    at JSXParserMixin.parseVarStatement (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:13163:10)
+    at JSXParserMixin.parseStatementContent (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12784:23)
+    at JSXParserMixin.parseStatementLike (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12699:17)
+    at JSXParserMixin.parseModuleItem (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12676:17)
+    at JSXParserMixin.parseBlockOrModuleBlockBody (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:13249:36)
+    at JSXParserMixin.parseBlockBody (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:13242:10)
+    at JSXParserMixin.parseProgram (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12555:10)
+    at JSXParserMixin.parseTopLevel (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:12545:25)
+    at JSXParserMixin.parse (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:14423:10)
+    at parse (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\parser\lib\index.js:14457:38)
+    at parser (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\core\lib\parser\index.js:41:34)
+    at parser.next (<anonymous>)
+    at normalizeFile (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\core\lib\transformation\normalize-file.js:64:37)
+    at normalizeFile.next (<anonymous>)
+    at run (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\core\lib\transformation\index.js:22:50)
+    at run.next (<anonymous>)
+    at transform (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\core\lib\transform.js:22:33)
+    at transform.next (<anonymous>)
+    at step (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\gensync\index.js:261:32)
+    at C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\gensync\index.js:273:13
+    at async.call.result.err.err (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\gensync\index.js:223:11)
+    at C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\gensync\index.js:189:28
+    at C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\@babel\core\lib\gensync-utils\async.js:67:7
+    at C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\gensync\index.js:113:33
+    at step (C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\gensync\index.js:287:14)
+    at C:\Users\banan\OneDrive\Documents\GitHub\EdLingo\node_modules\gensync\index.js:273:13
+
+Click outside, press Esc key, or fix the code to dismiss.
+You can also disable this overlay by setting server.hmr.overlay to false in vite.config.js.

@@ -1,0 +1,88 @@
+[
+  {
+    "courseId": "e4902b19-917a-43e3-a9c2-7cdf72f6bc0e",
+    "courseTitle": "Reading",
+    "lessons": [
+      {
+        "id": "5eaa44d6-c47b-48b5-ab0d-836a1022171a",
+        "title": "Lesson 1",
+        "files": [
+          {
+            "type": "application/pdf",
+            "url": "https://ecglfwqylqchdyuhmtuv.supabase.co/storage/v1/object/public/course-materials/reading/lesson_1/1756716304479_57ht5n_onboarding.pdf"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "courseId": "b7a34b86-bfa4-42d7-a75b-23442e88d9cd",
+    "courseTitle": "Test English Course from 4-Step Wizard",
+    "lessons": [
+      {
+        "id": "39cf4c6d-4ffa-4eae-8006-02ea8aa896e0",
+        "title": "(untitled)",
+        "files": [
+          {
+            "type": "image/png",
+            "url": "https://ecglfwqylqchdyuhmtuv.supabase.co/storage/v1/object/public/course-materials/lesson-content/1754330953379_Black%20and%20Red%20Dynamic%20Bold%20World%20Affairs%20and%20News%20YouTube%20Thumbnail.png"
+          }
+        ]
+      },
+      {
+        "id": "23a66c6d-6cfc-4e12-a0fc-ff2b0d792393",
+        "title": "(untitled)",
+        "files": [
+          {
+            "type": "image/png",
+            "url": "https://ecglfwqylqchdyuhmtuv.supabase.co/storage/v1/object/public/course-materials/lesson-content/1754330953368_Black%20and%20Red%20Dynamic%20Bold%20World%20Affairs%20and%20News%20YouTube%20Thumbnail.png"
+          }
+        ]
+      },
+      {
+        "id": "8ced1127-d33d-43d7-83c0-ff8c6f9339e3",
+        "title": "(untitled)",
+        "files": [
+          {
+            "type": "image/png",
+            "url": "https://ecglfwqylqchdyuhmtuv.supabase.co/storage/v1/object/public/course-materials/lesson-content/1754334403131_Black%20and%20Red%20Dynamic%20Bold%20World%20Affairs%20and%20News%20YouTube%20Thumbnail.png"
+          }
+        ]
+      },
+      {
+        "id": "7dfc0c4a-4502-4946-a2c1-eb622b16690c",
+        "title": "(untitled)",
+        "files": [
+          {
+            "type": "image/png",
+            "url": "https://ecglfwqylqchdyuhmtuv.supabase.co/storage/v1/object/public/course-materials/lesson-content/1754334403149_Black%20and%20Red%20Dynamic%20Bold%20World%20Affairs%20and%20News%20YouTube%20Thumbnail.png"
+          }
+        ]
+      },
+      {
+        "id": "61d7f3e3-f21e-479e-b038-ae93a75945f0",
+        "title": "(untitled)",
+        "files": [
+          {
+            "type": "image/png",
+            "url": "https://ecglfwqylqchdyuhmtuv.supabase.co/storage/v1/object/public/course-materials/lesson-content/1754335329981_Black%20and%20Red%20Dynamic%20Bold%20World%20Affairs%20and%20News%20YouTube%20Thumbnail.png"
+          }
+        ]
+      },
+      {
+        "id": "3ba7b204-3532-4bdd-8d09-863df842c3a8",
+        "title": "(untitled)",
+        "files": [
+          {
+            "type": "image/png",
+            "url": "https://ecglfwqylqchdyuhmtuv.supabase.co/storage/v1/object/public/course-materials/lesson-content/1754335329980_Black%20and%20Red%20Dynamic%20Bold%20World%20Affairs%20and%20News%20YouTube%20Thumbnail.png"
+          },
+          {
+            "type": "image",
+            "url": "https://dhmvgrjrgtulxpvxfcrc.supabase.co/storage/v1/object/public/course-materials/lessons/course_content/lesson_1/1755114343685_Screenshot%202025-08-10%20210648.png"
+          }
+        ]
+      }
+    ]
+  }
+]

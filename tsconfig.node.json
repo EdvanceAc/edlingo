@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "allowJs": true,
+    "target": "ES2020",
+    "declaration": true,
+    "outDir": "./dist/node"
+  },
+  "include": ["vite.config.js", "vite.config.ts", "src/main/**/*", "src/preload/**/*"],
+  "exclude": ["node_modules", "dist", "build", "src/renderer"]
+}

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        .info { color: #3b82f6; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>EdLingo Database Connection Test</h1>
+    
+    <div class="test-container">
+        <h2>Environment Check</h2>
+        <div id="env-check">Checking environment variables...</div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Database Connection Tests</h2>
+        <button onclick="testConnection()">Test Basic Connection</button>
+        <button onclick="testLessonsQuery()">Test Lessons Query</button>
+        <button onclick="testTermsQuery()">Test Terms Query</button>
+        <button onclick="testCoursesQuery()">Test Courses Query</button>
+        <button onclick="testMaterialsQuery()">Test Materials Query</button>
+        <div id="connection-results"></div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Lesson Data Pipeline Test</h2>
+        <button onclick="testLessonPipeline()">Test Full Lesson Pipeline</button>
+        <div id="pipeline-results"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Environment variables (these should match your .env file)
+        const SUPABASE_URL = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+        
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        function addResult(containerId, title, content, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <h4 class="${type}">${title}</h4>
+                <div>${content}</div>
+                <hr style="margin: 10px 0;">
+            `;
+            container.appendChild(div);
+        }
+        
+        // Check environment
+        function checkEnvironment() {
+            const envDiv = document.getElementById('env-check');
+            let envStatus = '<h4 class="info">Environment Status:</h4>';
+            
+            envStatus += `<p><strong>Supabase URL:</strong> ${SUPABASE_URL ? '✅ Set' : '❌ Missing'}</p>`;
+            envStatus += `<p><strong>Supabase Key:</strong> ${SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'}</p>`;
+            
+            envDiv.innerHTML = envStatus;
+        }
+        
+        // Test basic connection
+        window.testConnection = async function() {
+            try {
+                addResult('connection-results', '🔄 Testing Connection', 'Attempting to connect to Supabase...');
+                
+                const { data, error } = await supabase
+                    .from('user_profiles')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    addResult('connection-results', '❌ Connection Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                        <p><strong>Details:</strong> ${error.details}</p>
+                    `, 'error');
+                } else {
+                    addResult('connection-results', '✅ Connection Success', `
+                        <p>Successfully connected to Supabase database</p>
+                        <p>Response: ${JSON.stringify(data)}</p>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('connection-results', '❌ Network Error', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                    <p><strong>Stack:</strong> ${networkError.stack}</p>
+                `, 'error');
+            }
+        };
+        
+        // Test lessons query
+        window.testLessonsQuery = async function() {
+            try {
+                addResult('connection-results', '🔄 Testing Lessons Query', 'Querying lessons table...');
+                
+                const { data, error } = await supabase
+                    .from('lessons')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) {
+                    addResult('connection-results', '❌ Lessons Query Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                        <p><strong>Details:</strong> ${error.details}</p>
+                    `, 'error');
+                } else {
+                    addResult('connection-results', '✅ Lessons Query Success', `
+                        <p>Found ${data.length} lessons</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('connection-results', '❌ Network Error - Lessons', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                `, 'error');
+            }
+        };
+        
+        // Test terms query
+        window.testTermsQuery = async function() {
+            try {
+                addResult('connection-results', '🔄 Testing Terms Query', 'Querying terms table...');
+                
+                const { data, error } = await supabase
+                    .from('terms')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) {
+                    addResult('connection-results', '❌ Terms Query Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                    `, 'error');
+                } else {
+                    addResult('connection-results', '✅ Terms Query Success', `
+                        <p>Found ${data.length} terms</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('connection-results', '❌ Network Error - Terms', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                `, 'error');
+            }
+        };
+        
+        // Test courses query
+        window.testCoursesQuery = async function() {
+            try {
+                addResult('connection-results', '🔄 Testing Courses Query', 'Querying courses table...');
+                
+                const { data, error } = await supabase
+                    .from('courses')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) {
+                    addResult('connection-results', '❌ Courses Query Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                    `, 'error');
+                } else {
+                    addResult('connection-results', '✅ Courses Query Success', `
+                        <p>Found ${data.length} courses</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('connection-results', '❌ Network Error - Courses', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                `, 'error');
+            }
+        };
+        
+        // Test materials query
+        window.testMaterialsQuery = async function() {
+            try {
+                addResult('connection-results', '🔄 Testing Materials Query', 'Querying lesson_materials table...');
+                
+                const { data, error } = await supabase
+                    .from('lesson_materials')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) {
+                    addResult('connection-results', '❌ Materials Query Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                    `, 'error');
+                } else {
+                    addResult('connection-results', '✅ Materials Query Success', `
+                        <p>Found ${data.length} materials</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('connection-results', '❌ Network Error - Materials', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                `, 'error');
+            }
+        };
+        
+        // Test full lesson pipeline
+        window.testLessonPipeline = async function() {
+            try {
+                addResult('pipeline-results', '🔄 Testing Lesson Pipeline', 'Testing complete lesson data pipeline...');
+                
+                // Step 1: Get a course
+                const { data: courses, error: courseError } = await supabase
+                    .from('courses')
+                    .select('id, title')
+                    .limit(1);
+                
+                if (courseError || !courses.length) {
+                    addResult('pipeline-results', '❌ Pipeline Failed - No Courses', `
+                        <p>Could not find any courses to test with</p>
+                        <p>Error: ${courseError?.message || 'No courses found'}</p>
+                    `, 'error');
+                    return;
+                }
+                
+                const courseId = courses[0].id;
+                addResult('pipeline-results', '✅ Step 1: Course Found', `
+                    <p>Testing with course: ${courses[0].title} (ID: ${courseId})</p>
+                `, 'success');
+                
+                // Step 2: Get terms for this course
+                const { data: terms, error: termsError } = await supabase
+                    .from('terms')
+                    .select('*')
+                    .eq('course_id', courseId);
+                
+                if (termsError) {
+                    addResult('pipeline-results', '❌ Pipeline Failed - Terms Error', `
+                        <p>Error fetching terms: ${termsError.message}</p>
+                    `, 'error');
+                    return;
+                }
+                
+                addResult('pipeline-results', '✅ Step 2: Terms Retrieved', `
+                    <p>Found ${terms.length} terms for this course</p>
+                    <pre>${JSON.stringify(terms, null, 2)}</pre>
+                `, 'success');
+                
+                if (terms.length === 0) {
+                    addResult('pipeline-results', '⚠️ No Terms Found', `
+                        <p>This course has no terms/sections. Creating lessons may require a default term.</p>
+                    `, 'warning');
+                    return;
+                }
+                
+                // Step 3: Get lessons for the first term
+                const termId = terms[0].id;
+                const { data: lessons, error: lessonsError } = await supabase
+                    .from('lessons')
+                    .select('*')
+                    .eq('term_id', termId);
+                
+                if (lessonsError) {
+                    addResult('pipeline-results', '❌ Pipeline Failed - Lessons Error', `
+                        <p>Error fetching lessons: ${lessonsError.message}</p>
+                    `, 'error');
+                    return;
+                }
+                
+                addResult('pipeline-results', '✅ Step 3: Lessons Retrieved', `
+                    <p>Found ${lessons.length} lessons for term: ${terms[0].name}</p>
+                    <pre>${JSON.stringify(lessons, null, 2)}</pre>
+                `, 'success');
+                
+                if (lessons.length === 0) {
+                    addResult('pipeline-results', '⚠️ No Lessons Found', `
+                        <p>This term has no lessons. This explains why the UI shows empty lesson lists.</p>
+                    `, 'warning');
+                    return;
+                }
+                
+                // Step 4: Get materials for the first lesson
+                const lessonId = lessons[0].id;
+                const { data: materials, error: materialsError } = await supabase
+                    .from('lesson_materials')
+                    .select('*')
+                    .eq('lesson_id', lessonId);
+                
+                if (materialsError) {
+                    addResult('pipeline-results', '❌ Pipeline Failed - Materials Error', `
+                        <p>Error fetching materials: ${materialsError.message}</p>
+                    `, 'error');
+                    return;
+                }
+                
+                addResult('pipeline-results', '✅ Step 4: Materials Retrieved', `
+                    <p>Found ${materials.length} materials for lesson: ${lessons[0].title}</p>
+                    <pre>${JSON.stringify(materials, null, 2)}</pre>
+                `, 'success');
+                
+                addResult('pipeline-results', '🎉 Pipeline Test Complete', `
+                    <p><strong>Summary:</strong></p>
+                    <ul>
+                        <li>✅ Course: ${courses[0].title}</li>
+                        <li>✅ Terms: ${terms.length} found</li>
+                        <li>✅ Lessons: ${lessons.length} found</li>
+                        <li>✅ Materials: ${materials.length} found</li>
+                    </ul>
+                    <p>The database connection and data pipeline are working correctly!</p>
+                `, 'success');
+                
+            } catch (error) {
+                addResult('pipeline-results', '❌ Pipeline Test Failed', `
+                    <p><strong>Unexpected Error:</strong> ${error.message}</p>
+                    <p><strong>Stack:</strong> ${error.stack}</p>
+                `, 'error');
+            }
+        };
+        
+        // Initialize
+        checkEnvironment();
+    </script>
+</body>
+</html>

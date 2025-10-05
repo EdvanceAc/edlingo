@@ -1,0 +1,1 @@
+ALTER TABLE public.user_progress ADD COLUMN chat_messages INTEGER DEFAULT 0;
