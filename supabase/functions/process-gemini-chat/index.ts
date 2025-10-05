@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@supabase/supabase-js'
 
 Deno.serve(async (req) => {
@@ -30,7 +29,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Initialize Gemini AI with API key from environment
+    // Initialize Gemini API key from environment
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
     if (!geminiApiKey) {
       return new Response(
@@ -39,17 +38,6 @@ Deno.serve(async (req) => {
       )
     }
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey)
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-pro', // Stable model for reliable responses
-      generationConfig: {
-        maxOutputTokens: 100, // Reduced for even faster responses
-        temperature: 0.6, // Lower temperature for faster, more focused responses
-        topP: 0.7, // Reduced for faster token selection
-        topK: 20, // Reduced for faster processing
-        candidateCount: 1 // Single candidate for fastest generation
-      }
-    })
 
     // Create optimized, concise prompts for faster processing
     let contextPrompt = ''
@@ -72,69 +60,33 @@ Deno.serve(async (req) => {
 
     const fullPrompt = `${contextPrompt}\n\nUser message: ${message}`
 
-    // Check if streaming is requested
-    const acceptHeader = req.headers.get('accept') || '';
-    const enableStreaming = acceptHeader.includes('text/event-stream') || acceptHeader.includes('text/stream') || req.url.includes('stream=true');
-    
-    if (enableStreaming) {
-      // Create streaming response
-      const stream = new ReadableStream({
-        async start(controller) {
-          try {
-            const result = await model.generateContentStream(fullPrompt)
-            
-            for await (const chunk of result.stream) {
-               const chunkText = chunk.text()
-               if (chunkText) {
-                 // Send chunk immediately without buffering
-                 const data = `data: ${JSON.stringify({ 
-                   content: chunkText, 
-                   done: false 
-                 })}\n\n`
-                 controller.enqueue(new TextEncoder().encode(data))
-                 
-                 // Force flush for immediate delivery
-                 await new Promise(resolve => setTimeout(resolve, 0))
-               }
-             }
-            
-            // Send completion signal
-            const finalData = `data: ${JSON.stringify({ 
-              content: '', 
-              done: true 
-            })}\n\n`
-            controller.enqueue(new TextEncoder().encode(finalData))
-            controller.close()
-            
-          } catch (error) {
-            console.error('Streaming error:', error)
-            const errorData = `data: ${JSON.stringify({ 
-              error: error.message, 
-              done: true 
-            })}\n\n`
-            controller.enqueue(new TextEncoder().encode(errorData))
-            controller.close()
-          }
+    // Call Gemini API directly using REST
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: fullPrompt
+          }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 200,
+          temperature: 0.6,
+          topP: 0.7,
+          topK: 20,
         }
       })
-      const origin = req.headers.get('origin') || '*';
-      return new Response(stream, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': origin,
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, X-Client-Info',
-          'Vary': 'Origin, Access-Control-Request-Headers'
-        }
-      })
+    })
+
+    if (!geminiResponse.ok) {
+      throw new Error(`Gemini API error: ${geminiResponse.status} ${geminiResponse.statusText}`)
     }
-    
-    // Non-streaming response (fallback)
-    const result = await model.generateContent(fullPrompt)
-    const responseText = result.response.text()
+
+    const geminiData = await geminiResponse.json()
+    const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated'
 
     // Optional: Store conversation in Supabase (if needed)
     if (user_id && session_id) {

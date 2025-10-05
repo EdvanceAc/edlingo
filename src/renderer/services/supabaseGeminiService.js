@@ -305,7 +305,13 @@ class SupabaseGeminiService {
 
       if (error) {
         console.error('Supabase function error:', error);
-        throw error;
+        // Return structured failure so callers can gracefully fallback
+        return {
+          success: false,
+          error: error.message || String(error),
+          sessionId: currentSessionId,
+          provider: 'supabase-edge-function'
+        };
       }
 
       console.log('[SupabaseGeminiService] Returning success response with data.response:', data.response);
@@ -318,7 +324,12 @@ class SupabaseGeminiService {
       };
     } catch (error) {
       console.error('Error in sendMessage:', error);
-      throw error;
+      // Do not throw; return structured failure for graceful fallback
+      return {
+        success: false,
+        error: error.message || String(error),
+        provider: 'supabase-edge-function'
+      };
     }
   }
 
@@ -646,7 +657,13 @@ class SupabaseGeminiService {
 
         if (error) {
           console.error('Live conversation function error:', error);
-          throw error;
+          // Return structured failure to allow graceful fallback
+          return {
+            success: false,
+            error: error.message || String(error),
+            sessionId: sessionId,
+            provider: 'supabase-live-conversation'
+          };
         }
 
         return {
@@ -658,7 +675,12 @@ class SupabaseGeminiService {
       }
     } catch (error) {
       console.error('Error in sendLiveConversationMessage:', error);
-      throw error;
+      // Do not throw; return structured failure for graceful fallback
+      return {
+        success: false,
+        error: error.message || String(error),
+        provider: 'supabase-live-conversation'
+      };
     }
   }
 }

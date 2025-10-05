@@ -67,16 +67,27 @@ class AIService {
     try {
       console.log('Initializing AI service...');
       
-      // Check for Gemini API key (for Supabase routing)
-      const geminiApiKey = options.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY;
+      // Detect Supabase availability (client can route to Edge Functions without exposing API key)
+      const hasSupabase = !!(import.meta.env?.VITE_SUPABASE_URL && import.meta.env?.VITE_SUPABASE_ANON_KEY);
       
-      if (geminiApiKey) {
-        console.log('Gemini API key available for Supabase routing');
-        this.useGemini = true;
-        this.geminiApiKey = geminiApiKey;
+      // Check for Gemini API key (for optional direct fallback usage)
+      const geminiApiKey =
+        options.geminiApiKey ||
+        import.meta.env?.VITE_GEMINI_API_KEY ||
+        import.meta.env?.VITE_GOOGLE_GEMINI_API_KEY ||
+        (typeof window !== 'undefined' ? window?.__ENV__?.VITE_GEMINI_API_KEY : undefined) ||
+        (typeof window !== 'undefined' ? window?.__ENV__?.VITE_GOOGLE_GEMINI_API_KEY : undefined);
+      
+      // Enable Gemini routing when Supabase is configured or a direct API key exists
+      this.useGemini = hasSupabase || !!geminiApiKey;
+      this.geminiApiKey = geminiApiKey || null;
+      
+      if (hasSupabase) {
+        console.log('Supabase detected — enabling Edge Function routing');
+      } else if (geminiApiKey) {
+        console.log('Direct Gemini API key detected — enabling direct fallback');
       } else {
-        console.log('No Gemini API key provided, using fallback providers');
-        this.useGemini = false;
+        console.log('No Supabase or Gemini API key detected — using local fallbacks');
       }
       
       // Debug: Check what's available in window
@@ -195,6 +206,32 @@ class AIService {
         };
       } else {
         console.warn('aiService: Supabase Gemini service failed:', supabaseResult.error);
+        
+        // Attempt direct Gemini fallback if a browser API key exists
+        if (this.geminiApiKey) {
+          try {
+            console.log('aiService: Attempting direct Gemini fallback');
+            const direct = await supabaseGeminiService.fallbackToDirectGemini(userMessage, {
+              focusArea: chatMode,
+              userLevel
+            });
+            
+            if (direct?.success && direct?.stream) {
+              let full = '';
+              for await (const chunk of direct.stream) {
+                if (chunk?.chunk) full += chunk.chunk;
+              }
+              return {
+                success: true,
+                response: full,
+                provider: direct.provider || 'direct-gemini-fallback',
+                sessionId: direct.sessionId
+              };
+            }
+          } catch (directErr) {
+            console.warn('aiService: Direct Gemini fallback failed:', directErr);
+          }
+        }
         // Check if it's an API key issue and provide enhanced fallback
         if (supabaseResult.error && (supabaseResult.error.includes('CONSUMER_SUSPENDED') || supabaseResult.error.includes('Permission denied'))) {
           console.log('aiService: Using enhanced fallback due to API key issues');
@@ -206,6 +243,30 @@ class AIService {
       }
     } catch (supabaseError) {
       console.error('aiService: Supabase Gemini service error:', supabaseError);
+      // Try direct Gemini fallback if available
+      if (this.geminiApiKey) {
+        try {
+          console.log('aiService: Attempting direct Gemini fallback after error');
+          const direct = await supabaseGeminiService.fallbackToDirectGemini(userMessage, {
+            focusArea: chatMode,
+            userLevel
+          });
+          if (direct?.success && direct?.stream) {
+            let full = '';
+            for await (const chunk of direct.stream) {
+              if (chunk?.chunk) full += chunk.chunk;
+            }
+            return {
+              success: true,
+              response: full,
+              provider: direct.provider || 'direct-gemini-fallback',
+              sessionId: direct.sessionId
+            };
+          }
+        } catch (directErr) {
+          console.warn('aiService: Direct Gemini fallback failed:', directErr);
+        }
+      }
       return this._wrapFallbackResponse(
         this._generateEnhancedLanguageLearningFallback(userMessage, chatMode, userLevel, targetLanguage),
         'enhanced-fallback'

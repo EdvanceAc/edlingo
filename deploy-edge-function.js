@@ -11,14 +11,18 @@ const fs = require('fs');
 
 console.log('🚀 Deploying Supabase Edge Function: process-gemini-chat');
 
-// Check if Supabase CLI is installed
+// Check if Supabase CLI is available via npx
 try {
-  execSync('supabase --version', { stdio: 'pipe' });
-  console.log('✅ Supabase CLI found');
+  execSync('npx supabase --version', { stdio: 'pipe' });
+  console.log('✅ Supabase CLI found via npx');
 } catch (error) {
-  console.error('❌ Supabase CLI not found. Please install it first:');
-  console.error('npm install -g supabase');
-  process.exit(1);
+  console.error('❌ Supabase CLI not available. Installing via npx...');
+  try {
+    execSync('npx supabase --version', { stdio: 'inherit' });
+  } catch (installError) {
+    console.error('❌ Failed to install Supabase CLI');
+    process.exit(1);
+}
 }
 
 // Check if function directory exists
@@ -33,7 +37,7 @@ console.log('📁 Function directory found:', functionPath);
 try {
   // Deploy the Edge Function
   console.log('🔄 Deploying Edge Function...');
-  execSync('supabase functions deploy process-gemini-chat', {
+  execSync('npx supabase functions deploy process-gemini-chat', {
     stdio: 'inherit',
     cwd: __dirname
   });
@@ -49,8 +53,8 @@ try {
   console.error('❌ Deployment failed:', error.message);
   console.error('');
   console.error('💡 Troubleshooting:');
-  console.error('1. Make sure you\'re logged in: supabase login');
-  console.error('2. Link your project: supabase link --project-ref YOUR_PROJECT_REF');
+  console.error('1. Make sure you\'re logged in: npx supabase login');
+  console.error('2. Link your project: npx supabase link --project-ref YOUR_PROJECT_REF');
   console.error('3. Check your internet connection');
   process.exit(1);
 }

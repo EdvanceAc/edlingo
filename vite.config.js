@@ -149,7 +149,8 @@ function adminRouteRedirectPlugin() {
     name: 'admin-route-redirect-plugin',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (req.url.startsWith('/admin')) {
+        // Only redirect /admin and /admin/ to React app, not static HTML files
+        if (req.url === '/admin' || req.url === '/admin/') {
           req.url = '/index.html';
         }
         next();

@@ -154,21 +154,17 @@ Current message: ${message}`
     }
   } catch (error) {
     console.error('Error in process-live-conversation:', error)
-    
-    // Check if this is a missing API key error
-    const isApiKeyMissing = error.message.includes('API key not configured') || 
-                           error.message.includes('Gemini API key') ||
-                           !GEMINI_API_KEY;
-    
+    // Safely detect if API key is configured in environment
+    const hasApiKey = !!Deno.env.get('GEMINI_API_KEY')
     return new Response(
       JSON.stringify({
         error: error.message,
         success: false,
         geminiUsed: false,
         source: 'error',
-        apiKeyConfigured: !!GEMINI_API_KEY,
+        apiKeyConfigured: hasApiKey,
         debug: {
-          hasApiKey: !!GEMINI_API_KEY,
+          hasApiKey,
           errorMessage: error.message,
           timestamp: new Date().toISOString()
         }

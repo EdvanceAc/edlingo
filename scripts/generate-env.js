@@ -75,6 +75,19 @@ function generateEnvFile() {
     // Environment variables injected at build time
     window.__ENV__ = ${JSON.stringify(env, null, 2)};
     
+    // Backwards-compat: expose alias without trailing underscore used by legacy pages
+    window.__ENV = window.__ENV__;
+    
+    // Legacy compatibility: expose non-Vite keys for static test pages
+    window.ENV = {
+      SUPABASE_URL: window.__ENV__.VITE_SUPABASE_URL,
+      SUPABASE_ANON_KEY: window.__ENV__.VITE_SUPABASE_ANON_KEY,
+      SUPABASE_SERVICE_ROLE_KEY: window.__ENV__.VITE_SUPABASE_SERVICE_ROLE_KEY
+    };
+    // Also set global shims expected by older diagnostics
+    window.supabaseUrl = window.ENV.SUPABASE_URL;
+    window.supabaseAnonKey = window.ENV.SUPABASE_ANON_KEY;
+    window.supabaseServiceRoleKey = window.ENV.SUPABASE_SERVICE_ROLE_KEY;
     // Helper function to get environment variables with fallbacks
     window.getEnv = function(key, fallback = null) {
         return (window.__ENV__ && window.__ENV__[key] != null) ? window.__ENV__[key] : fallback;
