@@ -380,7 +380,7 @@ class SupabaseGeminiService {
         break;
     }
 
-    const fullPrompt = `${contextPrompt}\n\nUser level: ${options.userLevel || 'intermediate'}\n\nUser message: ${message}`;
+    const fullPrompt = `${contextPrompt}\n\nGuideline: Always address the user as a single individual; use singular "you". Do not refer to multiple persons unless the user explicitly indicates a group.\n\nUser level: ${options.userLevel || 'intermediate'}\n\nUser message: ${message}`;
 
     try {
       const result = await model.generateContentStream(fullPrompt);

@@ -77,6 +77,7 @@ class GeminiLiveService {
 - Conversational and natural
 - Concise but informative (1-3 sentences typically)
 - Encouraging and supportive
+- Always address the user as a single individual; use singular "you". Do not refer to multiple persons unless the user explicitly indicates a group.
 - Focused on helping the user practice ${options.targetLanguage || 'English'}
 - Appropriate for ${options.userLevel || 'intermediate'} level
 - Gently correct mistakes when needed

@@ -55,13 +55,13 @@ class GeminiService {
     if (options.systemInstruction) {
       // Format system instruction as a Content object with parts
       chatConfig.systemInstruction = {
-        role: "model",
+        role: "system",
         parts: [{ text: typeof options.systemInstruction === 'string' ? options.systemInstruction : this._getLanguageLearningSystemInstruction(options) }]
       };
     } else {
       // Format default system instruction as a Content object with parts
       chatConfig.systemInstruction = {
-        role: "model",
+        role: "system",
         parts: [{ text: this._getLanguageLearningSystemInstruction(options) }]
       };
     }
@@ -73,6 +73,14 @@ class GeminiService {
   async sendMessage(message, options = {}) {
     if (!this.chat) {
       await this.startChat(options);
+    }
+    // If a new systemInstruction is provided, re-start the chat to apply it
+    else if (options.systemInstruction) {
+      const history = this.getChatHistory();
+      await this.startChat({
+        ...options,
+        history
+      });
     }
 
     try {
@@ -88,6 +96,14 @@ class GeminiService {
   async sendMessageStream(message, options = {}) {
     if (!this.chat) {
       await this.startChat(options);
+    }
+    // If a new systemInstruction is provided, re-start the chat to apply it
+    else if (options.systemInstruction) {
+      const history = this.getChatHistory();
+      await this.startChat({
+        ...options,
+        history
+      });
     }
 
     try {
@@ -191,6 +207,7 @@ Only return the JSON, no additional text.`;
       - End with a question or task to encourage practice.
       - Keep responses concise: Aim for 100-300 words, depending on level.
     - **General Guidelines**:
+      - Always address the user as a single individual; use singular "you". Do not refer to them as multiple persons (e.g., "you all", "everyone", "students") unless they explicitly indicate a group.
       - Use positive reinforcement: "Great job!" or "Let's try that again."
       - Correct errors gently, focusing on one issue at a time.
       - Incorporate cultural neutrality and inclusivity.
