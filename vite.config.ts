@@ -21,22 +21,7 @@ const adminRoutePlugin = () => {
         }
       });
     },
-    generateBundle() {
-      // Copy admin and diagnostic HTML files to dist folder during build
-      const adminFiles = ['admin-dashboard.html', 'admin-login.html', 'diagnose-fetch-errors.html', 'test-supabase-connection.html'];
-      
-      adminFiles.forEach(file => {
-        const filePath = path.resolve(__dirname, file);
-        if (fs.existsSync(filePath)) {
-          const content = fs.readFileSync(filePath, 'utf-8');
-          this.emitFile({
-            type: 'asset',
-            fileName: file,
-            source: content
-          });
-        }
-      });
-    }
+    // Removed generateBundle copier; HTML will be treated as input pages by Rollup
   };
 };
 
@@ -50,6 +35,13 @@ export default defineConfig({
     sourcemap: true,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        admin: path.resolve(__dirname, 'admin-dashboard.html'),
+        adminLogin: path.resolve(__dirname, 'admin-login.html'),
+        diagnose: path.resolve(__dirname, 'diagnose-fetch-errors.html'),
+        testSupabase: path.resolve(__dirname, 'test-supabase-connection.html'),
+      },
       output: {
         manualChunks: (id) => {
           // Core React libraries
