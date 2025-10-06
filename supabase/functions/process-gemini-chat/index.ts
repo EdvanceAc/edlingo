@@ -43,19 +43,19 @@ Deno.serve(async (req) => {
     let contextPrompt = ''
     switch (focus_area) {
       case 'conversation':
-        contextPrompt = `Reply conversationally for ${user_level} learners. Be brief and encouraging.`
+        contextPrompt = `Reply conversationally for ${user_level} learners. Be brief and encouraging. Always address the user as a single individual; use singular "you".`
         break
       case 'grammar':
-        contextPrompt = `Grammar help for ${user_level} level. Give short, clear explanations.`
+        contextPrompt = `Grammar help for ${user_level} level. Give short, clear explanations. Always address the user as a single individual; use singular "you".`
         break
       case 'vocabulary':
-        contextPrompt = `Vocabulary help for ${user_level} level. Explain briefly.`
+        contextPrompt = `Vocabulary help for ${user_level} level. Explain briefly. Always address the user as a single individual; use singular "you".`
         break
       case 'writing':
-        contextPrompt = `Writing feedback for ${user_level} level. Be brief and helpful.`
+        contextPrompt = `Writing feedback for ${user_level} level. Be brief and helpful. Always address the user as a single individual; use singular "you".`
         break
       default:
-        contextPrompt = `Language assistant for ${user_level} learner. Be concise.`
+        contextPrompt = `Language assistant for ${user_level} learner. Be concise. Always address the user as a single individual; use singular "you".`
     }
 
     const fullPrompt = `${contextPrompt}\n\nUser message: ${message}`
