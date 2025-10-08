@@ -6,9 +6,6 @@ import {
   MessageCircle, 
   MessageSquare, 
   Radio,
-  Mic, 
-  BookOpen, 
-  GraduationCap, 
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -48,24 +45,6 @@ const navigationItems = [
     href: '/live-conversation',
     icon: Radio,
     description: 'Real-time conversation practice'
-  },
-  {
-    name: 'Pronunciation',
-    href: '/pronunciation',
-    icon: Mic,
-    description: 'Speech practice and feedback'
-  },
-  {
-    name: 'Vocabulary',
-    href: '/vocabulary',
-    icon: BookOpen,
-    description: 'Learn new words and phrases'
-  },
-  {
-    name: 'Grammar',
-    href: '/grammar',
-    icon: GraduationCap,
-    description: 'Grammar exercises and rules'
   },
   {
     name: 'Assessment',

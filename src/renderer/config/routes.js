@@ -10,9 +10,6 @@ const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Chat = lazy(() => import('../pages/Chat'));
 const EnhancedChat = lazy(() => import('../pages/EnhancedChat'));
 const LiveConversation = lazy(() => import('../pages/LiveConversation'));
-const Pronunciation = lazy(() => import('../pages/Pronunciation'));
-const Vocabulary = lazy(() => import('../pages/Vocabulary'));
-const Grammar = lazy(() => import('../pages/Grammar'));
 const Courses = lazy(() => import('../pages/Courses'));
 const Settings = lazy(() => import('../pages/Settings'));
 const AdminDashboard = lazy(() => import('../pages/AdminDashboard'));
@@ -43,23 +40,7 @@ export const routes = [
     title: 'Live Conversation'
   },
   {
-    path: '/pronunciation',
-    component: Pronunciation,
-    key: 'pronunciation',
-    title: 'Pronunciation'
-  },
-  {
-    path: '/vocabulary',
-    component: Vocabulary,
-    key: 'vocabulary',
-    title: 'Vocabulary'
-  },
-  {
-    path: '/grammar',
-    component: Grammar,
-    key: 'grammar',
-    title: 'Grammar'
-  },
+    
   {
     path: '/courses',
     component: Courses,

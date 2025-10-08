@@ -245,21 +245,16 @@ class SupabaseStorageService {
         throw error;
       }
 
-      return {
-        success: true,
-        data: data.map(file => ({
-          ...file,
-          publicUrl: this.getFileUrl(bucketName, folder ? `${folder}/${file.name}` : file.name)
-        }))
-      };
+      // Return an array for API compatibility with renderer service
+      return data.map(file => ({
+        ...file,
+        publicUrl: this.getFileUrl(bucketName, folder ? `${folder}/${file.name}` : file.name)
+      }));
 
     } catch (error) {
       console.error('List files error:', error);
-      return {
-        success: false,
-        error: error.message,
-        data: []
-      };
+      // Return empty array on failure for safe consumers
+      return [];
     }
   }
 

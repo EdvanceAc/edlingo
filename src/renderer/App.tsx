@@ -13,9 +13,6 @@ import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import EnhancedChat from './pages/EnhancedChat';
 import LiveConversation from './pages/LiveConversation';
-import Pronunciation from './pages/Pronunciation';
-import Vocabulary from './pages/Vocabulary';
-import Grammar from './pages/Grammar';
 import Settings from './pages/Settings';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
@@ -268,53 +265,7 @@ function App() {
                         } 
                       />
                       <Route 
-                        path="/pronunciation" 
-                        element={
-                          <ProtectedRoute>
-                            <motion.div
-                              key="pronunciation"
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -20 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <Pronunciation />
-                            </motion.div>
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/vocabulary" 
-                        element={
-                          <ProtectedRoute>
-                            <motion.div
-                              key="vocabulary"
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -20 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <Vocabulary />
-                            </motion.div>
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/grammar" 
-                        element={
-                          <ProtectedRoute>
-                            <motion.div
-                              key="grammar"
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -20 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <Grammar />
-                            </motion.div>
-                          </ProtectedRoute>
-                        } 
-                      />
+                        
                       <Route 
                         path="/settings" 
                         element={
