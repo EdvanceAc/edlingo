@@ -1,9 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.1.3'
+import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.12.0'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// Base CORS headers; dynamically set allowed headers and origin on requests
+const baseCorsHeaders = {
+  'Cache-Control': 'no-cache',
+  'Connection': 'keep-alive'
 }
 
 interface LiveConversationRequest {
@@ -17,9 +18,20 @@ interface LiveConversationRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight with dynamic headers
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    const origin = req.headers.get('origin') || '*'
+    const requestedHeaders = req.headers.get('access-control-request-headers') || 'Content-Type, Authorization, Accept, X-Client-Info, Cache-Control, Connection'
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...baseCorsHeaders,
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': requestedHeaders,
+        'Vary': 'Origin, Access-Control-Request-Headers'
+      }
+    })
   }
 
   try {
@@ -41,8 +53,9 @@ serve(async (req) => {
 
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
+    // Use a model alias compatible with v1beta streaming
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-pro',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.7,
         topK: 40,
@@ -67,6 +80,7 @@ User's focus area: ${focus_area}
 Current message: ${message}`
 
     if (streaming) {
+      const origin = req.headers.get('origin') || '*'
       // Set up SSE streaming
       const encoder = new TextEncoder()
       const stream = new TransformStream()
@@ -75,7 +89,11 @@ Current message: ${message}`
       // Start streaming response
       const streamResponse = async () => {
         try {
-          const result = await model.generateContentStream(systemPrompt)
+          const result = await model.generateContentStream({
+            contents: [
+              { role: 'user', parts: [{ text: systemPrompt }] }
+            ]
+          })
           let fullResponse = ''
 
           for await (const chunk of result.stream) {
@@ -95,12 +113,52 @@ Current message: ${message}`
             }
           }
 
-          // Send final message
+          // Attempt Zephyr TTS generation for final response using REST API
+          let audioData: { data: string; mimeType: string } | null = null
+          try {
+            if (fullResponse && fullResponse.trim().length > 0) {
+              const ttsResp = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [
+                      { role: 'user', parts: [{ text: fullResponse }] }
+                    ],
+                    generationConfig: {
+                      responseMimeType: 'audio/wav'
+                    }
+                  })
+                }
+              )
+
+              if (ttsResp.ok) {
+                const ttsJson = await ttsResp.json()
+                const parts = ttsJson?.candidates?.[0]?.content?.parts || []
+                const inline = parts.find((p: any) => p.inlineData)
+                if (inline?.inlineData?.data) {
+                  audioData = {
+                    data: inline.inlineData.data,
+                    mimeType: inline.inlineData.mimeType || 'audio/wav'
+                  }
+                }
+              } else {
+                console.warn('Zephyr TTS REST call failed:', ttsResp.status, ttsResp.statusText)
+              }
+            }
+          } catch (ttsError) {
+            // TTS is optional; log and continue without audio
+            console.warn('Zephyr TTS generation failed:', ttsError)
+          }
+
+          // Send final message including optional audio data
           const finalData = JSON.stringify({
             content: '',
             fullResponse: fullResponse,
             done: true,
-            session_id: session_id
+            session_id: session_id,
+            audioData
           })
           
           await writer.write(encoder.encode(`data: ${finalData}\n\n`))
@@ -122,15 +180,21 @@ Current message: ${message}`
       // Return SSE response
       return new Response(stream.readable, {
         headers: {
-          ...corsHeaders,
+          ...baseCorsHeaders,
+          'Access-Control-Allow-Origin': origin,
           'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no', // prevent proxy buffering (e.g., NGINX)
+          'Vary': 'Origin'
         },
       })
     } else {
+      const origin = req.headers.get('origin') || '*'
       // Non-streaming response
-      const result = await model.generateContent(systemPrompt)
+      const result = await model.generateContent({
+        contents: [
+          { role: 'user', parts: [{ text: systemPrompt }] }
+        ]
+      })
       const response = result.response.text()
 
       return new Response(
@@ -147,8 +211,10 @@ Current message: ${message}`
         }),
         { 
           headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
+            ...baseCorsHeaders,
+            'Access-Control-Allow-Origin': origin,
+            'Content-Type': 'application/json',
+            'Vary': 'Origin'
           } 
         }
       )
@@ -157,6 +223,7 @@ Current message: ${message}`
     console.error('Error in process-live-conversation:', error)
     // Safely detect if API key is configured in environment
     const hasApiKey = !!Deno.env.get('GEMINI_API_KEY')
+    const origin = req.headers.get('origin') || '*'
     return new Response(
       JSON.stringify({
         error: error.message,
@@ -173,8 +240,10 @@ Current message: ${message}`
       { 
         status: 400,
         headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
+          ...baseCorsHeaders,
+          'Access-Control-Allow-Origin': origin,
+          'Content-Type': 'application/json',
+          'Vary': 'Origin'
         } 
       }
     )

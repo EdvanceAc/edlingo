@@ -77,6 +77,12 @@ export function ProgressProvider({ children }) {
     const fetchProgress = async () => {
       if (!user?.id) return;
       try {
+        // Ensure we have an authenticated session before hitting RLS-protected tables
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.warn('No auth session; skipping remote progress fetch. Using local progress.');
+          return;
+        }
          const { connected } = await checkSupabaseConnection();
          if (!connected) {
          console.warn('Supabase not connected. Skipping remote progress fetch.');
@@ -168,6 +174,8 @@ export function ProgressProvider({ children }) {
     (async () => {
       const { connected } = await checkSupabaseConnection();
       if (!connected) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       
       pollInterval = setInterval(async () => {
         try {
@@ -345,6 +353,11 @@ export function ProgressProvider({ children }) {
     const updateProgressData = async (newProgress) => {
       // Save to Supabase with error handling
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.warn('No auth session; skipping remote progress save.');
+          return;
+        }
         const { error } = await supabase.from('user_progress').upsert({
           user_id: user.id,
           ...mapToDB(newProgress)
@@ -437,6 +450,11 @@ export function ProgressProvider({ children }) {
     const updateProgressData = async (newProgress) => {
       // Save to Supabase with error handling
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.warn('No auth session; skipping remote progress save.');
+          return;
+        }
         await supabase.from('user_progress').upsert({
           user_id: user.id,
           ...mapToDB(newProgress)
@@ -481,6 +499,11 @@ export function ProgressProvider({ children }) {
       // Save to Supabase with error handling
       (async () => {
         try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            console.warn('No auth session; skipping remote progress save.');
+            return;
+          }
           const { error } = await supabase.from('user_progress').upsert({
             user_id: user.id,
             ...mapToDB(newProgress)
@@ -534,6 +557,11 @@ export function ProgressProvider({ children }) {
       // Save to Supabase with error handling
       (async () => {
         try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            console.warn('No auth session; skipping remote progress save.');
+            return;
+          }
           const { error } = await supabase.from('user_progress').upsert({
             user_id: user.id,
             ...mapToDB(newProgress)

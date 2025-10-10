@@ -44,15 +44,18 @@ if (process.env.DISABLE_GPU === 'true') {
   app.commandLine.appendSwitch('--disk-cache-size', '50000000'); // 50MB cache
   app.commandLine.appendSwitch('--media-cache-size', '25000000'); // 25MB media cache
   
-  // Fix resource loading issues
-  app.commandLine.appendSwitch('--disable-web-security'); // Allow cross-origin requests in dev
-  app.commandLine.appendSwitch('--allow-running-insecure-content'); // Allow mixed content
-  app.commandLine.appendSwitch('--disable-features', 'VizDisplayCompositor'); // Fix rendering issues
-  app.commandLine.appendSwitch('--ignore-certificate-errors'); // Ignore SSL errors in dev
-  app.commandLine.appendSwitch('--ignore-ssl-errors'); // Additional SSL error handling
-  app.commandLine.appendSwitch('--ignore-certificate-errors-spki-list');
-  app.commandLine.appendSwitch('--ignore-certificate-errors-skip-list');
-  app.commandLine.appendSwitch('--disable-site-isolation-trials'); // Improve resource loading
+  // Security-relaxing flags only in development
+  if (isDev) {
+    // Fix resource loading issues during development
+    app.commandLine.appendSwitch('--disable-web-security'); // Allow cross-origin requests in dev
+    app.commandLine.appendSwitch('--allow-running-insecure-content'); // Allow mixed content
+    app.commandLine.appendSwitch('--disable-features', 'VizDisplayCompositor'); // Fix rendering issues
+    app.commandLine.appendSwitch('--ignore-certificate-errors'); // Ignore SSL errors in dev
+    app.commandLine.appendSwitch('--ignore-ssl-errors'); // Additional SSL error handling
+    app.commandLine.appendSwitch('--ignore-certificate-errors-spki-list');
+    app.commandLine.appendSwitch('--ignore-certificate-errors-skip-list');
+    app.commandLine.appendSwitch('--disable-site-isolation-trials'); // Improve resource loading
+  }
 }
 
 // Handle GPU process crashes and cache issues
@@ -420,18 +423,18 @@ function setupIPC() {
         onMessage: (message) => {
           if (message && typeof message === 'object') {
             console.log('Live session message received:', message.type || 'unknown');
-            event.sender.send('ai:liveMessage', message);
+            event.sender.send('live-session:message', message);
           } else {
             console.warn('Invalid live message received:', message);
           }
         },
         onError: (error) => {
           console.error('Live session error:', error);
-          event.sender.send('ai:liveError', error);
+          event.sender.send('live-session:error', error);
         },
         onClose: (closeEvent) => {
           console.log('Live session closed:', closeEvent);
-          event.sender.send('ai:liveClose', closeEvent);
+          event.sender.send('live-session:closed', closeEvent);
         }
       };
       

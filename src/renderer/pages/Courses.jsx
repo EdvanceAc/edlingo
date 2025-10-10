@@ -656,11 +656,7 @@ const Courses = () => {
         </Card>
       </motion.div>
 
-      {/* Notifications */}
-      <NotificationPanel />
-
-      {/* Visual Vocabulary Preview */}
-      <VocabularyPreview />
+      {/* Notifications and Visual Vocabulary removed as requested */}
 
       {/* Course Controls */}
       <motion.div

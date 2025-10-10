@@ -27,7 +27,7 @@ const SupabaseGeminiTest = () => {
       console.log('🧪 SupabaseGeminiTest: Received result:', result);
       
       if (result.success) {
-        setResponse(result.message);
+        setResponse(result.response || result.message || '');
         console.log('🧪 SupabaseGeminiTest: Success - message set');
       } else {
         setError(result.error || 'Failed to get response');

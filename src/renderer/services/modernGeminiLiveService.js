@@ -105,50 +105,98 @@ class ModernGeminiLiveService {
       });
       
       if (!result || !result.success || !result.stream) {
+        console.warn('Live streaming unavailable; falling back to non-streaming Supabase chat');
+        try {
+          const nonStreaming = await supabaseGeminiService.sendMessage(message, {
+            sessionId: this.sessionId,
+            userLevel: options.userLevel || options.level,
+            focusArea: options.focusArea || 'conversation',
+            streaming: false
+          });
+          if (nonStreaming?.success && nonStreaming?.response) {
+            const finalText = nonStreaming.response;
+            // Emit final complete message
+            this.emit('message', {
+              type: 'text',
+              content: finalText,
+              isComplete: true,
+              timestamp: new Date().toISOString(),
+              audioData: null
+            });
+            console.log('Message sent successfully via non-streaming Supabase fallback');
+            return { success: true, response: finalText, message: 'Message sent successfully (non-streaming fallback)' };
+          }
+        } catch (nsErr) {
+          console.warn('Non-streaming Supabase fallback failed:', nsErr);
+        }
         throw new Error('Supabase live conversation streaming failed');
       }
       
       let fullResponse = '';
       let audioData = null;
       let lastEmittedContent = '';
+      let streamError = null;
       
-      // Process streaming chunks
-      for await (const chunk of result.stream) {
-        const chunkText = chunk?.chunk || chunk?.text || '';
-        if (!chunkText && !chunk?.fullResponse && !chunk?.audioData) continue;
-        fullResponse = chunk?.fullResponse || (fullResponse + (chunkText || ''));
-        
-        // Capture audio data from any chunk (including final)
-        if (chunk?.audioData) {
-          audioData = chunk.audioData;
-          console.log('🎵 Zephyr audio data received from chunk:', {
-            hasData: !!audioData.data,
-            mimeType: audioData.mimeType,
-            size: audioData.data?.length || 0
-          });
+      // Process streaming chunks with local error handling
+      try {
+        for await (const chunk of result.stream) {
+          const chunkText = chunk?.chunk || chunk?.text || '';
+          if (!chunkText && !chunk?.fullResponse && !chunk?.audioData) continue;
+          fullResponse = chunk?.fullResponse || (fullResponse + (chunkText || ''));
+          
+          // Capture audio data from any chunk (including final)
+          if (chunk?.audioData) {
+            audioData = chunk.audioData;
+            console.log('🎵 Zephyr audio data received from chunk:', {
+              hasData: !!audioData.data,
+              mimeType: audioData.mimeType,
+              size: audioData.data?.length || 0
+            });
+          }
+          
+          // Check if this is the final chunk with audioData
+          if (chunk?.done && chunk?.audioData) {
+            audioData = chunk.audioData;
+            console.log('🎵 Final Zephyr audio data received:', {
+              hasData: !!audioData.data,
+              mimeType: audioData.mimeType,
+              size: audioData.data?.length || 0
+            });
+          }
+          
+          // Only emit streaming message if content has significantly changed
+          if (fullResponse !== lastEmittedContent && fullResponse.length > lastEmittedContent.length + 5) {
+            this.emit('message', {
+              type: 'text',
+              content: fullResponse,
+              isComplete: false,
+              chunk: chunkText,
+              timestamp: new Date().toISOString()
+            });
+            lastEmittedContent = fullResponse;
+          }
         }
-        
-        // Check if this is the final chunk with audioData
-        if (chunk?.done && chunk?.audioData) {
-          audioData = chunk.audioData;
-          console.log('🎵 Final Zephyr audio data received:', {
-            hasData: !!audioData.data,
-            mimeType: audioData.mimeType,
-            size: audioData.data?.length || 0
-          });
-        }
-        
-        // Only emit streaming message if content has significantly changed
-        // This prevents too many rapid updates
-        if (fullResponse !== lastEmittedContent && fullResponse.length > lastEmittedContent.length + 5) {
-          this.emit('message', {
-            type: 'text',
-            content: fullResponse,
-            isComplete: false,
-            chunk: chunkText,
-            timestamp: new Date().toISOString()
-          });
-          lastEmittedContent = fullResponse;
+      } catch (e) {
+        console.error('Streaming parse error:', e);
+        streamError = e;
+      }
+
+      // If streaming produced no content, attempt a direct Gemini fallback
+      if (!fullResponse || !fullResponse.trim()) {
+        try {
+          const fb = await supabaseGeminiService.fallbackToDirectGemini(message, options);
+          if (fb && fb.stream) {
+            let fbFull = '';
+            for await (const ch of fb.stream) {
+              const t = ch?.chunk || ch?.text || '';
+              if (t) fbFull += t;
+            }
+            if (fbFull && fbFull.trim()) {
+              fullResponse = fbFull;
+            }
+          }
+        } catch (fbErr) {
+          console.warn('Direct Gemini fallback failed:', fbErr);
         }
       }
 
@@ -169,6 +217,29 @@ class ModernGeminiLiveService {
       return { success: true, response: fullResponse, message: 'Message sent successfully' };
     } catch (error) {
       console.error('Failed to send message:', error);
+      // Final attempt: non-streaming via Supabase (JSON) before giving up
+      try {
+        const nonStreaming = await supabaseGeminiService.sendMessage(message, {
+          sessionId: this.sessionId,
+          userLevel: options.userLevel || options.level,
+          focusArea: options.focusArea || 'conversation',
+          streaming: false
+        });
+        if (nonStreaming?.success && nonStreaming?.response) {
+          const finalText = nonStreaming.response;
+          this.emit('message', {
+            type: 'text',
+            content: finalText,
+            isComplete: true,
+            timestamp: new Date().toISOString(),
+            audioData: null
+          });
+          console.log('Message sent successfully via non-streaming Supabase fallback (catch)');
+          return { success: true, response: finalText, message: 'Message sent successfully (non-streaming fallback)' };
+        }
+      } catch (nsErr) {
+        console.warn('Non-streaming Supabase fallback (catch) failed:', nsErr);
+      }
       this.emit('error', { error: error.message });
       return { success: false, error: error.message };
     }
@@ -834,6 +905,20 @@ class ModernGeminiLiveService {
    */
   async _startEdgeTranscription(options = {}) {
     try {
+      // Resolve Supabase base URL once
+      const envUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL)
+        || (typeof window !== 'undefined' && (window.__ENV__?.VITE_SUPABASE_URL || window.ENV?.SUPABASE_URL));
+      const baseUrl = envUrl || (typeof window !== 'undefined' ? (window.supabaseUrl || '') : '');
+
+      // Guard when not configured
+      if (!baseUrl) {
+        console.warn('Edge transcription disabled: SUPABASE_URL not configured');
+        this._emitSttEvent('edge-transcription-unavailable',
+          'Transcription service not configured. Falling back to text-only live conversation.',
+          'warning');
+        return { success: false, error: 'edge-transcription-unavailable' };
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = 'audio/webm';
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
@@ -861,8 +946,6 @@ class ModernGeminiLiveService {
             const formData = new FormData();
             formData.append('audio', blob, 'chunk.webm');
             formData.append('language', options.language || 'en-US');
-            const envUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || (typeof window !== 'undefined' && (window.__ENV__?.VITE_SUPABASE_URL || window.ENV?.SUPABASE_URL));
-            const baseUrl = envUrl || (typeof window !== 'undefined' ? (window.supabaseUrl || '') : '');
             // Ensure auth token (user session or anon key)
             try { await supabaseGeminiService.initialize(); } catch {}
             let authToken = '';
@@ -898,6 +981,14 @@ class ModernGeminiLiveService {
                   try { await this.sendMessage(finalText); } catch {}
                 }, FLUSH_DELAY_MS);
               }
+            } else if (resp.status === 404) {
+              // Function missing in project — stop edge transcription gracefully
+              console.warn('Edge transcription function not found (404). Disabling edge fallback.');
+              this._emitSttEvent('edge-function-missing',
+                'Transcription function not deployed. Live conversation continues without STT fallback.',
+                'warning');
+              stopAll();
+              return;
             }
           } catch (err) {
             console.warn('Edge transcription error:', err);

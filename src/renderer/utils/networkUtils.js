@@ -42,18 +42,23 @@ class NetworkUtils {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      // Use a lightweight endpoint that supports CORS
-      const response = await fetch('https://www.google.com/favicon.ico', {
-        method: 'HEAD',
-        mode: 'no-cors',
-        cache: 'no-cache',
-        signal: controller.signal
+      // Use a lightweight connectivity endpoint that reliably returns 204
+      // Avoids favicon URL noise and minimizes CORS issues
+      await fetch('https://www.gstatic.com/generate_204', {
+        method: 'GET',
+        mode: 'no-cors', // opaque response is fine for connectivity check
+        cache: 'no-store',
+        signal: controller.signal,
+        keepalive: true
       });
       
       clearTimeout(timeoutId);
       return true;
     } catch (error) {
-      console.warn('Internet connectivity test failed:', error.message);
+      // Treat aborted as a connectivity failure but avoid noisy logs
+      if (error?.name !== 'AbortError') {
+        console.warn('Internet connectivity test failed:', error.message);
+      }
       return false;
     }
   }

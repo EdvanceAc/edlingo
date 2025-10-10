@@ -7,7 +7,7 @@ class GeminiService {
     this.chat = null;
     this.isInitialized = false;
     this.apiKey = null;
-    this.modelName = 'gemini-1.5-flash';
+    this.modelName = 'gemini-2.5-flash';
   }
 
   async initialize(apiKey) {

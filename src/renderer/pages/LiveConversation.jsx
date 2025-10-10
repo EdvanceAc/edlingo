@@ -421,13 +421,13 @@ const LiveConversation = () => {
     console.log('Starting live session...');
     
     if (!isGeminiAvailable()) {
-      console.log('Gemini not available');
+      console.log('Gemini not available locally; proceeding with Supabase server-side live conversation');
       toast({
-        title: "AI Service Unavailable",
-        description: "Please configure your AI settings first.",
-        variant: "destructive"
+        title: "Server-side AI",
+        description: "Proceeding with Supabase live conversation.",
+        variant: "default"
       });
-      return;
+      // Continue without local API key; Supabase Edge Functions will handle requests
     }
 
     const liveService = liveServiceRef.current;
@@ -448,10 +448,10 @@ const LiveConversation = () => {
       userEndedRef.current = false;
       reconnectAttemptsRef.current = 0;
       
-      // Get API key and initialize live service
+      // Get API key (optional). If absent, we'll run in server-side mode via Supabase.
       const apiKey = getApiKey();
       if (!apiKey) {
-        throw new Error('API key not available');
+        console.log('No local Gemini API key found; initializing without key (Supabase will handle requests)');
       }
       
       console.log('Initializing live service...');
@@ -637,7 +637,9 @@ const LiveConversation = () => {
         const liveService = liveServiceRef.current;
         if (!liveService) return;
         const apiKey = getApiKey();
-        if (!apiKey) throw new Error('API key not available');
+        if (!apiKey) {
+          console.log('No local Gemini API key found during reconnect; continuing with server-side mode');
+        }
         const initResult = await liveService.initialize(apiKey, {
           model: 'models/gemini-2.0-flash-exp',
           voiceName: 'Zephyr',

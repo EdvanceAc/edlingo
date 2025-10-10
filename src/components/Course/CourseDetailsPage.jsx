@@ -835,115 +835,7 @@ const CourseDetailsPage = () => {
               </Card>
             </motion.div>
 
-            {/* Ratings & Reviews */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.75 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className="w-5 h-5 text-yellow-500" />
-                    Ratings & Reviews
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {/* Summary */}
-                  <div className="flex items-end justify-between mb-4">
-                    <div>
-                      <div className="text-3xl font-bold text-foreground">
-                        {avgRating.average.toFixed(1)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{avgRating.count} reviews</div>
-                    </div>
-                  </div>
-
-                  {/* Add Review */}
-                  <div className="mb-6 p-4 border rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
-                      <div className="md:col-span-1">
-                        <Select value={newReview.rating} onValueChange={(v) => setNewReview(r => ({ ...r, rating: v }))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Rating" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="5">★★★★★</SelectItem>
-                            <SelectItem value="4">★★★★☆</SelectItem>
-                            <SelectItem value="3">★★★☆☆</SelectItem>
-                            <SelectItem value="2">★★☆☆☆</SelectItem>
-                            <SelectItem value="1">★☆☆☆☆</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="md:col-span-2">
-                        <Input
-                          placeholder="Title (optional)"
-                          value={newReview.title}
-                          onChange={(e) => setNewReview(r => ({ ...r, title: e.target.value }))}
-                        />
-                      </div>
-                      <div className="md:col-span-3">
-                        <Input
-                          placeholder="Share your experience"
-                          value={newReview.content}
-                          onChange={(e) => setNewReview(r => ({ ...r, content: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 text-right">
-                      <Button
-                        size="sm"
-                        loading={submittingReview}
-                        onClick={async () => {
-                          try {
-                            setSubmittingReview(true);
-                            await supabaseService.addCourseReview(courseId, {
-                              rating: Number(newReview.rating),
-                              title: newReview.title,
-                              content: newReview.content
-                            });
-                            setNewReview({ rating: '5', title: '', content: '' });
-                            await loadReviews();
-                          } finally {
-                            setSubmittingReview(false);
-                          }
-                        }}
-                      >
-                        Submit Review
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Reviews List */}
-                  {reviews.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No reviews yet. Be the first to review!</div>
-                  ) : (
-                    <div className="space-y-3">
-                      {reviews.map((rev) => (
-                        <div key={rev.id} className="p-4 border rounded-lg">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="text-sm font-medium text-foreground">
-                              {rev.title || 'Review'}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(rev.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="text-yellow-500 text-sm mb-1">
-                            {'★'.repeat(Math.max(1, Math.min(5, Number(rev.rating) || 0)))}{'☆'.repeat(5 - Math.max(1, Math.min(5, Number(rev.rating) || 0)))}
-                          </div>
-                          {rev.content && (
-                            <div className="text-sm text-foreground mb-2">{rev.content}</div>
-                          )}
-                          <div className="text-xs text-muted-foreground">Helpful: {rev.helpful_count || 0}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
+            {/* Ratings & Reviews moved below Learning Path */}
 
             {/* Learning Path Timeline */}
             <motion.div
@@ -1135,6 +1027,116 @@ const CourseDetailsPage = () => {
                       <p className="text-muted-foreground text-sm">
                         This course doesn't have any lessons yet. Check back later or contact your instructor.
                       </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Ratings & Reviews */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.75 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    Ratings & Reviews
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Summary */}
+                  <div className="flex items-end justify-between mb-4">
+                    <div>
+                      <div className="text-3xl font-bold text-foreground">
+                        {avgRating.average.toFixed(1)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">{avgRating.count} reviews</div>
+                    </div>
+                  </div>
+
+                  {/* Add Review */}
+                  <div className="mb-6 p-4 border rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
+                      <div className="md:col-span-1">
+                        <Select value={newReview.rating} onValueChange={(v) => setNewReview(r => ({ ...r, rating: v }))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Rating" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">★★★★★</SelectItem>
+                            <SelectItem value="4">★★★★☆</SelectItem>
+                            <SelectItem value="3">★★★☆☆</SelectItem>
+                            <SelectItem value="2">★★☆☆☆</SelectItem>
+                            <SelectItem value="1">★☆☆☆☆</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <Input
+                          placeholder="Title (optional)"
+                          value={newReview.title}
+                          onChange={(e) => setNewReview(r => ({ ...r, title: e.target.value }))}
+                        />
+                      </div>
+                      <div className="md:col-span-3">
+                        <Input
+                          placeholder="Share your experience"
+                          value={newReview.content}
+                          onChange={(e) => setNewReview(r => ({ ...r, content: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-right">
+                      <Button
+                        size="sm"
+                        loading={submittingReview}
+                        onClick={async () => {
+                          try {
+                            setSubmittingReview(true);
+                            await supabaseService.addCourseReview(courseId, {
+                              rating: Number(newReview.rating),
+                              title: newReview.title,
+                              content: newReview.content
+                            });
+                            setNewReview({ rating: '5', title: '', content: '' });
+                            await loadReviews();
+                          } finally {
+                            setSubmittingReview(false);
+                          }
+                        }}
+                      >
+                        Submit Review
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Reviews List */}
+                  {reviews.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No reviews yet. Be the first to review!</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {reviews.map((rev) => (
+                        <div key={rev.id} className="p-4 border rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-sm font-medium text-foreground">
+                              {rev.title || 'Review'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(rev.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="text-yellow-500 text-sm mb-1">
+                            {'★'.repeat(Math.max(1, Math.min(5, Number(rev.rating) || 0)))}{'☆'.repeat(5 - Math.max(1, Math.min(5, Number(rev.rating) || 0)))}
+                          </div>
+                          {rev.content && (
+                            <div className="text-sm text-foreground mb-2">{rev.content}</div>
+                          )}
+                          <div className="text-xs text-muted-foreground">Helpful: {rev.helpful_count || 0}</div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>

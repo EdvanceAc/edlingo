@@ -319,33 +319,7 @@ const CourseSection = () => {
         ))}
       </motion.div>
 
-      {/* Quick Actions */}
-      <motion.div variants={itemVariants}>
-        <Card className="bg-muted/30 border-border">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center space-x-2">
-              <Target className="w-5 h-5 text-green-600" />
-              <span>Quick Practice</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Button variant="outline" className="justify-start">
-                <BookOpen className="w-4 h-4 mr-2" />
-                Review Vocabulary
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <Play className="w-4 h-4 mr-2" />
-                Practice Speaking
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <Target className="w-4 h-4 mr-2" />
-                Grammar Quiz
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Quick Actions removed per request */}
     </motion.div>
   );
 };

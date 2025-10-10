@@ -385,7 +385,7 @@ class AIService {
     // Add Gemini status (via Supabase)
     const geminiStatus = this.useGemini ? {
       isReady: !!this.geminiApiKey,
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       hasApiKey: !!this.geminiApiKey,
       routeType: 'supabase'
     } : null;

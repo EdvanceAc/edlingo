@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import supabaseConfig from '../config/supabaseConfig';
+import { supabaseConfig } from '../config/supabaseConfig.js';
 
 class SupabaseGeminiService {
   constructor() {
@@ -51,9 +51,9 @@ class SupabaseGeminiService {
       // Create optimized streaming request with more tolerant timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.warn('[SupabaseGeminiService] Streaming fetch aborted due to timeout');
+        console.warn('[SupabaseGeminiService] Streaming fetch aborted due to timeout (60s)');
         controller.abort();
-      }, 25000); // 25 second timeout for streaming
+      }, 60000); // extend to 60s for streaming stability
       
       try {
         // Conditionally include Authorization header only when token exists
@@ -61,7 +61,8 @@ class SupabaseGeminiService {
         const headers = {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
-          'Accept': 'text/event-stream, text/stream'
+          'Accept': 'text/event-stream, text/stream',
+          'Connection': 'keep-alive'
         };
         if (session?.access_token) {
           headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -93,6 +94,7 @@ class SupabaseGeminiService {
         const decoder = new TextDecoder();
         let buffer = '';
         let fullResponse = '';
+        let loggedFirstChunk = false;
 
         return {
           success: true,
@@ -109,33 +111,29 @@ class SupabaseGeminiService {
                     if (buffer.trim()) {
                       const lines = buffer.split('\n');
                       for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                          try {
-                            const data = JSON.parse(line.slice(6));
-                            if (data.content && !data.done) {
-                              fullResponse += data.content;
-                              yield {
-                                chunk: data.content,
-                                fullResponse,
-                                done: false
-                              };
-                            }
-                            if (data.done) {
-                              if (data.fullResponse) {
-                                fullResponse = data.fullResponse;
-                              }
-                              return { 
+                        if (!line.startsWith('data: ')) continue;
+                        let data;
+                        try { data = JSON.parse(line.slice(6)); } catch (e) { console.warn('Failed to parse streaming data:', e); continue; }
+                        if (data.error) { throw new Error(data.error); }
+                        if (data.content && !data.done) {
+                          fullResponse += data.content;
+                          if (!loggedFirstChunk) { console.log('[SupabaseGeminiService] First SSE chunk received (process-gemini-chat)'); loggedFirstChunk = true; }
+                          yield {
+                            chunk: data.content,
+                            fullResponse,
+                            done: false
+                          };
+                        }
+                        if (data.done) {
+                          if (data.fullResponse) {
+                            fullResponse = data.fullResponse;
+                          }
+                          console.log('[SupabaseGeminiService] SSE complete (process-gemini-chat); total length:', fullResponse.length);
+                          return { 
                             fullResponse, 
                             done: true, 
                             audioData: data.audioData // Pass through audio data
                           };
-                            }
-                            if (data.error) {
-                              throw new Error(data.error);
-                            }
-                          } catch (e) {
-                            console.warn('Failed to parse streaming data:', e);
-                          }
                         }
                       }
                     }
@@ -153,34 +151,28 @@ class SupabaseGeminiService {
                     buffer = buffer.slice(newlineIndex + 2);
                     
                     if (line.startsWith('data: ')) {
-                      try {
-                        const data = JSON.parse(line.slice(6));
-                        
-                        if (data.error) {
-                          throw new Error(data.error);
+                      let data;
+                      try { data = JSON.parse(line.slice(6)); } catch (e) { console.warn('Failed to parse streaming data:', e); continue; }
+                      if (data.error) { throw new Error(data.error); }
+                      if (data.content && !data.done) {
+                        fullResponse += data.content;
+                        if (!loggedFirstChunk) { console.log('[SupabaseGeminiService] First SSE chunk received (process-gemini-chat)'); loggedFirstChunk = true; }
+                        yield {
+                          chunk: data.content,
+                          fullResponse,
+                          done: false
+                        };
+                      }
+                      if (data.done) {
+                        if (data.fullResponse) {
+                          fullResponse = data.fullResponse;
                         }
-                        
-                        if (data.content && !data.done) {
-                          fullResponse += data.content;
-                          yield {
-                            chunk: data.content,
-                            fullResponse,
-                            done: false
-                          };
-                        }
-                        
-                        if (data.done) {
-                          if (data.fullResponse) {
-                            fullResponse = data.fullResponse;
-                          }
-                          return { 
-                            fullResponse, 
-                            done: true, 
-                            audioData: data.audioData // Pass through audio data
-                          };
-                        }
-                      } catch (e) {
-                        console.warn('Failed to parse streaming data:', e);
+                        console.log('[SupabaseGeminiService] SSE complete (process-gemini-chat); total length:', fullResponse.length);
+                        return { 
+                          fullResponse, 
+                          done: true, 
+                          audioData: data.audioData // Pass through audio data
+                        };
                       }
                     }
                   }
@@ -350,8 +342,9 @@ class SupabaseGeminiService {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
+    // Use a model alias compatible with v1beta streaming
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.7,
         topK: 40,
@@ -521,7 +514,7 @@ class SupabaseGeminiService {
         const { data: { session } } = await this.supabase.auth.getSession();
         const headers = {
           'Content-Type': 'application/json',
-          'Accept': 'text/event-stream'
+          'Accept': 'text/event-stream, text/stream'
         };
         
         if (session?.access_token) {
@@ -533,13 +526,55 @@ class SupabaseGeminiService {
           }
         }
 
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(requestData)
-        });
+        // Add a tolerant timeout for streaming to avoid hanging connections
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.warn('[SupabaseGeminiService] Live streaming fetch aborted due to timeout (60s)');
+          controller.abort();
+        }, 60000);
+
+        // Simple retry for transient network errors
+        let response;
+        let fetchError;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            response = await fetch(functionUrl, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(requestData),
+              signal: controller.signal
+            });
+            fetchError = undefined;
+            break;
+          } catch (e) {
+            fetchError = e;
+            console.warn(`[SupabaseGeminiService] Streaming fetch attempt ${attempt} failed:`, e?.message || e);
+            if (attempt < 2) {
+              await new Promise(res => setTimeout(res, 500));
+            }
+          } finally {
+            // timeout cleared after final attempt below
+          }
+        }
+
+        clearTimeout(timeoutId);
+
+        if (!response) {
+          throw fetchError || new Error('Failed to fetch live conversation stream');
+        }
 
         if (!response.ok) {
+          // If server returned JSON error, surface it
+          const ct = response.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            try {
+              const json = await response.json();
+              const errMsg = json?.error || `HTTP error! status: ${response.status}`;
+              throw new Error(errMsg);
+            } catch (_) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+          }
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
@@ -551,6 +586,7 @@ class SupabaseGeminiService {
         const decoder = new TextDecoder();
         let buffer = '';
         let fullResponse = '';
+        let loggedFirstChunk = false;
 
         return {
           success: true,
@@ -571,6 +607,7 @@ class SupabaseGeminiService {
                             const data = JSON.parse(line.slice(6));
                             if (data.content && !data.done) {
                               fullResponse += data.content;
+                              if (!loggedFirstChunk) { console.log('[SupabaseGeminiService] First SSE chunk received (process-live-conversation)'); loggedFirstChunk = true; }
                               yield {
                                 chunk: data.content,
                                 fullResponse,
@@ -581,6 +618,7 @@ class SupabaseGeminiService {
                               if (data.fullResponse) {
                                 fullResponse = data.fullResponse;
                               }
+                              console.log('[SupabaseGeminiService] SSE complete (process-live-conversation); total length:', fullResponse.length);
                               return { 
                             fullResponse, 
                             done: true, 
@@ -617,6 +655,7 @@ class SupabaseGeminiService {
                         
                         if (data.content && !data.done) {
                           fullResponse += data.content;
+                          if (!loggedFirstChunk) { console.log('[SupabaseGeminiService] First SSE chunk received (process-live-conversation)'); loggedFirstChunk = true; }
                           yield {
                             chunk: data.content,
                             fullResponse,
@@ -628,6 +667,7 @@ class SupabaseGeminiService {
                           if (data.fullResponse) {
                             fullResponse = data.fullResponse;
                           }
+                          console.log('[SupabaseGeminiService] SSE complete (process-live-conversation); total length:', fullResponse.length);
                           return { 
                             fullResponse, 
                             done: true, 
@@ -675,12 +715,29 @@ class SupabaseGeminiService {
       }
     } catch (error) {
       console.error('Error in sendLiveConversationMessage:', error);
-      // Do not throw; return structured failure for graceful fallback
-      return {
-        success: false,
-        error: error.message || String(error),
-        provider: 'supabase-live-conversation'
-      };
+      // Prefer a server-side fallback that is known to be healthy: process-gemini-chat (streaming)
+      try {
+        console.log('[SupabaseGeminiService] Falling back to process-gemini-chat streaming path');
+        const chatFallback = await this.sendStreamingMessage(message, {
+          ...options,
+          streaming: true
+        });
+        return chatFallback;
+      } catch (chatFallbackError) {
+        console.warn('[SupabaseGeminiService] process-gemini-chat fallback failed, trying direct Gemini API:', chatFallbackError);
+        try {
+          const directFallback = await this.fallbackToDirectGemini(message, options);
+          return directFallback;
+        } catch (fallbackError) {
+          console.error('Live conversation final fallback failed:', fallbackError);
+          // Do not throw; return structured failure for graceful handling upstream
+          return {
+            success: false,
+            error: fallbackError.message || error.message || String(error),
+            provider: 'supabase-live-conversation'
+          };
+        }
+      }
     }
   }
 }
