@@ -1,5 +1,9 @@
 # EdLingo - AI-Powered Language Learning Desktop App
 
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
+
 EdLingo is a modern, AI-powered language learning desktop application built with Electron, React, and cutting-edge AI technologies. It provides an interactive and personalized language learning experience with real-time conversation practice, vocabulary building, and grammar lessons.
 
 ## 🚀 Features
@@ -119,6 +123,14 @@ VITE_APP_ENV=development
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## Contributors ✨
+
+Thanks goes to the wonderful person:
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+- [@bananbenbadr](https://github.com/bananbenbadr) 💻
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## 📱 Admin Dashboard
 
