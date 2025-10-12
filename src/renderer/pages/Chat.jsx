@@ -352,7 +352,8 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border p-4 flex-shrink-0">
+      <div className="relative overflow-hidden p-4 flex-shrink-0 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-lg">
+        <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-violet-200/40 via-sky-200/30 to-pink-200/40" />
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -420,14 +421,15 @@ const Chat = () => {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="border-b border-border p-4 bg-muted/30"
+          className="p-4 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-md"
         >
           <GeminiSettings />
         </motion.div>
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+      <div className="relative flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+        <div className="pointer-events-none absolute inset-0 opacity-60 bg-gradient-to-b from-transparent via-indigo-50/50 to-transparent" />
         <AnimatePresence>
           {messages.map((message) => (
             <motion.div
@@ -454,10 +456,10 @@ const Chat = () => {
                 </div>
 
                 {/* Message Bubble */}
-                <div className={`rounded-2xl px-4 py-3 ${
+                <div className={`rounded-2xl px-4 py-3 shadow-sm ring-1 ${
                   message.type === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-br-md'
-                    : 'bg-muted text-muted-foreground rounded-bl-md'
+                    ? 'bg-white/70 backdrop-blur-md ring-white/60 text-gray-900 rounded-br-md'
+                    : 'bg-white/60 backdrop-blur-md ring-white/60 text-gray-700 rounded-bl-md'
                 }`}>
                   <div className="flex items-start space-x-2">
                     <p className="text-sm flex-1">{message.content}</p>
@@ -465,15 +467,15 @@ const Chat = () => {
                   <div className="flex items-center justify-between mt-2">
                     <span className={`text-xs ${
                       message.type === 'user' 
-                        ? 'text-primary-foreground/70' 
-                        : 'text-muted-foreground/70'
+                        ? 'text-gray-600' 
+                        : 'text-gray-600'
                     }`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                     {message.type === 'ai' && (
                       <button
                         onClick={() => handleSpeakMessage(message.content)}
-                        className="ml-2 p-1 rounded hover:bg-accent transition-colors"
+                        className="ml-2 p-1 rounded hover:bg-black/5 transition-colors"
                         title="Listen to message"
                       >
                         <Volume2 className="w-3 h-3" />
@@ -534,7 +536,8 @@ const Chat = () => {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border p-4 flex-shrink-0 bg-background">
+      <div className="relative p-4 flex-shrink-0 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-lg">
+        <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-blue-200/40 via-teal-200/30 to-purple-200/40" />
         <div className="flex items-end space-x-3">
           {/* Voice Input Button */}
           <button
