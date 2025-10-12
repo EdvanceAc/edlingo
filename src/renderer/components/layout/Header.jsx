@@ -88,20 +88,26 @@ const Header = ({ onToggleSidebar }) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 backdrop-blur-xl shadow-2xl border-white/20">
+    <header className="sticky top-0 z-50 w-full relative border-b border-white/15 bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-pink-600/90 backdrop-blur-2xl shadow-xl">
+      {/* Aurora accents for premium feel */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-8 -left-24 h-40 w-40 rounded-full bg-fuchsia-400/25 blur-3xl" />
+        <div className="absolute -bottom-10 left-1/3 h-32 w-56 rounded-full bg-indigo-400/25 blur-2xl" />
+        <div className="absolute -top-6 right-0 h-28 w-28 rounded-full bg-pink-400/20 blur-2xl" />
+      </div>
       <div className="container flex h-16 items-center px-4">
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="text-white hover:bg-white/20 hover:text-white transition-all duration-300"
+            className="text-white bg-white/10 ring-1 ring-white/15 hover:bg-white/20 hover:ring-white/25 transition-all duration-300"
           >
             <Menu className="h-6 w-6" />
           </Button>
           
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm ring-1 ring-white/20 shadow-sm transition-transform duration-300 hover:scale-105">
               <span className="text-white font-bold text-lg">E</span>
             </div>
             <span className="font-bold text-xl text-white drop-shadow-lg">EdLingo</span>
@@ -109,22 +115,25 @@ const Header = ({ onToggleSidebar }) => {
         </div>
 
         <div className="flex-1 flex justify-center">
-          <div className="flex items-center space-x-6 bg-white/10 backdrop-blur-md rounded-full px-6 py-2 border border-white/20">
-            <div className="flex items-center space-x-2">
+          <div className="relative flex items-center space-x-3 bg-white/10 backdrop-blur-md rounded-full px-6 py-2 ring-1 ring-white/20 shadow-sm">
+            {/* soft shimmer sweep */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-full bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-40 animate-[shine_3.6s_linear_infinite]" />
+            <style>{`@keyframes shine{0%{transform:translateX(-60%)}100%{transform:translateX(160%)}}`}</style>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
               <div className="w-6 h-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-xs font-bold text-white">🔥</span>
               </div>
               <span className="text-sm font-bold text-white">{streak} day streak</span>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
               <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-xs font-bold text-white">⭐</span>
               </div>
               <span className="text-sm font-bold text-white">Level {level}</span>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
               <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-xs font-bold text-white">💎</span>
               </div>
@@ -141,7 +150,7 @@ const Header = ({ onToggleSidebar }) => {
         {/* Audio Status */}
         <button
           onClick={toggleMute}
-          className="p-2 rounded-lg hover:bg-accent transition-colors relative"
+          className="p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors relative"
           title={isMuted ? 'Unmute' : 'Mute'}
         >
           {isMuted ? (
@@ -161,7 +170,7 @@ const Header = ({ onToggleSidebar }) => {
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-accent transition-colors"
+          className="p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors"
           title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
           {theme === 'light' ? (
@@ -175,7 +184,7 @@ const Header = ({ onToggleSidebar }) => {
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 rounded-lg hover:bg-accent transition-colors relative"
+            className="p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors relative"
             title="Notifications"
           >
             <Bell className="w-5 h-5" />
@@ -232,7 +241,7 @@ const Header = ({ onToggleSidebar }) => {
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-2 p-2 rounded-lg hover:bg-accent transition-colors"
+            className="flex items-center space-x-2 p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors"
           >
             <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center">
               <User className="w-4 h-4 text-white" />
@@ -274,14 +283,14 @@ const Header = ({ onToggleSidebar }) => {
         <div className="flex items-center space-x-1 ml-4">
           <button
             onClick={() => handleWindowControl('minimize')}
-            className="p-2 rounded hover:bg-accent transition-colors"
+            className="p-2 rounded bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors"
             title="Minimize"
           >
             <Minimize2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleWindowControl('maximize')}
-            className="p-2 rounded hover:bg-accent transition-colors"
+            className="p-2 rounded bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors"
             title="Maximize"
           >
             <Maximize2 className="w-4 h-4" />
