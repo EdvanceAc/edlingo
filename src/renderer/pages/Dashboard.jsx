@@ -249,9 +249,10 @@ const Dashboard = () => {
           transition={{ delay: 0.5 }}
           className="lg:col-span-2"
         >
-          <div className="card p-6">
-            <h2 className="text-xl font-semibold mb-6 flex items-center">
-              <Play className="w-5 h-5 mr-2" />
+          <div className="card card-premium relative overflow-hidden p-6 border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
+            <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
+            <h2 className="text-xl font-bold mb-6 flex items-center tracking-tight">
+              <Play className="w-5 h-5 mr-2 text-primary" />
               Quick Actions
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -260,27 +261,29 @@ const Dashboard = () => {
                 return (
                   <motion.div
                     key={action.title}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
+                    transition={{ delay: 0.6 + index * 0.08 }}
                   >
                     <Link
                       to={action.href}
-                      className="block p-4 rounded-lg border border-border hover:border-primary/50 transition-all duration-200 hover:shadow-md group"
+                      className="group block p-4 rounded-xl border border-primary/20 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
                     >
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className={`w-10 h-10 bg-gradient-to-br ${action.color} rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center group-hover:scale-105 transition-transform shadow-soft`}>
                           <Icon className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium group-hover:text-primary transition-colors">
+                          <h3 className="font-semibold text-foreground group-hover:text-primary">
                             {action.title}
                           </h3>
                           <p className="text-sm text-muted-foreground">
                             {action.description}
                           </p>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-sm ring-1 ring-primary/40 shadow-md shadow-primary/30 flex items-center justify-center transition-all group-hover:bg-white/80 group-hover:ring-primary/60">
+                          <ChevronRight className="w-4 h-4 text-primary drop-shadow-sm group-hover:translate-x-1 transition-transform" />
+                        </div>
                       </div>
                     </Link>
                   </motion.div>
@@ -298,7 +301,8 @@ const Dashboard = () => {
           className="space-y-6"
         >
           {/* Achievements */}
-          <div className="card p-6">
+          <div className="card card-premium relative overflow-hidden p-6 border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
+            <div className="pointer-events-none absolute -top-8 -right-8 w-44 h-44 rounded-full bg-primary/20 blur-2xl" />
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <Award className="w-5 h-5 mr-2" />
               Recent Achievements
@@ -311,14 +315,14 @@ const Dashboard = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.8 + index * 0.1 }}
-                    className="flex items-center space-x-3 p-3 rounded-lg bg-accent/50"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10"
                   >
                     <span className="text-2xl">{achievement.icon}</span>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{achievement.name}</p>
                       <p className="text-xs text-muted-foreground">{achievement.description}</p>
                     </div>
-                    <span className="text-xs font-medium text-primary">+{achievement.xp} XP</span>
+                    <span className="text-xs font-semibold text-primary glass px-2 py-1 rounded-md">+{achievement.xp} XP</span>
                   </motion.div>
                 ))
               ) : (
@@ -330,7 +334,8 @@ const Dashboard = () => {
           </div>
 
           {/* Weekly Progress Chart */}
-          <div className="card p-6">
+          <div className="card card-premium relative overflow-hidden p-6 border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
+            <div className="pointer-events-none absolute -bottom-8 -left-8 w-44 h-44 rounded-full bg-primary/20 blur-2xl" />
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <BarChart3 className="w-5 h-5 mr-2" />
               This Week
@@ -342,20 +347,20 @@ const Dashboard = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.9 + index * 0.05 }}
-                  className="flex items-center space-x-3"
+                  className="flex items-center gap-3"
                 >
                   <span className="text-sm font-medium w-8">{day.day}</span>
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 rounded-full overflow-hidden bg-white/10 backdrop-blur-sm">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(day.percentage, 100)}%` }}
                       transition={{ duration: 0.8, delay: 1 + index * 0.1 }}
-                      className={`h-full rounded-full ${
+                      className={`h-full rounded-full shadow-soft ${
                         day.percentage >= 100 
                           ? 'bg-gradient-to-r from-green-400 to-green-600'
                           : day.percentage >= 50
                           ? 'bg-gradient-to-r from-yellow-400 to-orange-500'
-                          : 'bg-gradient-to-r from-gray-400 to-gray-500'
+                          : 'bg-gradient-to-r from-blue-400 to-blue-600'
                       }`}
                     />
                   </div>
