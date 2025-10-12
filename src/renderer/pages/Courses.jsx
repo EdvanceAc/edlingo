@@ -16,7 +16,8 @@ import {
   Eye,
   Image as ImageIcon,
   Volume2,
-  BookMarked
+  BookMarked,
+  Search
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Progress } from '../components/ui/Progress';
@@ -288,21 +289,29 @@ const Courses = () => {
         role={!course.isUnlocked ? undefined : 'button'}
         aria-disabled={!course.isUnlocked}
       >
-        <Card className={`h-full transition-all duration-300 ${
+        {/* Premium glass card styling */}
+        <Card className={`relative overflow-hidden h-full transition-all duration-300 ${
           isLocked 
             ? 'bg-muted/50 border-border opacity-60' 
-            : 'bg-card border-border hover:border-primary/30 hover:shadow-lg dark:hover:shadow-primary/10'
+            : 'bg-white/10 backdrop-blur-md border border-white/20 ring-1 ring-white/15 hover:ring-white/30 hover:shadow-lg'
         }`}>
+          {/* aurora glow accents */}
+          {!isLocked && (
+            <>
+              <div className="pointer-events-none absolute -top-12 -left-16 w-40 h-40 rounded-full bg-fuchsia-400/15 blur-2xl" />
+              <div className="pointer-events-none absolute -bottom-12 right-0 w-44 h-44 rounded-full bg-indigo-400/15 blur-2xl" />
+            </>
+          )}
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className={`text-3xl p-3 rounded-full ${
-                  isLocked ? 'bg-muted' : 'bg-primary/10'
+                <div className={`text-3xl p-3 rounded-xl ring-1 ${
+                  isLocked ? 'bg-muted ring-border' : 'bg-white/10 ring-white/20 shadow-sm'
                 }`}>
                   {isLocked ? <Lock className="w-6 h-6 text-muted-foreground" /> : course.icon}
                 </div>
                 <div className="flex-1">
-                  <CardTitle className={`text-lg ${
+                  <CardTitle className={`text-lg tracking-tight ${
                     isLocked ? 'text-muted-foreground' : 'text-foreground'
                   }`}>
                     {course.title}
@@ -313,7 +322,7 @@ const Courses = () => {
                     {course.description}
                   </p>
                   <div className="flex items-center space-x-2 mt-2">
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs glass px-2 py-0.5">
                       {course.level}
                     </Badge>
                     <span className={`text-xs ${
@@ -351,17 +360,18 @@ const Courses = () => {
                     {course.progress}%
                   </span>
                 </div>
-                <Progress 
-                  value={course.progress} 
-                  className={`h-2 ${
-                    isLocked ? 'opacity-50' : ''
-                  }`}
-                />
+                {/* premium gradient progress */}
+                <div className={`h-2 w-full rounded-full bg-white/10 ring-1 ring-white/10 overflow-hidden ${isLocked ? 'opacity-50' : ''}`}>
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-emerald-400"
+                    style={{ width: `${course.progress}%` }}
+                  />
+                </div>
               </div>
               
               {/* XP and Action */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-white/5 ring-1 ring-white/10">
                   <Zap className={`w-4 h-4 ${
                     isLocked ? 'text-gray-400' : 'text-yellow-500'
                   }`} />
@@ -376,7 +386,7 @@ const Courses = () => {
                   <Button 
                     size="sm" 
                     variant={course.progress > 0 ? "default" : "outline"}
-                    className="text-xs"
+                    className="text-xs rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/15"
                   >
                     {course.progress > 0 ? (
                       <>
@@ -691,24 +701,36 @@ const Courses = () => {
 
       {/* Notifications and Visual Vocabulary removed as requested */}
 
-      {/* Course Controls */}
+      {/* Course Controls — Premium Glass/Aurora Redesign */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Card className="border-border">
-          <CardContent className="p-4">
+        <Card className="relative overflow-hidden border border-white/20 bg-white/10 backdrop-blur-md rounded-xl ring-1 ring-white/20 shadow-sm">
+          {/* aurora accents */}
+          <div className="pointer-events-none absolute -top-12 -left-16 w-56 h-56 rounded-full bg-fuchsia-400/15 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-10 left-1/3 w-64 h-40 rounded-full bg-indigo-400/15 blur-2xl" />
+          {/* soft shine sweep */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-50 animate-[shine_4s_linear_infinite]" />
+          <style>{`@keyframes shine{0%{transform:translateX(-60%)}100%{transform:translateX(160%)}}`}</style>
+          <CardContent className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Search input with icon */}
               <div className="md:col-span-2">
-                <Input
-                  placeholder="Search courses..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/70" />
+                  <Input
+                    placeholder="Search courses..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-11 pl-10 rounded-lg bg-white/10 text-foreground placeholder-white/70 ring-1 ring-white/20 focus:ring-white/40 transition-all"
+                  />
+                </div>
               </div>
+              {/* Level filter chip */}
               <div>
                 <Select value={levelFilter} onValueChange={setLevelFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-white/20 hover:bg-white/15 transition-colors">
                     <SelectValue placeholder="Level" />
                   </SelectTrigger>
                   <SelectContent>
@@ -722,9 +744,10 @@ const Courses = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Availability filter chip */}
               <div>
                 <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-white/20 hover:bg-white/15 transition-colors">
                     <SelectValue placeholder="Availability" />
                   </SelectTrigger>
                   <SelectContent>
@@ -734,9 +757,10 @@ const Courses = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Sort by chip */}
               <div className="md:col-span-1">
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-white/20 hover:bg-white/15 transition-colors">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -750,7 +774,7 @@ const Courses = () => {
                 </Select>
               </div>
             </div>
-            <div className="mt-3 text-xs text-muted-foreground">
+            <div className="mt-3 text-xs text-white/80">
               Showing {filteredAndSortedCourses.length} of {courses.length} courses
             </div>
           </CardContent>
@@ -830,9 +854,10 @@ const Courses = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <Card className="bg-muted/30 border-border">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center space-x-2">
+        <Card className="relative overflow-hidden rounded-2xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-xl">
+          <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-violet-200/40 via-sky-200/30 to-pink-200/40" />
+          <CardHeader className="relative z-10">
+            <CardTitle className="text-lg flex items-center space-x-2 tracking-tight">
               <Target className="w-5 h-5 text-green-600" />
               <span>Quick Practice</span>
             </CardTitle>
@@ -840,31 +865,48 @@ const Courses = () => {
               Reinforce your learning with these quick exercises
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative z-10">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="flex items-center space-x-3">
-                  <BookOpen className="w-5 h-5 text-blue-600" />
+              <Button
+                variant="outline"
+                className="group justify-start h-auto p-4 rounded-xl bg-white/60 backdrop-blur-sm ring-1 ring-white/60 shadow-sm hover:bg-white/70 hover:shadow-md transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl ring-1 ring-white/60 bg-gradient-to-br from-indigo-400/20 to-sky-400/20 shadow-sm flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-indigo-600" />
+                  </div>
                   <div className="text-left">
-                    <p className="font-medium">Review Vocabulary</p>
+                    <p className="font-medium text-gray-900">Review Vocabulary</p>
                     <p className="text-xs text-muted-foreground">5 min practice</p>
                   </div>
                 </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="flex items-center space-x-3">
-                  <Volume2 className="w-5 h-5 text-green-600" />
+
+              <Button
+                variant="outline"
+                className="group justify-start h-auto p-4 rounded-xl bg-white/60 backdrop-blur-sm ring-1 ring-white/60 shadow-sm hover:bg-white/70 hover:shadow-md transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl ring-1 ring-white/60 bg-gradient-to-br from-emerald-400/20 to-lime-400/20 shadow-sm flex items-center justify-center">
+                    <Volume2 className="w-5 h-5 text-emerald-600" />
+                  </div>
                   <div className="text-left">
-                    <p className="font-medium">Pronunciation</p>
+                    <p className="font-medium text-gray-900">Pronunciation</p>
                     <p className="text-xs text-muted-foreground">3 min practice</p>
                   </div>
                 </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="flex items-center space-x-3">
-                  <Target className="w-5 h-5 text-purple-600" />
+
+              <Button
+                variant="outline"
+                className="group justify-start h-auto p-4 rounded-xl bg-white/60 backdrop-blur-sm ring-1 ring-white/60 shadow-sm hover:bg-white/70 hover:shadow-md transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl ring-1 ring-white/60 bg-gradient-to-br from-violet-400/20 to-fuchsia-400/20 shadow-sm flex items-center justify-center">
+                    <Target className="w-5 h-5 text-violet-600" />
+                  </div>
                   <div className="text-left">
-                    <p className="font-medium">Grammar Quiz</p>
+                    <p className="font-medium text-gray-900">Grammar Quiz</p>
                     <p className="text-xs text-muted-foreground">10 min practice</p>
                   </div>
                 </div>
