@@ -247,12 +247,13 @@ const AssessmentPage = () => {
   // If user has already completed assessment, show completion status
   if (userProfile?.assessment_completed) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+      <div className="min-h-screen py-8 px-4 relative">
+        <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-indigo-100 via-fuchsia-100 to-emerald-100" />
         <div className="max-w-2xl mx-auto">
           <Button
             variant="outline"
             onClick={() => navigate('/dashboard')}
-            className="mb-6 flex items-center space-x-2"
+            className="mb-6 flex items-center space-x-2 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 hover:bg-white/55 transition-colors shadow-md"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Dashboard</span>
@@ -263,12 +264,13 @@ const AssessmentPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-center"
           >
-            <Card className="p-8">
-              <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Card className="relative overflow-hidden p-8 rounded-2xl bg-white/40 backdrop-blur-xl ring-1 ring-white/70 shadow-2xl">
+              <div className="pointer-events-none absolute inset-0 opacity-80 bg-gradient-to-br from-indigo-200/60 via-fuchsia-200/50 to-emerald-200/60" />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500/20 via-fuchsia-500/20 to-emerald-500/20 ring-1 ring-white/60 flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
               
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              <h1 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-fuchsia-700 dark:from-indigo-300 dark:to-fuchsia-300">
                 Assessment Already Completed
               </h1>
               
@@ -278,13 +280,13 @@ const AssessmentPage = () => {
                   {new Date(userProfile.initial_assessment_date).toLocaleDateString()}.
                 </p>
                 
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="rounded-xl p-4 bg-gradient-to-r from-indigo-500/15 via-cyan-500/15 to-fuchsia-500/15 backdrop-blur-md ring-1 ring-white/60 shadow-md">
                   <div className="flex items-center justify-center space-x-4">
                     <div className="text-center">
                       <div className="text-lg font-semibold text-blue-900 dark:text-blue-100">
                         Current Level
                       </div>
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-emerald-600 dark:from-indigo-300 dark:via-fuchsia-300 dark:to-emerald-300">
                         {userProfile.placement_level || userProfile.learning_level}
                       </div>
                     </div>
@@ -295,7 +297,7 @@ const AssessmentPage = () => {
               <div className="space-y-3">
                 <Button 
                   onClick={() => navigate('/dashboard')}
-                  className="w-full"
+                  className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white hover:from-indigo-700 hover:to-fuchsia-700 shadow-lg shadow-indigo-200/40"
                 >
                   Continue Learning
                 </Button>
@@ -303,7 +305,7 @@ const AssessmentPage = () => {
                 <Button 
                   variant="outline"
                   onClick={handleRetakeAssessment}
-                  className="w-full"
+                  className="w-full rounded-xl bg-white/40 backdrop-blur-sm ring-1 ring-indigo-200 hover:ring-indigo-300 transition-colors"
                 >
                   Retake Assessment
                 </Button>
@@ -328,7 +330,7 @@ const AssessmentPage = () => {
         <Button
           variant="outline"
           onClick={() => navigate('/dashboard')}
-          className="flex items-center space-x-2 bg-white shadow-sm"
+          className="flex items-center space-x-2 rounded-xl bg-white/60 backdrop-blur-sm ring-1 ring-white/60 hover:bg-white/70 shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Dashboard</span>
