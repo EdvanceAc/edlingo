@@ -146,21 +146,24 @@ const CourseSection = () => {
           isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
-        <Card className={`h-full transition-all duration-300 ${
+        <Card className={`relative overflow-hidden h-full transition-all duration-300 ${
           isLocked 
             ? 'bg-muted/50 border-border opacity-60' 
-            : 'bg-card border-border hover:border-primary/30 hover:shadow-lg dark:hover:shadow-primary/10'
+            : 'border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl hover:border-primary/30 hover:shadow-soft'
         }`}>
+          {!isLocked && (
+            <div className="pointer-events-none absolute -top-10 -left-10 w-40 h-40 rounded-full bg-primary/20 blur-2xl" />
+          )}
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className={`text-3xl p-2 rounded-full ${
-                  isLocked ? 'bg-muted' : 'bg-primary/10'
+                <div className={`text-3xl p-2 rounded-xl ${
+                  isLocked ? 'bg-muted' : 'bg-white/10 backdrop-blur-sm shadow-soft'
                 }`}>
                   {isLocked ? <Lock className="w-6 h-6 text-muted-foreground" /> : unit.icon}
                 </div>
                 <div>
-                  <CardTitle className={`text-lg ${
+                  <CardTitle className={`text-lg font-semibold tracking-tight ${
                     isLocked ? 'text-muted-foreground' : 'text-foreground'
                   }`}>
                     {unit.title}
@@ -193,30 +196,33 @@ const CourseSection = () => {
                   <span className={isLocked ? 'text-muted-foreground/70' : 'text-muted-foreground'}>
                     Progress
                   </span>
-                  <span className={`font-medium ${
+                  <span className={`font-semibold ${
                     isLocked ? 'text-muted-foreground/70' : 'text-primary'
                   }`}>
                     {unit.progress}%
                   </span>
                 </div>
-                <Progress 
-                  value={unit.progress} 
-                  className={`h-2 ${
-                    isLocked ? 'opacity-50' : ''
-                  }`}
-                />
+                <div className={`progress-modern ${isLocked ? 'opacity-50' : ''}`}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${unit.progress}%` }}
+                    transition={{ duration: 0.8, delay: 0.2 + index * 0.05 }}
+                    className="progress-modern-bar bg-primary"
+                  />
+                </div>
               </div>
               
               {/* XP and Action */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-2">
                   <Zap className={`w-4 h-4 ${
                     isLocked ? 'text-muted-foreground' : 'text-yellow-500'
                   }`} />
-                  <span className={`text-sm font-medium ${
-                    isLocked ? 'text-muted-foreground/70' : 'text-foreground'
+                  <span className={`text-xs ${isLocked ? 'text-muted-foreground/70' : 'text-foreground'}`}>XP</span>
+                  <span className={`text-xs font-semibold rounded-md px-2 py-1 ${
+                    isLocked ? 'bg-muted text-muted-foreground/70' : 'glass text-primary'
                   }`}>
-                    {unit.xp} XP
+                    {unit.xp}
                   </span>
                 </div>
                 
@@ -224,7 +230,7 @@ const CourseSection = () => {
                   <Button 
                     size="sm" 
                     variant={unit.progress > 0 ? "default" : "outline"}
-                    className="text-xs"
+                    className="text-xs glass ring-1 ring-primary/30 hover:ring-primary/50"
                   >
                     {unit.progress > 0 ? (
                       <>
