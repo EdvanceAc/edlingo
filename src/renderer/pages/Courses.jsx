@@ -595,6 +595,9 @@ const Courses = () => {
     );
   }
 
+  const overallPct = Math.round((userProgress.totalXP / userProgress.nextLevelXP) * 100);
+  const remainingXP = Math.max(userProgress.nextLevelXP - userProgress.totalXP, 0);
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -631,27 +634,57 @@ const Courses = () => {
         </div>
       </motion.div>
 
-      {/* Overall Progress */}
+      {/* Course Progress (Premium Redesign) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <Card className="relative overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
+          {/* decorative glow */}
+          <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-lg font-semibold text-primary">Overall Learning Progress</span>
-              <span className="text-lg font-bold text-primary">
-                {Math.round((userProgress.totalXP / userProgress.nextLevelXP) * 100)}%
-              </span>
+            <div className="flex items-start justify-between">
+              {/* Left: title and icon */}
+              <div className="flex items-center gap-3">
+                <div className="glass-dark p-3 rounded-xl shadow-soft">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground tracking-tight">Course Progress</h2>
+                  <p className="text-sm text-muted-foreground">Continue your language learning journey</p>
+                </div>
+              </div>
+
+              {/* Right: badges */}
+              <div className="flex items-center gap-3">
+                <Badge className="glass px-3 py-1 text-xs">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-500 mr-1" />
+                  {userProgress.currentStreak} day streak
+                </Badge>
+                <Badge className="glass px-3 py-1 text-xs">
+                  <Star className="w-3.5 h-3.5 text-primary mr-1" />
+                  {userProgress.totalXP}/{userProgress.nextLevelXP} XP
+                </Badge>
+              </div>
             </div>
-            <Progress 
-              value={(userProgress.totalXP / userProgress.nextLevelXP) * 100} 
-              className="h-4 mb-2"
-            />
-            <p className="text-sm text-primary">
-              {userProgress.nextLevelXP - userProgress.totalXP} XP until Level {userProgress.level + 1}
-            </p>
+
+            {/* Premium progress bar */}
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-muted-foreground">Overall Progress</span>
+                <span className="text-sm font-bold text-primary">{overallPct}%</span>
+              </div>
+              <div className="progress-modern">
+                <div
+                  className="progress-modern-bar bg-primary"
+                  style={{ width: `${overallPct}%` }}
+                />
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                {remainingXP} XP until next level
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>

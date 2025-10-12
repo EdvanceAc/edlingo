@@ -97,10 +97,10 @@ const Dashboard = () => {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Good {currentTime.getHours() < 12 ? 'morning' : currentTime.getHours() < 18 ? 'afternoon' : 'evening'}! 👋
+            <h1 className="text-6xl md:text-7xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-4 drop-shadow-2xl">
+              Good {currentTime.getHours() < 12 ? 'morning' : currentTime.getHours() < 18 ? 'afternoon' : 'evening'}! 🌟
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-2">
               Ready to continue your language learning journey?
             </p>
           </div>
@@ -124,7 +124,7 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="card p-6"
+          className="card card-premium card-hover p-6"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
@@ -142,12 +142,12 @@ const Dashboard = () => {
               <span>Progress to Level {stats.level + 1}</span>
               <span>{Math.round(stats.progressToNextLevel)}%</span>
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div className="progress-modern">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${stats.progressToNextLevel}%` }}
                 transition={{ duration: 1, delay: 0.5 }}
-                className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
+                className="progress-modern-bar"
               />
             </div>
           </div>
@@ -158,7 +158,7 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="card p-6"
+          className="card card-premium card-hover p-6"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
@@ -176,12 +176,12 @@ const Dashboard = () => {
               <span>of {stats.dailyGoal} minutes</span>
               <span>{Math.round(stats.dailyGoalProgress)}%</span>
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div className="progress-modern">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(stats.dailyGoalProgress, 100)}%` }}
                 transition={{ duration: 1, delay: 0.6 }}
-                className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
+                className="progress-modern-bar"
               />
             </div>
           </div>
@@ -192,7 +192,7 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="card p-6"
+          className="card card-premium card-hover p-6"
         >
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
@@ -213,7 +213,7 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="card p-6"
+          className="card card-premium card-hover p-6"
         >
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
@@ -229,6 +229,8 @@ const Dashboard = () => {
           </p>
         </motion.div>
       </div>
+
+      
 
       {/* Course Section */}
       <motion.div

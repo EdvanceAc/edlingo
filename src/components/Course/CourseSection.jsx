@@ -65,6 +65,10 @@ const CourseSection = () => {
     }
   };
 
+  // Derived progress values for premium progress card
+  const overallPct = Math.min(100, Math.max(0, Math.round((totalXP / nextLevelXP) * 100) || 0));
+  const remainingXP = Math.max(0, nextLevelXP - totalXP);
+
   const getMockCourses = () => [
     {
       id: 1,
@@ -260,51 +264,56 @@ const CourseSection = () => {
       animate="visible"
       className="space-y-6"
     >
-      {/* Course Header */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <BookOpen className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Course Progress</h2>
-            <p className="text-muted-foreground">Continue your language learning journey</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <div className="text-center">
-            <div className="flex items-center space-x-1">
-              <Trophy className="w-4 h-4 text-yellow-500" />
-              <span className="text-sm font-medium text-foreground">{currentStreak} day streak</span>
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center space-x-1">
-              <Star className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">{totalXP}/{nextLevelXP} XP</span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
+      {/* Course Progress (Premium Redesign) */}
+      <motion.div
+        variants={itemVariants}
+        className="relative"
+      >
+        <Card className="relative overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
+          {/* decorative glow */}
+          <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              {/* Left: title and icon */}
+              <div className="flex items-center gap-3">
+                <div className="glass-dark p-3 rounded-xl shadow-soft">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground tracking-tight">Course Progress</h2>
+                  <p className="text-sm text-muted-foreground">Continue your language learning journey</p>
+                </div>
+              </div>
 
-      {/* Overall Progress */}
-      <motion.div variants={itemVariants}>
-        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-primary">Overall Progress</span>
-              <span className="text-sm font-bold text-primary">
-                {Math.round((totalXP / nextLevelXP) * 100)}%
-              </span>
+              {/* Right: badges */}
+              <div className="flex items-center gap-3">
+                <Badge className="glass px-3 py-1 text-xs">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-500 mr-1" />
+                  {currentStreak} day streak
+                </Badge>
+                <Badge className="glass px-3 py-1 text-xs">
+                  <Star className="w-3.5 h-3.5 text-primary mr-1" />
+                  {totalXP}/{nextLevelXP} XP
+                </Badge>
+              </div>
             </div>
-            <Progress 
-              value={(totalXP / nextLevelXP) * 100} 
-              className="h-3"
-            />
-            <p className="text-xs text-primary mt-2">
-              {nextLevelXP - totalXP} XP until next level
-            </p>
+
+            {/* Premium progress bar */}
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-muted-foreground">Overall Progress</span>
+                <span className="text-sm font-bold text-primary">{overallPct}%</span>
+              </div>
+              <div className="progress-modern">
+                <div
+                  className="progress-modern-bar bg-primary"
+                  style={{ width: `${overallPct}%` }}
+                />
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                {remainingXP} XP until next level
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
