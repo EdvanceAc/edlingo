@@ -12,15 +12,17 @@ import {
   Maximize2,
   X,
   Volume2,
-  VolumeX
+  VolumeX,
+  Menu
 } from 'lucide-react';
+import Button from '../ui/Button';
 import { useTheme } from '../../providers/ThemeProvider';
 import { useProgress } from '../../providers/ProgressProvider';
 import { useAudio } from '../../providers/AudioProvider';
 import DatabaseStatus from '../DatabaseStatus';
 import { AppConfig } from '../../../config/AppConfig';
 
-const Header = () => {
+const Header = ({ onToggleSidebar }) => {
   const { theme, toggleTheme } = useTheme();
   const { level, totalXP, streak } = useProgress();
   const { isPlaying } = useAudio();
@@ -86,41 +88,50 @@ const Header = () => {
   };
 
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 relative">
-      {/* Left Section - Search */}
-      <div className="flex items-center space-x-4 flex-1">
-        <form onSubmit={handleSearch} className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search lessons, words, or topics..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-          />
-        </form>
-      </div>
-
-      {/* Center Section - Progress Indicator */}
-      <div className="flex items-center space-x-6">
-        {/* Daily Streak */}
-        <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-full">
-          <span className="text-lg">🔥</span>
-          <span className="text-sm font-medium">{streak} day streak</span>
+    <header className="sticky top-0 z-50 w-full border-b bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 backdrop-blur-xl shadow-2xl border-white/20">
+      <div className="container flex h-16 items-center px-4">
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleSidebar}
+            className="text-white hover:bg-white/20 hover:text-white transition-all duration-300"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+          
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+              <span className="text-white font-bold text-lg">E</span>
+            </div>
+            <span className="font-bold text-xl text-white drop-shadow-lg">EdLingo</span>
+          </div>
         </div>
 
-        {/* Level Badge */}
-        <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-primary/10 to-primary/20 rounded-full">
-          <span className="text-lg">⭐</span>
-          <span className="text-sm font-medium">Level {level}</span>
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center space-x-6 bg-white/10 backdrop-blur-md rounded-full px-6 py-2 border border-white/20">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-xs font-bold text-white">🔥</span>
+              </div>
+              <span className="text-sm font-bold text-white">{streak} day streak</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-xs font-bold text-white">⭐</span>
+              </div>
+              <span className="text-sm font-bold text-white">Level {level}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-xs font-bold text-white">💎</span>
+              </div>
+              <span className="text-sm font-bold text-white">{totalXP ? totalXP.toLocaleString() : 0} XP</span>
+            </div>
+          </div>
         </div>
-
-        {/* XP Counter */}
-        <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-full">
-          <span className="text-lg">💎</span>
-          <span className="text-sm font-medium">{totalXP.toLocaleString()} XP</span>
-        </div>
-      </div>
 
       {/* Right Section - Controls */}
       <div className="flex items-center space-x-2 flex-1 justify-end">
@@ -283,6 +294,7 @@ const Header = () => {
             <X className="w-4 h-4" />
           </button>
         </div>
+      </div>
       </div>
 
       {/* Click outside to close dropdowns */}

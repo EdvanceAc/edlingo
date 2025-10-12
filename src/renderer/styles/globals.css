@@ -1,20 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 @layer base {
   * {
-    @apply border-border;
+    border: 0;
   }
   
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
   /* Custom focus styles */
   *:focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2;
+    outline: none;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px hsl(var(--ring));
   }
   
   /* Smooth scrolling and global scale */
@@ -27,38 +30,112 @@
 @layer components {
   /* Button variants */
   .btn-primary {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary/50;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-primary:hover {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+  .btn-primary:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.5);
   }
   
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-secondary/50;
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-secondary:hover {
+    background-color: hsl(var(--secondary) / 0.8);
+  }
+  .btn-secondary:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--secondary) / 0.5);
   }
   
   .btn-ghost {
-    @apply hover:bg-accent hover:text-accent-foreground focus:ring-accent/50;
+    color: inherit;
+    background-color: transparent;
+    transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-ghost:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
+  .btn-ghost:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--accent) / 0.5);
   }
   
   /* Card styles */
   .card {
-    @apply bg-card text-card-foreground rounded-lg border shadow-soft;
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  /* Premium card styling for elevated look */
+  .card-premium {
+    border-radius: 1rem;
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+  }
+  .card-hover-strong {
+    transition: transform 300ms;
+  }
+  .card-hover-strong:hover {
+    transform: translateY(-0.375rem);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
   }
   
   .card-hover {
-    @apply transition-all duration-200 hover:shadow-medium hover:-translate-y-1;
+    transition: all 200ms;
+  }
+  .card-hover:hover {
+    transform: translateY(-0.25rem);
+    box-shadow: 0 4px 16px 0 rgba(0,0,0,0.1);
   }
   
   /* Input styles */
   .input {
-    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    display: flex;
+    height: 2.5rem; /* h-10 */
+    width: 100%;
+    border-radius: calc(var(--radius) - 2px);
+    border: 1px solid hsl(var(--input));
+    background-color: hsl(var(--background));
+    padding: 0.5rem 0.75rem; /* py-2 px-3 */
+    font-size: 0.875rem; /* text-sm */
+  }
+  .input::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+  .input:focus-visible {
+    outline: none;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+  }
+  .input:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
   }
   
   /* Glassmorphism effect */
   .glass {
-    @apply backdrop-blur-md bg-white/10 border border-white/20;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
   
   .glass-dark {
-    @apply backdrop-blur-md bg-black/10 border border-white/10;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   /* Gradient backgrounds */
@@ -76,16 +153,24 @@
   
   /* Text gradients */
   .text-gradient {
-    @apply bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   
   /* Loading animations */
   .loading-dots {
-    @apply inline-flex space-x-1;
+    display: inline-flex;
+    gap: 0.25rem;
   }
   
   .loading-dots > div {
-    @apply w-2 h-2 bg-current rounded-full animate-pulse;
+    width: 0.5rem;
+    height: 0.5rem;
+    background-color: currentColor;
+    border-radius: 9999px;
+    animation: pulse 1s ease-in-out infinite;
   }
   
   .loading-dots > div:nth-child(2) {
@@ -98,20 +183,39 @@
   
   /* Chat bubble styles */
   .chat-bubble-user {
-    @apply bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-2 max-w-xs ml-auto;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-radius: 1rem;
+    border-bottom-right-radius: 0.375rem;
+    padding: 0.5rem 1rem;
+    max-width: 20rem;
+    margin-left: auto;
   }
   
   .chat-bubble-ai {
-    @apply bg-muted text-muted-foreground rounded-2xl rounded-bl-md px-4 py-2 max-w-xs mr-auto;
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border-radius: 1rem;
+    border-bottom-left-radius: 0.375rem;
+    padding: 0.5rem 1rem;
+    max-width: 20rem;
+    margin-right: auto;
   }
   
   /* Pronunciation waveform */
   .waveform {
-    @apply flex items-center justify-center space-x-1 h-12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 3rem;
   }
   
   .waveform-bar {
-    @apply w-1 bg-primary rounded-full transition-all duration-150;
+    width: 0.25rem;
+    background-color: hsl(var(--primary));
+    border-radius: 9999px;
+    transition: all 150ms;
   }
   
   /* Progress indicators */
@@ -124,17 +228,44 @@
     transform-origin: 50% 50%;
   }
   
+  /* Modern linear progress bar */
+  .progress-modern {
+    height: 0.5rem;
+    background-color: hsl(var(--muted));
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-modern-bar {
+    height: 100%;
+    border-radius: 9999px;
+    background-image: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+  }
+  
   /* Sidebar navigation */
   .nav-item {
-    @apply flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: color 0.2s ease, background-color 0.2s ease;
   }
   
   .nav-item-active {
-    @apply bg-primary text-primary-foreground;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
   }
   
   .nav-item-inactive {
-    @apply text-muted-foreground hover:text-foreground hover:bg-accent;
+    color: hsl(var(--muted-foreground));
+  }
+  .nav-item-inactive:hover {
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--accent));
   }
 }
 
@@ -164,15 +295,33 @@
   
   /* Responsive text sizes */
   .text-responsive-sm {
-    @apply text-sm md:text-base;
+    font-size: 0.875rem;
+  }
+  @media (min-width: 768px) {
+    .text-responsive-sm { font-size: 1rem; }
   }
   
   .text-responsive-lg {
-    @apply text-lg md:text-xl lg:text-2xl;
+    font-size: 1.125rem;
+  }
+  @media (min-width: 768px) {
+    .text-responsive-lg { font-size: 1.25rem; }
+  }
+  @media (min-width: 1024px) {
+    .text-responsive-lg { font-size: 1.5rem; }
   }
   
   .text-responsive-xl {
-    @apply text-xl md:text-2xl lg:text-3xl xl:text-4xl;
+    font-size: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .text-responsive-xl { font-size: 1.5rem; }
+  }
+  @media (min-width: 1024px) {
+    .text-responsive-xl { font-size: 1.875rem; }
+  }
+  @media (min-width: 1280px) {
+    .text-responsive-xl { font-size: 2.25rem; }
   }
 }
 
@@ -209,11 +358,12 @@
 /* High contrast mode support */
 @media (prefers-contrast: high) {
   .card {
-    @apply border-2;
+    border-width: 2px;
   }
   
   .btn-primary {
-    @apply border-2 border-primary;
+    border-width: 2px;
+    border-color: hsl(var(--primary));
   }
 }
 
@@ -224,4 +374,120 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Dramatic Modern Card Styles */
+.card-premium {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: 3px solid #4f46e5 !important;
+  border-radius: 24px !important;
+  box-shadow: 
+    0 25px 50px rgba(79, 70, 229, 0.4), 
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  color: white !important;
+  transform: translateY(-4px) !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  backdrop-filter: blur(10px) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.card-premium::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
+  animation: cardShimmer 3s infinite !important;
+}
+
+@keyframes cardShimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.card-premium:hover {
+  transform: translateY(-12px) scale(1.05) !important;
+  box-shadow: 
+    0 40px 80px rgba(79, 70, 229, 0.5), 
+    0 0 0 1px rgba(255, 255, 255, 0.3) inset,
+    0 16px 64px rgba(0, 0, 0, 0.2) !important;
+  border-color: #6366f1 !important;
+}
+
+.card-premium h3,
+.card-premium .text-2xl,
+.card-premium .text-xl,
+.card-premium .text-lg {
+  color: white !important;
+  font-weight: 800 !important;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+  font-size: 1.5rem !important;
+}
+
+.card-premium .text-sm,
+.card-premium .text-xs {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+}
+
+/* Dramatic Progress Bars */
+.progress-modern {
+  background: linear-gradient(90deg, #1e3a8a, #3b82f6, #06b6d4, #10b981) !important;
+  height: 16px !important;
+  border-radius: 12px !important;
+  box-shadow: 
+    0 6px 20px rgba(59, 130, 246, 0.5),
+    0 0 0 2px rgba(255, 255, 255, 0.1) inset !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.progress-modern::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent) !important;
+  animation: shimmer 2s infinite !important;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.progress-modern-bar {
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #ec4899, #8b5cf6) !important;
+  height: 100% !important;
+  border-radius: 10px !important;
+  transition: all 0.6s ease !important;
+  box-shadow: 
+    0 0 30px rgba(245, 158, 11, 0.8),
+    0 0 60px rgba(239, 68, 68, 0.4) !important;
+  position: relative !important;
+}
+
+.progress-modern-bar::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0.3) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0.3) 75%, transparent 75%) !important;
+  background-size: 20px 20px !important;
+  animation: progressStripes 1s linear infinite !important;
+}
+
+@keyframes progressStripes {
+  0% { background-position: 0 0; }
+  100% { background-position: 20px 0; }
 }
