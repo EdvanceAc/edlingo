@@ -1722,8 +1722,8 @@ const CourseDetailsPage = () => {
                             <div className="flex flex-wrap gap-2">
                               <Button
                                 size="sm"
-                                variant="secondary"
-                                className="rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                                variant="default"
+                                className="rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-sm hover:from-indigo-500 hover:to-fuchsia-500"
                                 disabled={aiLoading}
                                 onClick={() => askAI('Teach this lesson step-by-step with clear explanations and examples.', { focusArea: 'teaching' })}
                               >
@@ -1731,8 +1731,8 @@ const CourseDetailsPage = () => {
                               </Button>
                               <Button
                                 size="sm"
-                                variant="secondary"
-                                className="rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                                variant="default"
+                                className="rounded-full bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-600 text-white shadow-sm hover:from-cyan-500 hover:to-blue-500"
                                 disabled={aiLoading}
                                 onClick={() => askAI('Give concise hints for the current lesson question using only the provided materials. Do not reveal final answers.', { focusArea: 'hints' })}
                               >
@@ -1740,8 +1740,8 @@ const CourseDetailsPage = () => {
                               </Button>
                               <Button
                                 size="sm"
-                                variant="secondary"
-                                className="rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                                variant="default"
+                                className="rounded-full bg-gradient-to-r from-rose-600 via-pink-600 to-fuchsia-600 text-white shadow-sm hover:from-rose-500 hover:to-fuchsia-500"
                                 disabled={aiLoading}
                                 onClick={() => askAI(`Create a short 5-question practice for the lesson "${activeLesson?.title || activeLesson?.name || 'Lesson'}" with an answer key, based strictly on the lesson materials.`, { focusArea: 'quiz' })}
                               >
