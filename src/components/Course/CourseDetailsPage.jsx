@@ -1274,49 +1274,52 @@ const CourseDetailsPage = () => {
             </motion.div>
             {/* Active Lesson Viewer */}
             {activeLesson && (
-              <motion.div
-                id="current-lesson-viewer"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Play className="w-5 h-5 text-blue-500" />
-                      {activeLesson.title || activeLesson.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {loadingMaterials ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        <span className="ml-2 text-muted-foreground">Loading materials...</span>
-                      </div>
-                    ) : activeMaterials.length ? (
-                      <div className="space-y-4">
-                        {activeMaterials.map((m) => (
-                          <div key={m.id} className="border rounded-lg p-4">
-                            <div className="text-sm text-muted-foreground mb-2">{m.type || 'material'}</div>
-                            {(m.resolvedUrl || m.url) ? (
-                              m.type === 'video' ? (
-                                <video controls className="w-full max-h-[420px]"><source src={m.resolvedUrl || m.url} /></video>
-                              ) : m.type === 'audio' ? (
-                                <audio controls className="w-full"><source src={m.resolvedUrl || m.url} /></audio>
-                              ) : m.type === 'image' ? (
-                                <img 
-                                  src={m.resolvedUrl || m.url} 
-                                  alt={m.metadata?.alt || 'Lesson image'} 
-                                  className="w-full max-h-[420px] object-contain rounded"
-                                  crossOrigin="anonymous"
-                                  referrerPolicy="no-referrer"
-                                  loading="lazy"
-                                  decoding="async"
-                                  onError={async (e) => {
-                                    try {
-                                      console.warn('Failed to load image, attempting retry with signed URL/cache-bust:', m.resolvedUrl || m.url);
-                                      const imgEl = e.currentTarget;
-                                      imgEl.onerror = null; // prevent infinite loops
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {/* Left: Lesson Content */}
+                <div className="lg:col-span-2">
+                  <motion.div
+                    id="current-lesson-viewer"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Play className="w-5 h-5 text-blue-500" />
+                          {activeLesson.title || activeLesson.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {loadingMaterials ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <span className="ml-2 text-muted-foreground">Loading materials...</span>
+                          </div>
+                        ) : activeMaterials.length ? (
+                          <div className="space-y-4">
+                            {activeMaterials.map((m) => (
+                              <div key={m.id} className="border rounded-lg p-4">
+                                <div className="text-sm text-muted-foreground mb-2">{m.type || 'material'}</div>
+                                {(m.resolvedUrl || m.url) ? (
+                                  m.type === 'video' ? (
+                                    <video controls className="w-full max-h-[420px]"><source src={m.resolvedUrl || m.url} /></video>
+                                  ) : m.type === 'audio' ? (
+                                    <audio controls className="w-full"><source src={m.resolvedUrl || m.url} /></audio>
+                                  ) : m.type === 'image' ? (
+                                    <img 
+                                      src={m.resolvedUrl || m.url} 
+                                      alt={m.metadata?.alt || 'Lesson image'} 
+                                      className="w-full max-h-[420px] object-contain rounded"
+                                      crossOrigin="anonymous"
+                                      referrerPolicy="no-referrer"
+                                      loading="lazy"
+                                      decoding="async"
+                                      onError={async (e) => {
+                                        try {
+                                          console.warn('Failed to load image, attempting retry with signed URL/cache-bust:', m.resolvedUrl || m.url);
+                                          const imgEl = e.currentTarget;
+                                          imgEl.onerror = null; // prevent infinite loops
 
                                       const raw = (m.resolvedUrl || m.url || '').toString();
                                       let bucket = (m.metadata && (m.metadata.bucket || m.metadata.storageBucket)) || null;
@@ -1584,17 +1587,17 @@ const CourseDetailsPage = () => {
                                 });
                               } catch (_) {}
                               const updated = await completeLesson(activeLesson.id, activeLesson.xpReward, Math.floor(Math.random() * 15) + 5);
-                              
+                               
                               // If completeLesson returned false (error), don't continue
                               if (!updated || !Array.isArray(updated)) {
                                 console.error('Failed to complete lesson or get updated lessons');
                                 return;
                               }
-                              
+                               
                               // Find the next unlocked lesson
                               const currentIdx = updated.findIndex(l => l.id === activeLesson.id);
                               const next = currentIdx >= 0 ? updated.slice(currentIdx + 1).find(l => !l.isLocked) : null;
-                              
+                               
                               if (next) {
                                 await startLesson(next);
                               } else {
@@ -1614,98 +1617,102 @@ const CourseDetailsPage = () => {
                         <p className="text-muted-foreground text-sm">This lesson has no attached materials yet.</p>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </motion.div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </div>
+
+                {/* Right: AI Tutor Panel */}
+                <div className="lg:col-span-1">
+                  {activeLesson && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.6 }}
+                    >
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                              <Zap className="w-5 h-5 text-blue-500" />
+                              AI Tutor
+                            </span>
+                            <span className={`text-xs ${typeof getStatusColor === 'function' ? getStatusColor() : 'text-gray-400'}`}>
+                              {typeof getStatusMessage === 'function' ? getStatusMessage() : 'AI Offline'}
+                            </span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {/* Quick Actions */}
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={aiLoading}
+                                onClick={() => askAI(buildLessonContext(), { focusArea: 'teaching' })}
+                              >
+                                Teach This Lesson
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={aiLoading}
+                                onClick={() => askAI(`Give me concise hints to answer the current lesson question. Use available materials without revealing final answer directly.`, { focusArea: 'hints' })}
+                              >
+                                Answer Hints
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={aiLoading}
+                                onClick={() => askAI(`Create a short 5-question practice for the lesson "${activeLesson?.title || activeLesson?.name || 'Lesson'}". Provide correct answers at the end.`, { focusArea: 'quiz' })}
+                              >
+                                Quick Quiz
+                              </Button>
+                            </div>
+
+                            {/* AI Output */}
+                            <div className="rounded-md border p-3 bg-muted/30 min-h-[96px]">
+                              <div className="text-sm text-foreground whitespace-pre-wrap">
+                                {aiLoading ? 'Generating response...' : (aiAnswer || 'AI response will appear here.')}
+                              </div>
+                            </div>
+
+                            {/* Ask AI */}
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={aiPrompt}
+                                onChange={(e) => setAiPrompt(e.target.value)}
+                                placeholder="Ask the AI a question..."
+                              />
+                              <Button
+                                size="sm"
+                                disabled={aiLoading || !aiPrompt.trim()}
+                                onClick={() => aiPrompt.trim() && askAI(aiPrompt)}
+                              >
+                                Ask
+                              </Button>
+                            </div>
+
+                            {/* Conversation Info */}
+                            <div className="text-xs text-muted-foreground">
+                              {Array.isArray(conversationHistory) && conversationHistory.length
+                                ? `${conversationHistory.length} recent messages saved`
+                                : 'Conversation just started'}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-
-            {/* AI Tutor Panel */}
-            {activeLesson && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-blue-500" />
-                        AI Tutor
-                      </span>
-                      <span className={`text-xs ${typeof getStatusColor === 'function' ? getStatusColor() : 'text-gray-400'}`}>
-                        {typeof getStatusMessage === 'function' ? getStatusMessage() : 'AI Offline'}
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {/* Quick Actions */}
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={aiLoading}
-                          onClick={() => askAI(buildLessonContext(), { focusArea: 'teaching' })}
-                        >
-                          Teach This Lesson
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={aiLoading}
-                          onClick={() => askAI(`Give me concise hints to answer the current lesson question. Use available materials without revealing final answer directly.`, { focusArea: 'hints' })}
-                        >
-                          Answer Hints
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={aiLoading}
-                          onClick={() => askAI(`Create a short 5-question practice for the lesson "${activeLesson?.title || activeLesson?.name || 'Lesson'}". Provide correct answers at the end.`, { focusArea: 'quiz' })}
-                        >
-                          Quick Quiz
-                        </Button>
-                      </div>
-
-                      {/* AI Output */}
-                      <div className="rounded-md border p-3 bg-muted/30 min-h-[96px]">
-                        <div className="text-sm text-foreground whitespace-pre-wrap">
-                          {aiLoading ? 'Generating response...' : (aiAnswer || 'AI response will appear here.')}
-                        </div>
-                      </div>
-
-                      {/* Ask AI */}
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={aiPrompt}
-                          onChange={(e) => setAiPrompt(e.target.value)}
-                          placeholder="Ask the AI a question..."
-                        />
-                        <Button
-                          size="sm"
-                          disabled={aiLoading || !aiPrompt.trim()}
-                          onClick={() => aiPrompt.trim() && askAI(aiPrompt)}
-                        >
-                          Ask
-                        </Button>
-                      </div>
-
-                      {/* Conversation Info */}
-                      <div className="text-xs text-muted-foreground">
-                        {Array.isArray(conversationHistory) && conversationHistory.length
-                          ? `${conversationHistory.length} recent messages saved`
-                          : 'Conversation just started'}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
 
             {/* Skills Focus */}
             {course.skills_focus && course.skills_focus.length > 0 && (
