@@ -634,15 +634,15 @@
 }
   /* Uiverse.io – Yaya12085 exact styles scoped */
   .uiverse-upload .container {
-    height: 300px;
-    width: 300px;
+    height: 210px;
+    width: 210px;
     border-radius: 10px;
     box-shadow: 4px 4px 30px rgba(0, 0, 0, .2);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 10px;
+    padding: 7px;
     gap: 5px;
     background-color: rgba(0, 110, 255, 0.041);
   }
@@ -658,13 +658,13 @@
     flex-direction: column;
   }
 
-  .uiverse-upload .header svg { height: 100px; }
+  .uiverse-upload .header svg { height: 70px; }
   .uiverse-upload .header p { text-align: center; color: black; }
 
   .uiverse-upload .footer {
     background-color: rgba(0, 110, 255, 0.075);
     width: 100%;
-    height: 40px;
+    height: 28px;
     padding: 8px;
     border-radius: 10px;
     cursor: pointer;
