@@ -90,6 +90,75 @@ const CourseDetailsPage = () => {
     }
   };
 
+  // Build lesson-specific sources context from active materials (summarized and trimmed)
+  const buildLessonSourcesContext = () => {
+    try {
+      const mats = Array.isArray(activeMaterials) ? activeMaterials : [];
+      if (!mats.length) return 'No explicit materials are attached to this lesson.';
+
+      const MAX_CONTEXT_CHARS = 3500;
+      const lines = [];
+
+      for (const m of mats) {
+        const type = (m?.type || 'material').toLowerCase();
+        let meta = m?.metadata;
+        if (typeof meta === 'string') {
+          try { meta = JSON.parse(meta); } catch { meta = {}; }
+        }
+        const title = meta?.title || meta?.name || meta?.filename || null;
+        const summary = meta?.summary || meta?.description || null;
+        const highlights = Array.isArray(meta?.highlights) ? meta.highlights.slice(0, 8) : [];
+
+        let excerpt = '';
+        if (typeof m?.content === 'string' && m.content.trim()) {
+          excerpt = m.content.trim().replace(/\s+/g, ' ').slice(0, 800);
+        }
+
+        const highlightWords = highlights
+          .map(h => (typeof h === 'string' ? h : (h?.word || h?.text || '')))
+          .filter(Boolean)
+          .slice(0, 6)
+          .join(', ');
+
+        lines.push(
+          `- Type: ${type}` +
+          (title ? ` | Title: ${title}` : '') +
+          (summary ? ` | Summary: ${summary}` : '') +
+          (excerpt ? ` | Excerpt: ${excerpt}` : '') +
+          (highlightWords ? ` | Highlights: ${highlightWords}` : '')
+        );
+      }
+
+      let ctx = lines.join('\n');
+      if (ctx.length > MAX_CONTEXT_CHARS) ctx = ctx.slice(0, MAX_CONTEXT_CHARS);
+      return ctx;
+    } catch (e) {
+      console.warn('buildLessonSourcesContext error:', e?.message || e);
+      return 'Materials could not be summarized at runtime.';
+    }
+  };
+
+  // Compose a prompt that embeds lesson context and sources so AI answers from this part
+  const composeLessonPrompt = (userMsg = '', mode = 'conversation') => {
+    const base = buildLessonContext();
+    const sources = buildLessonSourcesContext();
+    const title = activeLesson?.title || activeLesson?.name || 'Current Lesson';
+    const task = (
+      mode === 'teaching' ? 'Teach the lesson comprehensively with examples and a short practice.' :
+      mode === 'hints' ? 'Provide concise hints to guide the learner, do not reveal final answers.' :
+      mode === 'quiz' ? 'Create a short 5-question quiz based strictly on the lesson and materials; include an answer key.' :
+      'Answer accurately using only the provided lesson and materials.'
+    );
+
+    return [
+      `Course Section: ${title}`,
+      `Lesson Context:\n${base}`,
+      `Materials Overview:\n${sources}`,
+      `Task: ${task}`,
+      userMsg ? `User Request:\n${userMsg}` : ''
+    ].filter(Boolean).join('\n\n');
+  };
+
   const askAI = async (message, options = {}) => {
     if (!generateResponse) return;
     try {
@@ -97,7 +166,8 @@ const CourseDetailsPage = () => {
       if (!isReady && initializeAI) {
         await initializeAI();
       }
-      const resp = await generateResponse(message, { focusArea: options.focusArea || 'lesson', userLevel: options.userLevel || 'intermediate' });
+      const composed = composeLessonPrompt(message, options.focusArea || 'lesson');
+      const resp = await generateResponse(composed, { focusArea: options.focusArea || 'lesson', userLevel: options.userLevel || 'intermediate' });
       setAiAnswer(String(resp || ''));
     } catch (e) {
       console.error('AI ask error:', e);
@@ -1650,7 +1720,7 @@ const CourseDetailsPage = () => {
                                 size="sm"
                                 variant="secondary"
                                 disabled={aiLoading}
-                                onClick={() => askAI(buildLessonContext(), { focusArea: 'teaching' })}
+                                onClick={() => askAI('Teach this lesson step-by-step with clear explanations and examples.', { focusArea: 'teaching' })}
                               >
                                 Teach This Lesson
                               </Button>
@@ -1658,7 +1728,7 @@ const CourseDetailsPage = () => {
                                 size="sm"
                                 variant="secondary"
                                 disabled={aiLoading}
-                                onClick={() => askAI(`Give me concise hints to answer the current lesson question. Use available materials without revealing final answer directly.`, { focusArea: 'hints' })}
+                                onClick={() => askAI('Give concise hints for the current lesson question using only the provided materials. Do not reveal final answers.', { focusArea: 'hints' })}
                               >
                                 Answer Hints
                               </Button>
@@ -1666,7 +1736,7 @@ const CourseDetailsPage = () => {
                                 size="sm"
                                 variant="secondary"
                                 disabled={aiLoading}
-                                onClick={() => askAI(`Create a short 5-question practice for the lesson "${activeLesson?.title || activeLesson?.name || 'Lesson'}". Provide correct answers at the end.`, { focusArea: 'quiz' })}
+                                onClick={() => askAI(`Create a short 5-question practice for the lesson "${activeLesson?.title || activeLesson?.name || 'Lesson'}" with an answer key, based strictly on the lesson materials.`, { focusArea: 'quiz' })}
                               >
                                 Quick Quiz
                               </Button>
