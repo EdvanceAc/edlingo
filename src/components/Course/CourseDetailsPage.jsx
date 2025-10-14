@@ -18,7 +18,11 @@ import {
   Zap,
   Target,
   MapPin,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  Lightbulb,
+  FileQuestion,
+  Send
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../renderer/components/ui/Card';
 import { Badge } from '../../renderer/components/ui/Badge';
@@ -1700,53 +1704,64 @@ const CourseDetailsPage = () => {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.6 }}
                     >
-                      <Card>
-                        <CardHeader>
+                      <Card className="relative overflow-hidden border-0 shadow-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10">
+                        <CardHeader className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white px-4 py-4">
                           <CardTitle className="flex items-center justify-between">
                             <span className="flex items-center gap-2">
-                              <Zap className="w-5 h-5 text-blue-500" />
-                              AI Tutor
+                              <Sparkles className="w-5 h-5 text-white/90" />
+                              <span className="font-semibold tracking-wide">AI Tutor</span>
                             </span>
-                            <span className={`text-xs ${typeof getStatusColor === 'function' ? getStatusColor() : 'text-gray-400'}`}>
+                            <span className={`text-xs px-2 py-1 rounded-full bg-white/20 text-white ${typeof getStatusColor === 'function' ? getStatusColor() : ''}`}>
                               {typeof getStatusMessage === 'function' ? getStatusMessage() : 'AI Offline'}
                             </span>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-4">
                           <div className="space-y-3">
                             {/* Quick Actions */}
                             <div className="flex flex-wrap gap-2">
                               <Button
                                 size="sm"
                                 variant="secondary"
+                                className="rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20"
                                 disabled={aiLoading}
                                 onClick={() => askAI('Teach this lesson step-by-step with clear explanations and examples.', { focusArea: 'teaching' })}
                               >
-                                Teach This Lesson
+                                <BookOpen className="w-4 h-4 mr-2" /> Teach This Lesson
                               </Button>
                               <Button
                                 size="sm"
                                 variant="secondary"
+                                className="rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20"
                                 disabled={aiLoading}
                                 onClick={() => askAI('Give concise hints for the current lesson question using only the provided materials. Do not reveal final answers.', { focusArea: 'hints' })}
                               >
-                                Answer Hints
+                                <Lightbulb className="w-4 h-4 mr-2" /> Answer Hints
                               </Button>
                               <Button
                                 size="sm"
                                 variant="secondary"
+                                className="rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20"
                                 disabled={aiLoading}
                                 onClick={() => askAI(`Create a short 5-question practice for the lesson "${activeLesson?.title || activeLesson?.name || 'Lesson'}" with an answer key, based strictly on the lesson materials.`, { focusArea: 'quiz' })}
                               >
-                                Quick Quiz
+                                <FileQuestion className="w-4 h-4 mr-2" /> Quick Quiz
                               </Button>
                             </div>
 
                             {/* AI Output */}
-                            <div className="rounded-md border p-3 bg-muted/30 min-h-[96px]">
-                              <div className="text-sm text-foreground whitespace-pre-wrap">
-                                {aiLoading ? 'Generating response...' : (aiAnswer || 'AI response will appear here.')}
-                              </div>
+                            <div className="rounded-xl border border-white/20 p-4 bg-white/5 backdrop-blur-md min-h-[110px]">
+                              {aiLoading ? (
+                                <div className="animate-pulse space-y-2">
+                                  <div className="h-3 bg-white/20 rounded w-3/4" />
+                                  <div className="h-3 bg-white/20 rounded w-5/6" />
+                                  <div className="h-3 bg-white/20 rounded w-2/3" />
+                                </div>
+                              ) : (
+                                <div className="text-sm text-foreground whitespace-pre-wrap">
+                                  {aiAnswer || 'AI response will appear here.'}
+                                </div>
+                              )}
                             </div>
 
                             {/* Ask AI */}
@@ -1755,13 +1770,15 @@ const CourseDetailsPage = () => {
                                 value={aiPrompt}
                                 onChange={(e) => setAiPrompt(e.target.value)}
                                 placeholder="Ask the AI a question..."
+                                className="rounded-full"
                               />
                               <Button
                                 size="sm"
+                                className="rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white hover:from-indigo-500 hover:to-fuchsia-500"
                                 disabled={aiLoading || !aiPrompt.trim()}
                                 onClick={() => aiPrompt.trim() && askAI(aiPrompt)}
                               >
-                                Ask
+                                <Send className="w-4 h-4 mr-1" /> Ask
                               </Button>
                             </div>
 
