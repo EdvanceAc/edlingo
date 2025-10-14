@@ -30,6 +30,7 @@ import { Progress } from '../../renderer/components/ui/Progress';
 import { supabase } from '../../renderer/config/supabaseConfig';
 import supabaseService from '../../renderer/services/supabaseService';
 import AuthContext from '../../renderer/contexts/AuthContext';
+import { useAI } from '../../renderer/providers/AIProvider.jsx';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const CourseDetailsPage = () => {
@@ -60,6 +61,51 @@ const CourseDetailsPage = () => {
   const [savingAnswer, setSavingAnswer] = useState(false);
   // const [draggingFiles, setDraggingFiles] = useState(false); // unused – removed to fix linter warning
   const autoSaveRef = useRef(null);
+
+  // AI Tutor state
+  const {
+    isReady,
+    initializeAI,
+    generateResponse,
+    getStatusMessage,
+    getStatusColor,
+    conversationHistory,
+    startNewSession
+  } = useAI?.() || {};
+
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const buildLessonContext = () => {
+    try {
+      const title = activeLesson?.title || activeLesson?.name || 'Current Lesson';
+      const types = Array.isArray(activeMaterials)
+        ? [...new Set(activeMaterials.map(m => m.type || 'material'))].join(', ')
+        : 'materials';
+      const desc = activeLesson?.description || '';
+      return `You are an AI language tutor. Teach the lesson titled "${title}" using a clear, step-by-step approach. Materials available types: ${types}. Focus on understanding, examples, and a short practice at the end. Keep tone friendly and pedagogical.` + (desc ? `\nLesson extra description: ${desc}` : '');
+    } catch (_) {
+      return 'You are an AI tutor. Teach this lesson in a structured way.';
+    }
+  };
+
+  const askAI = async (message, options = {}) => {
+    if (!generateResponse) return;
+    try {
+      setAiLoading(true);
+      if (!isReady && initializeAI) {
+        await initializeAI();
+      }
+      const resp = await generateResponse(message, { focusArea: options.focusArea || 'lesson', userLevel: options.userLevel || 'intermediate' });
+      setAiAnswer(String(resp || ''));
+    } catch (e) {
+      console.error('AI ask error:', e);
+      setAiAnswer('متأسفانه نتوانستم پاسخ تولید کنم. لطفاً دوباره تلاش کنید یا سوال را ساده‌تر بیان کنید.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     console.log('CourseDetailsPage useEffect triggered with courseId:', courseId);
@@ -1576,6 +1622,90 @@ const CourseDetailsPage = () => {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
+
+            {/* AI Tutor Panel */}
+            {activeLesson && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-blue-500" />
+                        AI Tutor
+                      </span>
+                      <span className={`text-xs ${typeof getStatusColor === 'function' ? getStatusColor() : 'text-gray-400'}`}>
+                        {typeof getStatusMessage === 'function' ? getStatusMessage() : 'AI Offline'}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {/* Quick Actions */}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={aiLoading}
+                          onClick={() => askAI(buildLessonContext(), { focusArea: 'teaching' })}
+                        >
+                          تدریس این درس
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={aiLoading}
+                          onClick={() => askAI(`Give me concise hints to answer the current lesson question. Use available materials without revealing final answer directly.`, { focusArea: 'hints' })}
+                        >
+                          راهنمای پاسخ
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={aiLoading}
+                          onClick={() => askAI(`Create a short 5-question practice for the lesson "${activeLesson?.title || activeLesson?.name || 'Lesson'}". Provide correct answers at the end.`, { focusArea: 'quiz' })}
+                        >
+                          آزمون کوتاه
+                        </Button>
+                      </div>
+
+                      {/* AI Output */}
+                      <div className="rounded-md border p-3 bg-muted/30 min-h-[96px]">
+                        <div className="text-sm text-foreground whitespace-pre-wrap">
+                          {aiLoading ? 'در حال تولید پاسخ...' : (aiAnswer || 'پاسخ هوش مصنوعی اینجا نمایش داده می‌شود.')}
+                        </div>
+                      </div>
+
+                      {/* Ask AI */}
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          placeholder="سوالت را از هوش مصنوعی بپرس..."
+                        />
+                        <Button
+                          size="sm"
+                          disabled={aiLoading || !aiPrompt.trim()}
+                          onClick={() => aiPrompt.trim() && askAI(aiPrompt)}
+                        >
+                          بپرس
+                        </Button>
+                      </div>
+
+                      {/* Conversation Info */}
+                      <div className="text-xs text-muted-foreground">
+                        {Array.isArray(conversationHistory) && conversationHistory.length
+                          ? `${conversationHistory.length} پیام اخیر ذخیره شد`
+                          : 'گفتگو تازه آغاز شده است'}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
 
             {/* Skills Focus */}
             {course.skills_focus && course.skills_focus.length > 0 && (
