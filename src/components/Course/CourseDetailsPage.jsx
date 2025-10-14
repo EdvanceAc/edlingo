@@ -1086,18 +1086,57 @@ const CourseDetailsPage = () => {
                   <h4 className="mb-4 text-lg font-bold text-amber-800">Add Your Review</h4>
                   <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
                     <div className="md:col-span-1">
-                      <Select value={newReview.rating} onValueChange={(v) => setNewReview(r => ({ ...r, rating: v }))}>
-                        <SelectTrigger className="rounded-xl border-slate-300 bg-white/90 px-3 py-2 text-slate-700 shadow-sm backdrop-blur focus:ring-2 focus:ring-amber-500">
-                          <SelectValue placeholder="Rating" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">★★★★★</SelectItem>
-                          <SelectItem value="4">★★★★☆</SelectItem>
-                          <SelectItem value="3">★★★☆☆</SelectItem>
-                          <SelectItem value="2">★★☆☆☆</SelectItem>
-                          <SelectItem value="1">★☆☆☆☆</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="rating" aria-label="Select rating">
+                        <input
+                          type="radio"
+                          id="star5"
+                          name="new-review-rating"
+                          value="5"
+                          checked={Number(newReview.rating) === 5}
+                          onChange={(e) => setNewReview(r => ({ ...r, rating: e.target.value }))}
+                        />
+                        <label htmlFor="star5" title="Excellent - 5 stars"></label>
+
+                        <input
+                          type="radio"
+                          id="star4"
+                          name="new-review-rating"
+                          value="4"
+                          checked={Number(newReview.rating) === 4}
+                          onChange={(e) => setNewReview(r => ({ ...r, rating: e.target.value }))}
+                        />
+                        <label htmlFor="star4" title="Very Good - 4 stars"></label>
+
+                        <input
+                          type="radio"
+                          id="star3"
+                          name="new-review-rating"
+                          value="3"
+                          checked={Number(newReview.rating) === 3}
+                          onChange={(e) => setNewReview(r => ({ ...r, rating: e.target.value }))}
+                        />
+                        <label htmlFor="star3" title="Good - 3 stars"></label>
+
+                        <input
+                          type="radio"
+                          id="star2"
+                          name="new-review-rating"
+                          value="2"
+                          checked={Number(newReview.rating) === 2}
+                          onChange={(e) => setNewReview(r => ({ ...r, rating: e.target.value }))}
+                        />
+                        <label htmlFor="star2" title="Fair - 2 stars"></label>
+
+                        <input
+                          type="radio"
+                          id="star1"
+                          name="new-review-rating"
+                          value="1"
+                          checked={Number(newReview.rating) === 1}
+                          onChange={(e) => setNewReview(r => ({ ...r, rating: e.target.value }))}
+                        />
+                        <label htmlFor="star1" title="Poor - 1 star"></label>
+                      </div>
                     </div>
                     <div className="md:col-span-2">
                       <Input
