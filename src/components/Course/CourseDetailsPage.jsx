@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BookOpen, 
@@ -58,7 +58,8 @@ const CourseDetailsPage = () => {
   const [answerText, setAnswerText] = useState('');
   const [answerFiles, setAnswerFiles] = useState([]);
   const [savingAnswer, setSavingAnswer] = useState(false);
-  const [draggingFiles, setDraggingFiles] = useState(false);
+  // const [draggingFiles, setDraggingFiles] = useState(false); // unused – removed to fix linter warning
+  const autoSaveRef = useRef(null);
 
   useEffect(() => {
     console.log('CourseDetailsPage useEffect triggered with courseId:', courseId);
@@ -1311,16 +1312,17 @@ const CourseDetailsPage = () => {
                         ))}
 
                         {/* Answers Section */}
-                        <div className="border rounded-lg p-4">
-                          <div className="font-medium mb-2 flex items-center justify-between">
-                            <span>Your Answer</span>
+                        <div className="answer-card">
+                          <div className="answer-header">
+                            <span className="answer-title">Your Answer</span>
                             {answerText && (
-                              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                              <span className="answer-badge">
                                 {answerText.length} chars • Auto-save enabled
                               </span>
                             )}
                           </div>
                           <Textarea
+                            className="answer-textarea mb-3"
                             placeholder="Type your answer here..."
                             value={answerText}
                             onChange={async (e) => {
@@ -1328,11 +1330,11 @@ const CourseDetailsPage = () => {
                               setAnswerText(newValue);
                               
                               // Auto-save after user stops typing (debounced)
-                              if (window.autoSaveTimeout) {
-                                clearTimeout(window.autoSaveTimeout);
+                              if (autoSaveRef.current) {
+                                clearTimeout(autoSaveRef.current);
                               }
                               
-                              window.autoSaveTimeout = setTimeout(async () => {
+                              autoSaveRef.current = setTimeout(async () => {
                                 if (newValue.trim() && activeLesson) {
                                   try {
                                     console.log('🔄 Auto-saving answer...');
@@ -1372,7 +1374,7 @@ const CourseDetailsPage = () => {
                                 }
                               }, 2000); // Auto-save 2 seconds after user stops typing
                             }}
-                            className="mb-3"
+                            
                             onFocus={() => {
                               // Add visual feedback when focused
                               console.log('📝 Answer textarea focused');
