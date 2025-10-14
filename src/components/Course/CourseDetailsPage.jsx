@@ -101,7 +101,7 @@ const CourseDetailsPage = () => {
       setAiAnswer(String(resp || ''));
     } catch (e) {
       console.error('AI ask error:', e);
-      setAiAnswer('متأسفانه نتوانستم پاسخ تولید کنم. لطفاً دوباره تلاش کنید یا سوال را ساده‌تر بیان کنید.');
+      setAiAnswer("Sorry, I couldn't generate a response. Please try again or simplify your question.");
     } finally {
       setAiLoading(false);
     }
@@ -1652,7 +1652,7 @@ const CourseDetailsPage = () => {
                           disabled={aiLoading}
                           onClick={() => askAI(buildLessonContext(), { focusArea: 'teaching' })}
                         >
-                          تدریس این درس
+                          Teach This Lesson
                         </Button>
                         <Button
                           size="sm"
@@ -1660,7 +1660,7 @@ const CourseDetailsPage = () => {
                           disabled={aiLoading}
                           onClick={() => askAI(`Give me concise hints to answer the current lesson question. Use available materials without revealing final answer directly.`, { focusArea: 'hints' })}
                         >
-                          راهنمای پاسخ
+                          Answer Hints
                         </Button>
                         <Button
                           size="sm"
@@ -1668,14 +1668,14 @@ const CourseDetailsPage = () => {
                           disabled={aiLoading}
                           onClick={() => askAI(`Create a short 5-question practice for the lesson "${activeLesson?.title || activeLesson?.name || 'Lesson'}". Provide correct answers at the end.`, { focusArea: 'quiz' })}
                         >
-                          آزمون کوتاه
+                          Quick Quiz
                         </Button>
                       </div>
 
                       {/* AI Output */}
                       <div className="rounded-md border p-3 bg-muted/30 min-h-[96px]">
                         <div className="text-sm text-foreground whitespace-pre-wrap">
-                          {aiLoading ? 'در حال تولید پاسخ...' : (aiAnswer || 'پاسخ هوش مصنوعی اینجا نمایش داده می‌شود.')}
+                          {aiLoading ? 'Generating response...' : (aiAnswer || 'AI response will appear here.')}
                         </div>
                       </div>
 
@@ -1684,22 +1684,22 @@ const CourseDetailsPage = () => {
                         <Input
                           value={aiPrompt}
                           onChange={(e) => setAiPrompt(e.target.value)}
-                          placeholder="سوالت را از هوش مصنوعی بپرس..."
+                          placeholder="Ask the AI a question..."
                         />
                         <Button
                           size="sm"
                           disabled={aiLoading || !aiPrompt.trim()}
                           onClick={() => aiPrompt.trim() && askAI(aiPrompt)}
                         >
-                          بپرس
+                          Ask
                         </Button>
                       </div>
 
                       {/* Conversation Info */}
                       <div className="text-xs text-muted-foreground">
                         {Array.isArray(conversationHistory) && conversationHistory.length
-                          ? `${conversationHistory.length} پیام اخیر ذخیره شد`
-                          : 'گفتگو تازه آغاز شده است'}
+                          ? `${conversationHistory.length} recent messages saved`
+                          : 'Conversation just started'}
                       </div>
                     </div>
                   </CardContent>
