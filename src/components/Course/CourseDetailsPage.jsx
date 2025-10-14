@@ -1033,114 +1033,157 @@ const CourseDetailsPage = () => {
               </Card>
             </motion.div>
 
-            {/* Ratings & Reviews */}
+            {/* Ratings & Reviews – Ultra Premium Redesign */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.75 }}
+              initial={{ opacity: 0, y: 24, rotateX: -8 }}
+              animate={{ opacity: 1, y: 0, rotateX: 0 }}
+              transition={{ delay: 0.75, type: 'spring', stiffness: 120, damping: 18 }}
+              className="relative overflow-hidden rounded-3xl border border-white/30 bg-gradient-to-br from-white/95 via-slate-50/90 to-slate-100/85 shadow-[0_30px_60px_rgba(0,0,0,0.12)]"
             >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className="w-5 h-5 text-yellow-500" />
+              {/* Header */}
+              <div className="px-8 pt-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 flex items-center justify-center shadow-[0_12px_24px_rgba(245,158,11,0.35)]">
+                    <Star className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                     Ratings & Reviews
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {/* Summary */}
-                  <div className="flex items-end justify-between mb-4">
-                    <div>
-                      <div className="text-3xl font-bold text-foreground">
-                        {avgRating.average.toFixed(1)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{avgRating.count} reviews</div>
+                  </h3>
+                </div>
+              </div>
+
+              <div className="p-8">
+                {/* Summary */}
+                <motion.div
+                  initial={{ scale: 0.96, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.9 }}
+                  className="relative mb-8 lux-card px-10 py-8 text-center"
+                >
+                  {/* subtle glow accent */}
+                  <div className="pointer-events-none absolute -top-8 left-1/2 h-20 w-56 -translate-x-1/2 rounded-full bg-gradient-to-t from-amber-300/20 to-transparent blur-2xl" />
+
+                  <div className="gold-text lux-shine text-7xl md:text-8xl font-extrabold drop-shadow-[0_8px_20px_rgba(245,158,11,0.35)] tracking-tight mb-3">
+                    {(avgRating?.average ?? 0).toFixed(1)}
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5 mb-3">
+                    {[1,2,3,4,5].map((s,i) => (
+                      <Star key={s} className={`w-7 h-7 md:w-8 md:h-8 ${s <= Math.round(avgRating.average) ? 'text-amber-400 fill-current drop-shadow-[0_6px_12px_rgba(245,158,11,0.25)]' : 'text-gray-300'}`} />
+                    ))}
+                  </div>
+                  <div className="lux-pill inline-flex items-center gap-2 px-5 py-2 text-sm md:text-base font-semibold text-slate-700">
+                    {avgRating.count} reviews
+                  </div>
+                </motion.div>
+
+                {/* Add Review */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 1.0 }}
+                  className="mb-8 rounded-2xl border border-slate-200/60 bg-white/85 p-6 shadow-sm backdrop-blur"
+                >
+                  <h4 className="mb-4 text-lg font-bold text-amber-800">Add Your Review</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
+                    <div className="md:col-span-1">
+                      <Select value={newReview.rating} onValueChange={(v) => setNewReview(r => ({ ...r, rating: v }))}>
+                        <SelectTrigger className="rounded-xl border-slate-300 bg-white/90 px-3 py-2 text-slate-700 shadow-sm backdrop-blur focus:ring-2 focus:ring-amber-500">
+                          <SelectValue placeholder="Rating" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">★★★★★</SelectItem>
+                          <SelectItem value="4">★★★★☆</SelectItem>
+                          <SelectItem value="3">★★★☆☆</SelectItem>
+                          <SelectItem value="2">★★☆☆☆</SelectItem>
+                          <SelectItem value="1">★☆☆☆☆</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        className="rounded-xl border-slate-300 bg-white/90 px-3 py-2 text-slate-700 shadow-sm backdrop-blur focus:ring-2 focus:ring-amber-500"
+                        placeholder="Title (optional)"
+                        value={newReview.title}
+                        onChange={(e) => setNewReview(r => ({ ...r, title: e.target.value }))}
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <Input
+                        className="rounded-xl border-slate-300 bg-white/90 px-3 py-2 text-slate-700 shadow-sm backdrop-blur focus:ring-2 focus:ring-amber-500"
+                        placeholder="Share your experience"
+                        value={newReview.content}
+                        onChange={(e) => setNewReview(r => ({ ...r, content: e.target.value }))}
+                      />
                     </div>
                   </div>
+                  <div className="mt-4 text-right">
+                    <Button
+                      size="sm"
+                      className="rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-xl"
+                      loading={submittingReview}
+                      onClick={async () => {
+                        try {
+                          setSubmittingReview(true);
+                          await supabaseService.addCourseReview(courseId, {
+                            rating: Number(newReview.rating),
+                            title: newReview.title,
+                            content: newReview.content
+                          });
+                          setNewReview({ rating: '5', title: '', content: '' });
+                          await loadReviews();
+                        } finally {
+                          setSubmittingReview(false);
+                        }
+                      }}
+                    >
+                      Submit Review
+                    </Button>
+                  </div>
+                </motion.div>
 
-                  {/* Add Review */}
-                  <div className="mb-6 p-4 border rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
-                      <div className="md:col-span-1">
-                        <Select value={newReview.rating} onValueChange={(v) => setNewReview(r => ({ ...r, rating: v }))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Rating" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="5">★★★★★</SelectItem>
-                            <SelectItem value="4">★★★★☆</SelectItem>
-                            <SelectItem value="3">★★★☆☆</SelectItem>
-                            <SelectItem value="2">★★☆☆☆</SelectItem>
-                            <SelectItem value="1">★☆☆☆☆</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="md:col-span-2">
-                        <Input
-                          placeholder="Title (optional)"
-                          value={newReview.title}
-                          onChange={(e) => setNewReview(r => ({ ...r, title: e.target.value }))}
-                        />
-                      </div>
-                      <div className="md:col-span-3">
-                        <Input
-                          placeholder="Share your experience"
-                          value={newReview.content}
-                          onChange={(e) => setNewReview(r => ({ ...r, content: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 text-right">
-                      <Button
-                        size="sm"
-                        loading={submittingReview}
-                        onClick={async () => {
-                          try {
-                            setSubmittingReview(true);
-                            await supabaseService.addCourseReview(courseId, {
-                              rating: Number(newReview.rating),
-                              title: newReview.title,
-                              content: newReview.content
-                            });
-                            setNewReview({ rating: '5', title: '', content: '' });
-                            await loadReviews();
-                          } finally {
-                            setSubmittingReview(false);
-                          }
-                        }}
+                {/* Reviews List */}
+                {reviews.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="rounded-2xl border border-slate-200/60 bg-white/80 px-6 py-8 text-center text-slate-600 shadow-sm backdrop-blur"
+                  >
+                    No reviews yet. Be the first to review!
+                  </motion.div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((rev, idx) => (
+                      <motion.div
+                        key={rev.id}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.2 + idx * 0.06 }}
+                        className="rounded-2xl border border-slate-200/60 bg-white/90 p-6 shadow-sm backdrop-blur hover:shadow-md transition"
                       >
-                        Submit Review
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Reviews List */}
-                  {reviews.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No reviews yet. Be the first to review!</div>
-                  ) : (
-                    <div className="space-y-3">
-                      {reviews.map((rev) => (
-                        <div key={rev.id} className="p-4 border rounded-lg">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="text-sm font-medium text-foreground">
-                              {rev.title || 'Review'}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(rev.created_at).toLocaleDateString()}
-                            </div>
+                        <div className="mb-2 flex items-center justify-between">
+                          <div className="text-sm font-semibold text-slate-800">
+                            {rev.title || 'Review'}
                           </div>
-                          <div className="text-yellow-500 text-sm mb-1">
-                            {'★'.repeat(Math.max(1, Math.min(5, Number(rev.rating) || 0)))}{'☆'.repeat(5 - Math.max(1, Math.min(5, Number(rev.rating) || 0)))}
+                          <div className="text-xs text-slate-500">
+                            {new Date(rev.created_at).toLocaleDateString()}
                           </div>
-                          {rev.content && (
-                            <div className="text-sm text-foreground mb-2">{rev.content}</div>
-                          )}
-                          <div className="text-xs text-muted-foreground">Helpful: {rev.helpful_count || 0}</div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        <div className="mb-3 flex items-center gap-1">
+                          {[1,2,3,4,5].map(s => (
+                            <Star key={s} className={`w-4 h-4 ${s <= Number(rev.rating) ? 'text-amber-400 fill-current' : 'text-gray-300'}`} />
+                          ))}
+                        </div>
+                        {rev.content && (
+                          <div className="mb-3 text-sm text-slate-700">{rev.content}</div>
+                        )}
+                        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/60 bg-white/70 px-3 py-1 text-xs font-semibold text-slate-600">
+                          Helpful: {rev.helpful_count || 0}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </motion.div>
             {/* Active Lesson Viewer */}
             {activeLesson && (
