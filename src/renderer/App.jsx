@@ -15,6 +15,7 @@ import Chat from './pages/Chat';
 import EnhancedChat from './pages/EnhancedChat';
 import LiveConversation from './pages/LiveConversation';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -304,6 +305,22 @@ function App() {
                         } 
                       />
 
+                      <Route 
+                        path="/profile" 
+                        element={
+                          <ProtectedRoute>
+                            <motion.div
+                              key="profile"
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -20 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <Profile />
+                            </motion.div>
+                          </ProtectedRoute>
+                        } 
+                      />
                       <Route 
                         path="/settings" 
                         element={

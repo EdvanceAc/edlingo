@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Sun, 
@@ -19,6 +20,7 @@ import Button from '../ui/Button';
 import { useTheme } from '../../providers/ThemeProvider';
 import { useProgress } from '../../providers/ProgressProvider';
 import { useAudio } from '../../providers/AudioProvider';
+import { useAuth } from '../../contexts/AuthContext';
 import DatabaseStatus from '../DatabaseStatus';
 import { AppConfig } from '../../../config/AppConfig';
 
@@ -26,6 +28,8 @@ const Header = ({ onToggleSidebar }) => {
   const { theme, toggleTheme } = useTheme();
   const { level, totalXP, streak } = useProgress();
   const { isPlaying } = useAudio();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -261,16 +265,25 @@ const Header = ({ onToggleSidebar }) => {
                 <p className="text-xs text-muted-foreground">Level {level} • {totalXP} XP</p>
               </div>
               <div className="py-2">
-                <button className="w-full flex items-center space-x-2 px-4 py-2 text-sm hover:bg-accent transition-colors">
+                <button
+                  className="w-full flex items-center space-x-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                  onClick={() => { setShowUserMenu(false); navigate('/profile'); }}
+                >
                   <User className="w-4 h-4" />
                   <span>Profile</span>
                 </button>
-                <button className="w-full flex items-center space-x-2 px-4 py-2 text-sm hover:bg-accent transition-colors">
+                <button
+                  className="w-full flex items-center space-x-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                  onClick={() => { setShowUserMenu(false); navigate('/settings'); }}
+                >
                   <Settings className="w-4 h-4" />
                   <span>Settings</span>
                 </button>
                 <div className="border-t border-border my-2" />
-                <button className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-accent transition-colors">
+                <button
+                  className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-accent transition-colors"
+                  onClick={async () => { try { await signOut(); } catch (e) { console.error(e); } finally { setShowUserMenu(false); navigate('/'); } }}
+                >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
                 </button>
