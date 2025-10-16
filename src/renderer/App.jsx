@@ -16,6 +16,7 @@ import EnhancedChat from './pages/EnhancedChat';
 import LiveConversation from './pages/LiveConversation';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
+import ComingSoon from './pages/ComingSoon';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -300,6 +301,24 @@ function App() {
                               transition={{ duration: 0.3 }}
                             >
                               <CourseDetailsPage />
+                            </motion.div>
+                          </ProtectedRoute>
+                        } 
+                      />
+
+                      {/* Coming Soon Route */}
+                      <Route 
+                        path="/coming-soon/:feature" 
+                        element={
+                          <ProtectedRoute>
+                            <motion.div
+                              key="coming-soon"
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -20 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <ComingSoon />
                             </motion.div>
                           </ProtectedRoute>
                         } 

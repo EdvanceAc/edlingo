@@ -49,7 +49,7 @@ const Dashboard = () => {
       title: 'Continue Learning',
       description: 'Resume your last lesson',
       icon: Play,
-      href: '/vocabulary',
+      href: '/coming-soon/continue-learning',
       color: 'from-blue-500 to-blue-600',
       textColor: 'text-blue-600'
     },
@@ -57,7 +57,7 @@ const Dashboard = () => {
       title: 'Practice Speaking',
       description: 'Improve pronunciation',
       icon: Mic,
-      href: '/pronunciation',
+      href: '/coming-soon/practice-speaking',
       color: 'from-green-500 to-green-600',
       textColor: 'text-green-600'
     },
@@ -65,7 +65,7 @@ const Dashboard = () => {
       title: 'Chat Practice',
       description: 'Conversation with AI',
       icon: MessageCircle,
-      href: '/enhanced-chat',
+      href: '/coming-soon/chat-practice',
       color: 'from-purple-500 to-purple-600',
       textColor: 'text-purple-600'
     },
@@ -73,7 +73,7 @@ const Dashboard = () => {
       title: 'Grammar Exercises',
       description: 'Master language rules',
       icon: GraduationCap,
-      href: '/grammar',
+      href: '/coming-soon/grammar-exercises',
       color: 'from-orange-500 to-orange-600',
       textColor: 'text-orange-600'
     }
