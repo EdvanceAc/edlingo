@@ -387,6 +387,7 @@ const Courses = () => {
                     size="sm" 
                     variant={course.progress > 0 ? "default" : "outline"}
                     className="text-xs rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/15"
+                    onClick={() => navigate(`/courses/${course.id}`)}
                   >
                     {course.progress > 0 ? (
                       <>

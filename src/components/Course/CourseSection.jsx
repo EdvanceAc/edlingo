@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   BookOpen, 
@@ -18,6 +19,7 @@ import Button from '../../renderer/components/ui/Button';
 import { supabase } from '../../renderer/config/supabaseConfig';
 
 const CourseSection = () => {
+  const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentStreak, setCurrentStreak] = useState(7);
@@ -150,7 +152,7 @@ const CourseSection = () => {
           isLocked 
             ? 'bg-muted/50 border-border opacity-60' 
             : 'border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl hover:border-primary/30 hover:shadow-soft'
-        }`}>
+        }`} onClick={() => { if (!isLocked) navigate(`/courses/${unit.id}`); }}>
           {!isLocked && (
             <div className="pointer-events-none absolute -top-10 -left-10 w-40 h-40 rounded-full bg-primary/20 blur-2xl" />
           )}
@@ -231,6 +233,7 @@ const CourseSection = () => {
                     size="sm" 
                     variant={unit.progress > 0 ? "default" : "outline"}
                     className="text-xs glass ring-1 ring-primary/30 hover:ring-primary/50"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/courses/${unit.id}`); }}
                   >
                     {unit.progress > 0 ? (
                       <>
