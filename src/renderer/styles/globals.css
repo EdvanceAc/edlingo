@@ -898,6 +898,49 @@
   }
   .uiverse-login .submit-btn:active { transform: translateY(0); }
 
+  /* OAuth Buttons */
+  .uiverse-login .oauth-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1.6px solid rgba(99,102,241,0.35);
+    color: #0f172a;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 10px 24px rgba(79,70,229,0.12);
+    transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
+    cursor: pointer;
+    margin-top: 12px; /* فاصله بیشتر از دکمه‌های دیگر */
+  }
+  .uiverse-login .oauth-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px rgba(79,70,229,0.18);
+    filter: brightness(1.02);
+  }
+  .uiverse-login .oauth-btn:active { transform: translateY(0); }
+
+  .dark .uiverse-login .oauth-btn {
+    background: rgba(255,255,255,0.9);
+    color: #0f172a;
+  }
+
+  /* Google specific tweaks */
+  .uiverse-login .google-btn {
+    border-color: rgba(234, 67, 53, 0.35); /* رنگ مرزی نزدیک به هویت گوگل */
+  }
+  .uiverse-login .google-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+  }
+
   .uiverse-login .links {
     display: flex;
     align-items: center;

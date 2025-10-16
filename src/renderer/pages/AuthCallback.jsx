@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
-import { useDatabase } from '../hooks/useDatabase';
+import { supabase } from '../config/supabaseConfig';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { supabase } = useDatabase();
   const [status, setStatus] = useState('loading'); // loading, success, error
   const [message, setMessage] = useState('Processing authentication...');
 
@@ -28,7 +26,7 @@ const AuthCallback = () => {
         if (data.session) {
           setStatus('success');
           setMessage('Authentication successful! Redirecting...');
-          setTimeout(() => navigate('/dashboard'), 2000);
+          setTimeout(() => navigate('/'), 2000);
         } else {
           setStatus('error');
           setMessage('No session found. Redirecting to login...');
@@ -43,7 +41,7 @@ const AuthCallback = () => {
     };
 
     handleAuthCallback();
-  }, [navigate, supabase.auth]);
+  }, [navigate]);
 
   const getIcon = () => {
     switch (status) {
