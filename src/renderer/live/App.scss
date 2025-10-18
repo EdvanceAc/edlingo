@@ -26,7 +26,7 @@
   scrollbar-color: var(--gray-600) var(--gray-900);
   scrollbar-width: thin;
 
-  --font-family: "Space Mono", monospace;
+  --font-family: inherit;
 
   /* */
   --Neutral-00: #000;
@@ -54,7 +54,8 @@
 }
 
 body {
-  font-family: "Space Mono", monospace;
+  // Remove global font override to restore app's default font
+  /* font-family: "Space Mono", monospace; */
   background: var(--Neutral-30);
 }
 
