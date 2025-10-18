@@ -393,6 +393,47 @@ class ModernGeminiLiveService {
     return { success: true };
   }
 
+  // Add an audio unlock method to handle autoplay policies
+  async unlockAudio() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) {
+        // No AudioContext available; still emit enabled for best-effort
+        this.emit('audioEnabled');
+        // Try replay queued audio if present
+        if (this._queuedAudio) {
+          try { await this._queuedAudio.play(); this._queuedAudio = null; } catch (e) { this.emit('audioError', { error: String(e) }); }
+        }
+        return { success: true, message: 'Audio unlocked without AudioContext' };
+      }
+      if (!this._audioCtx) this._audioCtx = new AC();
+      if (this._audioCtx.state === 'suspended') {
+        await this._audioCtx.resume();
+      }
+      // Play a silent buffer to satisfy user-gesture requirement
+      const buffer = this._audioCtx.createBuffer(1, 1, 22050);
+      const source = this._audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this._audioCtx.destination);
+      source.start(0);
+      source.stop(0);
+      this.emit('audioEnabled');
+      // Attempt to play any queued audio
+      if (this._queuedAudio) {
+        try {
+          await this._queuedAudio.play();
+          this._queuedAudio = null;
+        } catch (e) {
+          this.emit('audioError', { error: String(e) });
+        }
+      }
+      return { success: true };
+    } catch (e) {
+      this.emit('audioError', { error: String(e) });
+      return { success: false, error: String(e) };
+    }
+  }
+
   // Play Zephyr voice audio from Gemini
   async playZephyrAudio(audioData) {
     try {
@@ -447,8 +488,21 @@ class ModernGeminiLiveService {
         this.currentAudio = null;
       };
 
-      // Play the audio
-      await this.currentAudio.play();
+      // Attempt to play
+      try {
+        await this.currentAudio.play();
+      } catch (err) {
+        // Autoplay restrictions typically throw NotAllowedError/DOMException
+        const msg = String(err?.message || err);
+        if ((err && (err.name === 'NotAllowedError' || err.name === 'DOMException')) || msg.toLowerCase().includes('gesture')) {
+          console.warn('Autoplay blocked. Queuing audio until user enables playback.');
+          this._queuedAudio = this.currentAudio;
+          this.emit('audioQueued', { message: 'Audio blocked by browser policy. Click Enable audio.' });
+          return { success: false, error: 'autoplay-blocked' };
+        }
+        // Other errors
+        throw err;
+      }
       
       return { success: true, type: 'zephyr-audio' };
     } catch (error) {

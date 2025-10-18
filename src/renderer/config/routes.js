@@ -40,8 +40,6 @@ export const routes = [
     title: 'Live Conversation'
   },
   {
-    
-  {
     path: '/courses',
     component: Courses,
     key: 'courses',

@@ -38,6 +38,7 @@ const LiveConversation = () => {
   // Conversation state
   const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState(''); // For interim STT results
+  const [userInput, setUserInput] = useState('');
   const [isAIResponding, setIsAIResponding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false); // For AI response streaming
@@ -49,6 +50,7 @@ const LiveConversation = () => {
     wordsSpoken: 0
   });
   const [sttWarning, setSttWarning] = useState(null);
+const [audioOnly, setAudioOnly] = useState(true);
 
   // Voice settings
   const [voiceSettings, setVoiceSettings] = useState({
@@ -356,6 +358,9 @@ const LiveConversation = () => {
       });
     };
 
+    // Duplicate enableAudio definition removed (useCallback version below is the canonical implementation)
+
+
     const handleAudioEnabled = () => {
       console.log('Audio playback enabled');
       toast({
@@ -365,41 +370,48 @@ const LiveConversation = () => {
       });
     };
 
-    // Set up live service event listeners
-    // Align with service event names using kebab-case
+    // Register all event listeners
     liveService.on('stt-start', handleSTTStart);
     liveService.on('stt-interim', handleSTTInterim);
     liveService.on('stt-final', handleSTTFinal);
     liveService.on('stt-end', handleSTTEnd);
     liveService.on('stt-error', handleSTTError);
+
     liveService.on('tts-start', handleTTSStart);
     liveService.on('tts-end', handleTTSEnd);
     liveService.on('tts-error', handleTTSError);
+
     liveService.on('message', handleLiveMessage);
     liveService.on('error', handleLiveError);
     liveService.on('close', handleLiveClose);
+
+    // Audio events
     liveService.on('audioQueued', handleAudioQueued);
     liveService.on('audioError', handleAudioError);
     liveService.on('audioEnabled', handleAudioEnabled);
 
     return () => {
-      // Remove event listeners only; do not end the session here to avoid unintended closures on re-renders
       liveService.off('stt-start', handleSTTStart);
       liveService.off('stt-interim', handleSTTInterim);
       liveService.off('stt-final', handleSTTFinal);
       liveService.off('stt-end', handleSTTEnd);
       liveService.off('stt-error', handleSTTError);
+
       liveService.off('tts-start', handleTTSStart);
       liveService.off('tts-end', handleTTSEnd);
       liveService.off('tts-error', handleTTSError);
+
       liveService.off('message', handleLiveMessage);
       liveService.off('error', handleLiveError);
       liveService.off('close', handleLiveClose);
+
       liveService.off('audioQueued', handleAudioQueued);
       liveService.off('audioError', handleAudioError);
       liveService.off('audioEnabled', handleAudioEnabled);
     };
   }, [addXP, toast, handleLiveMessage]);
+
+
 
   
 
@@ -411,10 +423,21 @@ const LiveConversation = () => {
   }, [isSpeakerEnabled]);
 
   // Enable audio on user interaction
-  const enableAudio = useCallback(() => {
-    // Audio enabling now handled through browser APIs
-    console.log('Audio interaction enabled');
-  }, []);
+  const enableAudio = useCallback(async () => {
+    try {
+      const svc = liveServiceRef.current;
+      if (!svc) return;
+      const res = await svc.unlockAudio();
+      if (res?.success) {
+        toast({ title: 'Audio Enabled', description: 'Queued audio will play', variant: 'default' });
+      } else {
+        toast({ title: 'Enable Audio Failed', description: 'Tap again to allow playback', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error('Enable audio error:', e);
+      toast({ title: 'Audio Error', description: String(e?.message || e), variant: 'destructive' });
+    }
+  }, [toast]);
 
   // Start live session with enhanced STT/TTS
   const startLiveSession = useCallback(async () => {
@@ -890,12 +913,8 @@ const LiveConversation = () => {
             
             <button
               onClick={() => setVoiceEnabled(!voiceEnabled)}
-              className={`p-2 rounded-lg transition-colors ${
-                voiceEnabled 
-                  ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              title={voiceEnabled ? 'Disable voice mode' : 'Enable voice mode'}
+              className={`p-2 rounded-lg transition-colors ${voiceEnabled ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              title={voiceEnabled ? 'Disable voice features' : 'Enable voice features'}
             >
               <Waves className="w-4 h-4" />
             </button>
@@ -914,267 +933,291 @@ const LiveConversation = () => {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
-        {sttWarning && (
-          <div className="mb-2 p-3 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800 flex items-center justify-between">
-            <span className="text-sm">{sttWarning}</span>
-            <button
-              onClick={retrySTT}
-              className="ml-3 px-3 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700 text-xs"
-            >
-              Retry now
-            </button>
-          </div>
-        )}
-        <AnimatePresence>
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={`flex ${
-                message.type === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.type === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : message.type === 'system'
-                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                    : message.type === 'error'
-                    ? 'bg-red-100 text-red-800 border border-red-200'
-                    : 'bg-card border border-border'
-                }`}
-              >
-                <div className="flex items-start space-x-2">
-                  {message.type === 'ai' && (
-                    <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Zap className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm leading-relaxed">
-                      {message.content}
-                      {message.isStreaming && (
-                        <span className="inline-block w-2 h-4 bg-current opacity-75 animate-pulse ml-1">|</span>
-                      )}
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs opacity-70">{message.timestamp}</span>
-                      {message.isRecording && (
-                        <span className="text-xs text-red-500">● Recording</span>
-                      )}
-                      {message.isStreaming && (
-                        <div className="flex items-center space-x-1 text-xs opacity-70">
-                          <Radio className="w-3 h-3 animate-pulse" />
-                          <span>streaming</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+        {audioOnly ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="bg-card border border-border rounded-lg p-4 text-center max-w-md">
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <Waves className="w-5 h-5 text-purple-600" />
+                <span className="font-medium">Audio-only mode</span>
               </div>
-            </motion.div>
-          ))}
-          
-          {/* Show streaming message if active */}
-          {isStreaming && streamingMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex justify-start"
-            >
-              <div className="max-w-[80%] rounded-lg p-3 bg-card border border-border">
-                <div className="flex items-start space-x-2">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Zap className="w-3 h-3 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm leading-relaxed">
-                      {streamingMessage}
-                      <span className="inline-block w-2 h-4 bg-current opacity-75 animate-pulse ml-1">|</span>
-                    </p>
-                    <div className="text-xs opacity-70 mt-2">
-                      Streaming...
-                    </div>
-                  </div>
+              <p className="text-sm text-muted-foreground">
+                Speak to converse. Text messages are hidden in this mode.
+              </p>
+              {currentMessage && (
+                <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm text-blue-800">
+                    &quot;{currentMessage}&quot;
+                    <span className="inline-block w-1 h-4 bg-blue-500 opacity-75 animate-pulse ml-1">|</span>
+                  </p>
                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {/* AI Responding Indicator */}
-        {isAIResponding && !currentMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex justify-start"
-          >
-            <div className="bg-card border border-border rounded-lg p-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <Zap className="w-3 h-3 text-white" />
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Waves className="w-4 h-4 animate-pulse" />
-                  <span className="text-sm text-muted-foreground">AI is responding...</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Controls Area */}
-      <div className="bg-card border-t border-border p-4">
-        {!isSessionActive ? (
-          /* Start Session Button */
-          <div className="flex justify-center">
-            <button
-              onClick={startLiveSession}
-              disabled={isConnecting}
-              className="flex items-center space-x-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-            >
-              {isConnecting ? (
-                <>
-                  <Radio className="w-5 h-5 animate-spin" />
-                  <span>Connecting...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5" />
-                  <span>Start Live Conversation</span>
-                </>
               )}
-            </button>
+              {isAIResponding && (
+                <div className="mt-3 flex items-center justify-center space-x-2 text-sm text-muted-foreground">
+                  <Radio className="w-4 h-4 animate-pulse" />
+                  <span>AI is responding...</span>
+                </div>
+              )}
+              {sttWarning && (
+                <div className="mt-3 p-3 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">{sttWarning}</span>
+                    <button
+                      onClick={retrySTT}
+                      className="ml-3 px-3 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700 text-xs"
+                    >
+                      Retry now
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
-          /* Active Session Controls */
-          <div className="space-y-4">
-            {/* Voice Controls */}
-            <div className="flex items-center justify-center space-x-4">
-              {/* Speech Recognition Toggle */}
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={toggleRecording}
-                  disabled={!isMicEnabled || isLoading}
-                  className={`relative p-4 rounded-full transition-all duration-200 ${
-                    isRecording
-                      ? 'bg-red-500 text-white scale-110 shadow-lg animate-pulse'
-                      : isMicEnabled
-                      ? 'bg-green-500 text-white hover:bg-green-600'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                  title={isRecording ? 'Stop listening' : isMicEnabled ? 'Start listening' : 'Microphone disabled'}
+          <>
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={`flex ${
+                  message.type === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg p-3 ${
+                    message.type === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : message.type === 'system'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : message.type === 'error'
+                      ? 'bg-red-100 text-red-800 border border-red-200'
+                      : 'bg-card border border-border'
+                    }`}
+                  >
+                    <div className="flex items-start space-x-2">
+                      {message.type === 'ai' && (
+                        <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Zap className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed">
+                          {message.content}
+                          {message.isStreaming && (
+                            <span className="inline-block w-2 h-4 bg-current opacity-75 animate-pulse ml-1">|</span>
+                          )}
+                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs opacity-70">{message.timestamp}</span>
+                          {message.isRecording && (
+                            <span className="text-xs text-red-500">● Recording</span>
+                          )}
+                          {message.isStreaming && (
+                            <div className="flex items-center space-x-1 text-xs opacity-70">
+                              <Radio className="w-3 h-3 animate-pulse" />
+                              <span>streaming</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+              
+              {/* Show streaming message if active */}
+              {isStreaming && streamingMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start"
                 >
-                  {isRecording ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                  {isRecording && (
-                    <motion.div
-                      className="absolute inset-0 rounded-full border-2 border-white"
-                      animate={{ scale: [1, 1.3, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    />
+                  <div className="max-w-[80%] rounded-lg p-3 bg-card border border-border">
+                    <div className="flex items-start space-x-2">
+                      <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Zap className="w-3 h-3 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed">
+                          {streamingMessage}
+                          <span className="inline-block w-2 h-4 bg-current opacity-75 animate-pulse ml-1">|</span>
+                        </p>
+                        <div className="text-xs opacity-70 mt-2">
+                          Streaming...
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            {/* AI Responding Indicator */}
+            {isAIResponding && !currentMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-start"
+              >
+                <div className="bg-card border border-border rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                      <Zap className="w-3 h-3 text-white" />
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Waves className="w-4 h-4 animate-pulse" />
+                      <span className="text-sm text-muted-foreground">AI is responding...</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </>
+        )}
+      </div>
+
+          {/* Controls Area */}
+          <div className="bg-card border-t border-border p-4">
+            {!isSessionActive ? (
+              /* Start Session Button */
+              <div className="flex justify-center">
+                <button
+                  onClick={startLiveSession}
+                  disabled={isConnecting}
+                  className="flex items-center space-x-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  {isConnecting ? (
+                    <>
+                      <Radio className="w-5 h-5 animate-spin" />
+                      <span>Connecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5" />
+                      <span>Start Live Conversation</span>
+                    </>
                   )}
                 </button>
-                
-                {/* Voice Activity Indicator */}
-                {isRecording && (
-                  <div className="flex flex-col items-center space-y-1">
-                    <div className="flex items-center space-x-1">
-                      {[...Array(5)].map((_, i) => (
+              </div>
+            ) : (
+              /* Active Session Controls */
+              <div className="space-y-4">
+                {/* Voice Controls */}
+                <div className="flex items-center justify-center space-x-4">
+                  {/* Speech Recognition Toggle */}
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={toggleRecording}
+                      disabled={!isMicEnabled || isLoading}
+                      className={`relative p-4 rounded-full transition-all duration-200 ${
+                        isRecording
+                          ? 'bg-red-500 text-white scale-110 shadow-lg animate-pulse'
+                          : isMicEnabled
+                          ? 'bg-green-500 text-white hover:bg-green-600'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                      title={isRecording ? 'Stop listening' : isMicEnabled ? 'Start listening' : 'Microphone disabled'}
+                    >
+                      {isRecording ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                      {isRecording && (
                         <motion.div
-                          key={i}
-                          className="w-1 bg-green-500 rounded-full"
-                          animate={{
-                            height: [4, Math.random() * 16 + 4, 4]
-                          }}
-                          transition={{
-                            duration: 0.5 + Math.random() * 0.5,
-                            repeat: Infinity,
-                            repeatType: "reverse"
-                          }}
+                          className="absolute inset-0 rounded-full border-2 border-white"
+                          animate={{ scale: [1, 1.3, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
                         />
-                      ))}
-                    </div>
-                    <span className="text-xs text-green-600 font-medium">Listening...</span>
+                      )}
+                    </button>
+                    
+                    {/* Voice Activity Indicator */}
+                    {isRecording && (
+                      <div className="flex flex-col items-center space-y-1">
+                        <div className="flex items-center space-x-1">
+                          {[...Array(5)].map((_, i) => (
+                            <motion.div
+                              key={i}
+                              className="w-1 bg-green-500 rounded-full"
+                              animate={{
+                                height: [4, Math.random() * 16 + 4, 4]
+                              }}
+                              transition={{
+                                duration: 0.5 + Math.random() * 0.5,
+                                repeat: Infinity,
+                                repeatType: "reverse"
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-green-600 font-medium">Listening...</span>
+                      </div>
+                    )}
+                    
+                    {/* Current Speech Display */}
+                    {currentMessage && (
+                      <div className="max-w-xs p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          &quot;{currentMessage}&quot;
+                          <span className="inline-block w-1 h-4 bg-blue-500 opacity-75 animate-pulse ml-1">|</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
+                  
+                  {/* TTS Control */}
+                  {isAIResponding && (
+                    <button
+                      onClick={stopTTS}
+                      className="p-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                      title="Stop AI speech"
+                    >
+                      <VolumeX className="w-5 h-5" />
+                    </button>
+                  )}
+                  
+                  {/* Audio Enable Button */}
+                  <button
+                    onClick={enableAudio}
+                    className="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    title="Enable audio playback"
+                  >
+                    <Volume2 className="w-5 h-5" />
+                  </button>
+                  
+                  {/* End Session Button */}
+                  <button
+                    onClick={endLiveSession}
+                    className="p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    title="End conversation"
+                  >
+                    <Square className="w-5 h-5" />
+                  </button>
+                </div>
                 
-                {/* Current Speech Display */}
-                {currentMessage && (
-                  <div className="max-w-xs p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      "{currentMessage}"
-                      <span className="inline-block w-1 h-4 bg-blue-500 opacity-75 animate-pulse ml-1">|</span>
-                    </p>
+                {/* Text Input */}
+                {!audioOnly && (
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      placeholder="Type your message..."
+                      className="flex-1 p-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <button
+                      onClick={() => sendTextMessage(userInput)}
+                      className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                      disabled={isAIResponding || !isSessionActive || !userInput.trim()}
+                    >
+                      Send
+                    </button>
                   </div>
                 )}
               </div>
-              
-              {/* TTS Control */}
-              {isAIResponding && (
-                <button
-                  onClick={stopTTS}
-                  className="p-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                  title="Stop AI speech"
-                >
-                  <VolumeX className="w-5 h-5" />
-                </button>
-              )}
-              
-              {/* Audio Enable Button */}
-              <button
-                onClick={enableAudio}
-                className="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                title="Enable audio playback"
-              >
-                <Volume2 className="w-5 h-5" />
-              </button>
-              
-              {/* End Session Button */}
-              <button
-                onClick={endLiveSession}
-                className="p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                title="End conversation"
-              >
-                <Square className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Text Input */}
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                className="flex-1 px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && e.target.value.trim()) {
-                    sendTextMessage(e.target.value);
-                    e.target.value = '';
-                  }
-                }}
-              />
-              <button
-                onClick={(e) => {
-                  const input = e.target.parentElement.querySelector('input');
-                  if (input.value.trim()) {
-                    sendTextMessage(input.value);
-                    input.value = '';
-                  }
-                }}
-                disabled={isLoading || isAIResponding}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                Send
-              </button>
-            </div>
+            )}
           </div>
-        )}
-      </div>
     </div>
   );
 };
