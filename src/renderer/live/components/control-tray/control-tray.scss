@@ -17,6 +17,12 @@
   user-select: none;
   cursor: pointer;
 
+  /* ensure icon text isn't transformed and renders as glyph */
+  .material-symbols-outlined {
+    text-transform: none;
+    font-size: 28px;
+  }
+
   &:focus {
     border: 2px solid var(--Neutral-20);
     outline: 2px solid var(--Neutral-80);
@@ -105,15 +111,15 @@
 }
 
 .control-tray {
-  position: absolute;
-  bottom: 0;
+  position: fixed;
+  top: 50%;
   left: 50%;
-  transform: translate(-50%, 0);
+  transform: translate(-50%, -50%);
   display: inline-flex;
   justify-content: center;
-  align-items: flex-start;
-  gap: 8px;
-  padding-bottom: 18px;
+  align-items: center;
+  gap: 12px;
+  z-index: 1000;
 
   .disabled .action-button,
   .action-button.disabled {
@@ -137,15 +143,7 @@
     }
 
     .text-indicator {
-      font-size: 11px;
-      color: var(--Blue-500);
-      user-select: none;
-    }
-
-    &:not(.connected) {
-      .text-indicator {
-        opacity: 0;
-      }
+      display: none;
     }
   }
 }
