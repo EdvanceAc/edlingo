@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import "../live/App.scss";
 import { LiveAPIProvider } from "../live/contexts/LiveAPIContext";
-import SidePanel from "../live/components/side-panel/SidePanel";
+// SidePanel hidden per UI requirement
 import { Altair } from "../live/components/altair/Altair";
 import ControlTray from "../live/components/control-tray/ControlTray";
 import clsx from "clsx";
@@ -22,7 +22,7 @@ export default function LiveConversation() {
     <div className="App">
       <LiveAPIProvider options={apiOptions}>
         <div className="streaming-console">
-          <SidePanel />
+          {/* SidePanel removed to match app UI */}
           <main>
             <div className="main-app-area">
               <Altair />
@@ -38,9 +38,9 @@ export default function LiveConversation() {
 
             <ControlTray
               videoRef={videoRef}
-              supportsVideo={true}
+              supportsVideo={false}
               onVideoStreamChange={setVideoStream}
-              enableEditingSettings={true}
+              enableEditingSettings={false}
             />
           </main>
         </div>

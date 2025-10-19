@@ -27,8 +27,9 @@
     border: 1px solid var(--Neutral-20);
   }
 
-  .no-action {
-    pointer-events: none;
+  /* Hide non-interactive AudioPulse container to keep only mic + play */
+  &.no-action {
+    display: none !important;
   }
 
   &:hover {
