@@ -107,7 +107,7 @@ export default function SettingsDialog() {
   return (
     <div className="settings-dialog">
       <button
-        className="action-button material-symbols-outlined"
+        className="action-button material-symbols-outlined settings-trigger"
         onClick={() => setOpen(!open)}
       >
         settings

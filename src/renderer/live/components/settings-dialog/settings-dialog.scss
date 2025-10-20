@@ -65,6 +65,27 @@
     border: 0;
   }
 
+  /* clearer, high-contrast settings trigger next to Play */
+  .settings-trigger {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-size: 30px; /* larger glyph for clarity */
+    animation: none; /* remove opacity pulse for solid look */
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.22);
+    }
+
+    &:focus {
+      border: 2px solid rgba(255, 255, 255, 0.60);
+      outline: 2px solid rgba(255, 255, 255, 0.50);
+    }
+  }
+
   /* modal styles moved to portal; see base .dialog */
 
   /* container styles handled by base .dialog-container */
