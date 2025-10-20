@@ -14,9 +14,8 @@ const navigationItems = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Courses', href: '/courses', icon: BookMarked },
   { name: 'Chat', href: '/chat', icon: MessageCircle },
-  { name: 'Enhanced Chat', href: '/enhanced-chat', icon: MessageSquare },
+  // Removed Enhanced Chat and Assessment from bottom bar to avoid horizontal scroll on mobile
   { name: 'Live', href: '/live-conversation', icon: Radio },
-  { name: 'Assessment', href: '/assessment', icon: ClipboardCheck },
 ];
 
 const BottomNav = () => {
@@ -24,7 +23,7 @@ const BottomNav = () => {
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       <div className="mx-auto max-w-7xl">
         <div className="m-3 rounded-2xl bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-pink-600/90 backdrop-blur-lg ring-1 ring-white/20 shadow-xl">
-          <div className="flex items-center justify-between px-2 sm:px-4 py-2 overflow-x-auto">
+          <div className="flex items-center justify-around px-2 sm:px-4 py-2 overflow-x-hidden">
             {navigationItems.map((item) => {
               const Icon = item.icon;
               return (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Menu, Flame, Zap, Settings, User, Bell, Sun, Moon, Volume2, VolumeX } from 'lucide-react';
+import { Menu, Flame, Zap, Settings, User, Bell, Sun, Moon, Volume2, VolumeX, MessageSquare, ClipboardCheck } from 'lucide-react';
 import { useProgress } from '../../providers/ProgressProvider';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../providers/ThemeProvider';
@@ -180,6 +180,34 @@ export default function MobileMenu({ onClose }) {
                 )}
               </div>
               <span className="text-xs font-medium text-gray-700 dark:text-gray-200">{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Feature Navigation */}
+        <div className="px-4 pt-3">
+          <div className="mb-2 text-xs font-semibold text-gray-600 dark:text-gray-300">More features</div>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Enhanced Chat */}
+            <button
+              onClick={() => { onClose?.(); navigate('/enhanced-chat'); }}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10 dark:from-indigo-500/15 dark:to-fuchsia-500/15 ring-1 ring-gray-200 dark:ring-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/20 dark:bg-indigo-500/25 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-300" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Enhanced Chat</span>
+            </button>
+
+            {/* Assessment */}
+            <button
+              onClick={() => { onClose?.(); navigate('/assessment'); }}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-pink-500/10 to-rose-500/10 dark:from-pink-500/15 dark:to-rose-500/15 ring-1 ring-gray-200 dark:ring-gray-800 hover:bg-pink-50 dark:hover:bg-rose-900/20 transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-pink-500/20 dark:bg-pink-500/25 flex items-center justify-center">
+                <ClipboardCheck className="w-5 h-5 text-pink-600 dark:text-pink-300" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Assessment</span>
             </button>
           </div>
         </div>
