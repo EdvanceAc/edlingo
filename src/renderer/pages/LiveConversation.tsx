@@ -9,7 +9,7 @@ import ControlTray from "../live/components/control-tray/ControlTray";
 import clsx from "clsx";
 import { LiveClientOptions } from "../live/types";
 import { motion } from "framer-motion";
-import { Mic, Settings } from "lucide-react";
+import { Mic, Settings, Info } from "lucide-react";
 
 // Read Gemini API key from Vite env; if missing, UI renders but connect will fail until provided
 const API_KEY = (import.meta as any).env?.VITE_GOOGLE_GEMINI_API_KEY as string | undefined;
@@ -55,7 +55,14 @@ export default function LiveConversation() {
                   Practice interactive speaking with the AI assistant, improve pronunciation, and get instant feedback. Click Connect to begin.
                 </p>
               </div>
-              <StatusBadge />
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 ring-1 ring-white/25 px-3 py-2 text-sm text-white hover:bg-white/15 transition"
+                title="Help"
+              >
+                <Info className="w-4 h-4 text-white/90" />
+                <span className="hidden sm:inline">Help</span>
+              </button>
             </div>
           </div>
         </motion.section>
@@ -63,7 +70,7 @@ export default function LiveConversation() {
         {/* Main Grid */}
         <div className="streaming-console">
           <main className="mx-auto max-w-7xl px-4 md:px-6 py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+            <div className="flex justify-center items-center w-full min-h-[50vh]">
 
 
               {/* Live stream & Controls */}
@@ -71,29 +78,34 @@ export default function LiveConversation() {
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35 }}
-                className="rounded-2xl bg-[rgba(28,31,33,0.9)] ring-1 ring-white/20 backdrop-blur-md p-4 md:p-6 min-h-[280px]"
+                className="rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-2xl ring-1 ring-white/20 p-6 md:p-8 w-full max-w-3xl"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base md:text-lg font-semibold text-white">Session Controls</h2>
-                  <Settings className="w-5 h-5 text-white/80" />
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-white/90" />
+                    <h2 className="text-base md:text-lg font-semibold text-white">Session Controls</h2>
+                  </div>
+                  <StatusBadge />
                 </div>
-                <div className="main-app-area">
-                  <video
-                    className={clsx("stream rounded-xl ring-1 ring-white/20", videoStream ? "" : "hidden")}
-                    style={{ display: videoStream ? "block" : "none" }}
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                  />
-                </div>
+                <div className="rounded-xl bg-white/10 ring-1 ring-white/25 p-4">
+                  <div className="main-app-area">
+                    <video
+                      className={clsx("stream rounded-xl ring-1 ring-white/20", videoStream ? "" : "hidden")}
+                      style={{ display: videoStream ? "block" : "none" }}
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                    />
+                  </div>
 
-                <div className="mt-3">
-                  <ControlTray
-                    videoRef={videoRef}
-                    supportsVideo={false}
-                    onVideoStreamChange={setVideoStream}
-                    enableEditingSettings={true}
-                  />
+                  <div className="mt-3">
+                    <ControlTray
+                      videoRef={videoRef}
+                      supportsVideo={false}
+                      onVideoStreamChange={setVideoStream}
+                      enableEditingSettings={true}
+                    />
+                  </div>
                 </div>
               </motion.div>
             </div>
