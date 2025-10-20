@@ -101,7 +101,7 @@ const Header = ({ onToggleSidebar }) => {
         <div className="absolute -bottom-10 left-1/3 h-32 w-56 rounded-full bg-indigo-400/25 blur-2xl" />
         <div className="absolute -top-6 right-0 h-28 w-28 rounded-full bg-pink-400/20 blur-2xl" />
       </div>
-      <div className="container grid grid-cols-3 items-center h-14 sm:h-16 px-2 sm:px-4 gap-2">
+      <div className="container grid grid-cols-2 md:grid-cols-3 items-center h-14 sm:h-16 px-2 sm:px-4 gap-2">
         <div className="col-span-1 flex items-center space-x-3 sm:space-x-4">
           <Button
             variant="ghost"
