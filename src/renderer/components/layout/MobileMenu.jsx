@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Menu, Flame, Zap, Settings } from 'lucide-react';
 import { useProgress } from '../../providers/ProgressProvider';
@@ -9,9 +10,9 @@ export default function MobileMenu({ onClose }) {
   const stats = getProgressStats();
   const navigate = useNavigate();
 
-  const progressPercent = Math.max(0, Math.min(100, Math.round(stats.progressToNextLevel || 0)));
+  const progressPercent = Math.max(0, Math.min(100, Math.round(stats?.progressToNextLevel || 0)));
 
-  return (
+  const overlay = (
     <div className="fixed inset-0 z-[1000] md:hidden">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -94,4 +95,7 @@ export default function MobileMenu({ onClose }) {
       </motion.aside>
     </div>
   );
+
+  // Render outside header to avoid clipping/stacking issues
+  return createPortal(overlay, document.body);
 }
