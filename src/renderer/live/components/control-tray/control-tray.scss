@@ -111,15 +111,13 @@
 }
 
 .control-tray {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: inline-flex;
+  position: relative;
+  display: flex;
   justify-content: center;
   align-items: center;
   gap: 12px;
-  z-index: 1000;
+  width: 100%;
+  z-index: 1;
 
   .disabled .action-button,
   .action-button.disabled {
@@ -153,10 +151,12 @@
   border: 1px solid var(--Neutral-30);
   border-radius: 27px;
   display: inline-flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   overflow: clip;
   padding: 10px;
+  /* prevent wrapping so icons stay together */
+  flex-wrap: nowrap;
 
   transition: all 0.6s ease-in;
 

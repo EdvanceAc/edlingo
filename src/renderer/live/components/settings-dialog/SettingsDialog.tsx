@@ -99,7 +99,8 @@ export default function SettingsDialog() {
       >
         settings
       </button>
-      <dialog className="dialog" style={{ display: open ? "block" : "none" }}>
+      {open && <div className="dialog-overlay" onClick={() => setOpen(false)} />}
+      <dialog className={`dialog ${open ? "open" : ""}`} style={{ display: open ? "block" : "none" }}>
         <div className={`dialog-container ${connected ? "disabled" : ""}`}>
           {connected && (
             <div className="connected-indicator">
