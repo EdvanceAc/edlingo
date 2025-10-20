@@ -174,12 +174,12 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch; // was center
+    justify-content: flex-start; // was center
     flex-grow: 1;
     min-height: 0;
-    height: 100%;
-    gap: 0.5rem;
+    width: 100%;
+    gap: 1rem; // more breathing space
     max-width: 100%;
     overflow: visible;
   }
