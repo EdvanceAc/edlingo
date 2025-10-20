@@ -6,6 +6,7 @@ import './App.css'
 // Components
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import BottomNav from './components/layout/BottomNav';
 import LoadingScreen from './components/ui/LoadingScreen';
 import DatabaseStatus from './components/DatabaseStatus';
 
@@ -70,7 +71,7 @@ function AppLayout({ children }) {
           width: sidebarCollapsed ? '80px' : '280px'
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="flex-shrink-0 border-r border-border"
+        className="hidden md:block flex-shrink-0 border-r border-border"
       >
         <Sidebar 
           collapsed={sidebarCollapsed} 
@@ -84,9 +85,10 @@ function AppLayout({ children }) {
         <Header />
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto pb-20 md:pb-0">
           {children}
         </main>
+        <BottomNav />
       </div>
     </div>
   );
