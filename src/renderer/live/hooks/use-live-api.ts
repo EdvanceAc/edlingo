@@ -21,6 +21,7 @@ import { AudioStreamer } from "../lib/audio-streamer";
 import { audioContext } from "../lib/utils";
 import VolMeterWorket from "../lib/worklets/vol-meter";
 import { LiveConnectConfig } from "@google/genai";
+import { useSessionInsightsStore } from "../lib/session-insights-store";
 
 export type UseLiveAPIResults = {
   client: GenAILiveClient;
@@ -51,6 +52,13 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
         audioStreamerRef.current
           .addWorklet<any>("vumeter-out", VolMeterWorket, (ev: any) => {
             setVolume(ev.data.volume);
+            try {
+              const v = ev.data.volume as number;
+              const { setOutVolume } = useSessionInsightsStore.getState();
+              setOutVolume(v);
+              const mic = useSessionInsightsStore.getState().micVolume;
+              useSessionInsightsStore.getState().addSample({ t: Date.now(), mic, out: v });
+            } catch {}
           })
           .then(() => {
             // Successfully added worklet

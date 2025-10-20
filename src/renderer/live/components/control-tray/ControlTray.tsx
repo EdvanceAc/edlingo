@@ -25,6 +25,7 @@ import { AudioRecorder } from "../../lib/audio-recorder";
 import AudioPulse from "../audio-pulse/AudioPulse";
 import "./control-tray.scss";
 import SettingsDialog from "../settings-dialog/SettingsDialog";
+import { useSessionInsightsStore } from "../../lib/session-insights-store";
 
 export type ControlTrayProps = {
   videoRef: RefObject<HTMLVideoElement>;
@@ -77,6 +78,7 @@ function ControlTray({
 
   const { client, connected, connect, disconnect, volume } =
     useLiveAPIContext();
+  const { setMicVolume } = useSessionInsightsStore();
 
   useEffect(() => {
     if (!connected && connectButtonRef.current) {
@@ -99,15 +101,24 @@ function ControlTray({
         },
       ]);
     };
+    const onVolume = (v: number) => {
+      setInVolume(v);
+      setMicVolume(v);
+      // push a sample for charting
+      try {
+        const out = useSessionInsightsStore.getState().outVolume;
+        useSessionInsightsStore.getState().addSample({ t: Date.now(), mic: v, out });
+      } catch {}
+    };
     if (connected && !muted && audioRecorder) {
-      audioRecorder.on("data", onData).on("volume", setInVolume).start();
+      audioRecorder.on("data", onData).on("volume", onVolume).start();
     } else {
       audioRecorder.stop();
     }
     return () => {
-      audioRecorder.off("data", onData).off("volume", setInVolume);
+      audioRecorder.off("data", onData).off("volume", onVolume);
     };
-  }, [connected, client, muted, audioRecorder]);
+  }, [connected, client, muted, audioRecorder, setMicVolume]);
 
   useEffect(() => {
     if (videoRef.current) {
