@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import { useProgress } from '../providers/ProgressProvider';
 import CourseSection from '../../components/Course/CourseSection';
+import { useTheme } from '../providers/ThemeProvider';
 
 const Dashboard = () => {
   const { getProgressStats, userProgress } = useProgress();
   const [stats, setStats] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { theme } = useTheme();
 
   useEffect(() => {
     setStats(getProgressStats());
@@ -88,7 +90,7 @@ const Dashboard = () => {
   }));
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className={`p-6 space-y-6 max-w-7xl mx-auto ${theme === 'dark' ? 'dark' : ''}`}> 
       {/* Welcome Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -105,7 +107,7 @@ const Dashboard = () => {
             </p>
           </div>
           <div className="text-left sm:text-right">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground dark:text-gray-400">
               {currentTime.toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -203,9 +205,7 @@ const Dashboard = () => {
               <p className="text-2xl font-bold">{stats.streak} days</p>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Keep it up! 🔥
-          </p>
+          <p className="text-sm text-muted-foreground">Keep it up! 🔥</p>
         </motion.div>
 
         {/* Total XP */}
@@ -224,13 +224,9 @@ const Dashboard = () => {
               <p className="text-2xl font-bold">{stats.xp.toLocaleString()}</p>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {stats.xpToNextLevel} XP to next level
-          </p>
+          <p className="text-sm text-muted-foreground">{stats.xpToNextLevel} XP to next level</p>
         </motion.div>
       </div>
-
-      
 
       {/* Course Section */}
       <motion.div
@@ -267,17 +263,17 @@ const Dashboard = () => {
                   >
                     <Link
                       to={action.href}
-                      className="group block p-4 rounded-xl border border-primary/20 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
+                      className="group block p-4 rounded-xl border border-primary/20 dark:border-white/15 bg-white/5 dark:bg-white/10 hover:bg-white/10 dark:hover:bg-white/15 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center group-hover:scale-105 transition-transform shadow-soft`}>
                           <Icon className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-foreground group-hover:text-primary">
+                          <h3 className="font-semibold text-foreground group-hover:text-primary dark:text-gray-100">
                             {action.title}
                           </h3>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground dark:text-gray-300">
                             {action.description}
                           </p>
                         </div>
@@ -315,18 +311,18 @@ const Dashboard = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.8 + index * 0.1 }}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-white/5 dark:bg-gray-800/60 backdrop-blur-sm border border-white/10 dark:border-gray-700"
                   >
                     <span className="text-2xl">{achievement.icon}</span>
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{achievement.name}</p>
-                      <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                      <p className="font-medium text-sm dark:text-gray-100">{achievement.name}</p>
+                      <p className="text-xs text-muted-foreground dark:text-gray-300">{achievement.description}</p>
                     </div>
                     <span className="text-xs font-semibold text-primary glass px-2 py-1 rounded-md">+{achievement.xp} XP</span>
                   </motion.div>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-muted-foreground dark:text-gray-300 text-center py-4">
                   Complete lessons to earn achievements! 🏆
                 </p>
               )}
@@ -349,8 +345,8 @@ const Dashboard = () => {
                   transition={{ delay: 0.9 + index * 0.05 }}
                   className="flex items-center gap-3"
                 >
-                  <span className="text-sm font-medium w-8">{day.day}</span>
-                  <div className="flex-1 h-2 rounded-full overflow-hidden bg-white/10 backdrop-blur-sm">
+                  <span className="text-sm font-medium w-8 dark:text-gray-100">{day.day}</span>
+                  <div className="flex-1 h-2 rounded-full overflow-hidden bg-white/10 dark:bg-gray-800/50 backdrop-blur-sm">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(day.percentage, 100)}%` }}
@@ -364,7 +360,7 @@ const Dashboard = () => {
                       }`}
                     />
                   </div>
-                  <span className="text-sm text-muted-foreground w-8">{day.minutes}m</span>
+                  <span className="text-sm text-muted-foreground dark:text-gray-300 w-8">{day.minutes}m</span>
                 </motion.div>
               ))}
             </div>
