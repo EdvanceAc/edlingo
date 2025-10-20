@@ -4,12 +4,14 @@ import {
   useCallback,
   useMemo,
   useState,
+  useEffect,
 } from "react";
 import "./settings-dialog.scss";
 import { useLiveAPIContext } from "../../contexts/LiveAPIContext";
 import VoiceSelector from "./VoiceSelector";
 import ResponseModalitySelector from "./ResponseModalitySelector";
 import { FunctionDeclaration, LiveConnectConfig, Tool } from "@google/genai";
+import { createPortal } from "react-dom";
 
 type FunctionDeclarationsTool = Tool & {
   functionDeclarations: FunctionDeclaration[];
@@ -91,6 +93,17 @@ export default function SettingsDialog() {
     [config, setConfig]
   );
 
+  // close on Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   return (
     <div className="settings-dialog">
       <button
@@ -99,56 +112,66 @@ export default function SettingsDialog() {
       >
         settings
       </button>
-      {open && <div className="dialog-overlay" onClick={() => setOpen(false)} />}
-      <dialog className={`dialog ${open ? "open" : ""}`} style={{ display: open ? "block" : "none" }}>
-        <div className={`dialog-container ${connected ? "disabled" : ""}`}>
-          {connected && (
-            <div className="connected-indicator">
-              <p>
-                These settings can only be applied before connecting and will
-                override other settings.
-              </p>
-            </div>
-          )}
-          <div className="mode-selectors">
-            <ResponseModalitySelector />
-            <VoiceSelector />
-          </div>
-
-          <h3>System Instructions</h3>
-          <textarea
-            className="system"
-            onChange={updateConfig}
-            value={systemInstruction}
-          />
-          <h4>Function declarations</h4>
-          <div className="function-declarations">
-            <div className="fd-rows">
-              {functionDeclarations.map((fd, fdKey) => (
-                <div className="fd-row" key={`function-${fdKey}`}>
-                  <span className="fd-row-name">{fd.name}</span>
-                  <span className="fd-row-args">
-                    {Object.keys(fd.parameters?.properties || {}).map(
-                      (item, k) => (
-                        <span key={k}>{item}</span>
-                      )
-                    )}
-                  </span>
-                  <input
-                    key={`fd-${fd.description}`}
-                    className="fd-row-description"
-                    type="text"
-                    defaultValue={fd.description}
-                    onBlur={(e) =>
-                      updateFunctionDescription(fd.name!, e.target.value)
-                    }
-                  />
+      {open &&
+        createPortal(
+          <>
+            <div className="dialog-overlay" onClick={() => setOpen(false)} />
+            <dialog className={`dialog open`} style={{ display: "block" }} role="dialog" aria-modal="true">
+              <div className={`dialog-container ${connected ? "disabled" : ""}`}>
+                <div className="settings-header">
+                  <h3 className="settings-title">Session Settings</h3>
+                  <button className="close-btn material-symbols-outlined" onClick={() => setOpen(false)}>close</button>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </dialog>
+                {connected && (
+                  <div className="connected-indicator">
+                    <p>
+                      These settings can only be applied before connecting and will
+                      override other settings.
+                    </p>
+                  </div>
+                )}
+                <div className="mode-selectors">
+                  <ResponseModalitySelector />
+                  <VoiceSelector />
+                </div>
+
+                <h3>System Instructions</h3>
+                <textarea
+                  className="system"
+                  onChange={updateConfig}
+                  value={systemInstruction}
+                />
+                <h4>Function declarations</h4>
+                <div className="function-declarations">
+                  <div className="fd-rows">
+                    {functionDeclarations.map((fd, fdKey) => (
+                      <div className="fd-row" key={`function-${fdKey}`}>
+                        <span className="fd-row-name">{fd.name}</span>
+                        <span className="fd-row-args">
+                          {Object.keys(fd.parameters?.properties || {}).map(
+                            (item, k) => (
+                              <span key={k}>{item}</span>
+                            )
+                          )}
+                        </span>
+                        <input
+                          key={`fd-${fd.description}`}
+                          className="fd-row-description"
+                          type="text"
+                          defaultValue={fd.description}
+                          onBlur={(e) =>
+                            updateFunctionDescription(fd.name!, e.target.value)
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </dialog>
+          </>,
+          document.body
+        )}
     </div>
   );
 }
