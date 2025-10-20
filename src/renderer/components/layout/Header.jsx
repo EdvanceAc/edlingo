@@ -187,7 +187,7 @@ const Header = ({ onToggleSidebar }) => {
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors"
+          className="hidden md:inline-flex p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors"
           title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
           {theme === 'light' ? (
@@ -198,7 +198,7 @@ const Header = ({ onToggleSidebar }) => {
         </button>
 
         {/* Notifications */}
-        <div className="relative">
+        <div className="relative hidden md:block">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors relative"
@@ -255,7 +255,7 @@ const Header = ({ onToggleSidebar }) => {
         </div>
 
         {/* User Menu */}
-        <div className="relative">
+        <div className="relative hidden md:block">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center space-x-2 p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors"

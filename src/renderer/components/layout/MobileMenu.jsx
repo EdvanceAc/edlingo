@@ -1,14 +1,47 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Menu, Flame, Zap, Settings } from 'lucide-react';
+import { Menu, Flame, Zap, Settings, User, Bell, Sun, Moon } from 'lucide-react';
 import { useProgress } from '../../providers/ProgressProvider';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../providers/ThemeProvider';
+import supabaseService from '../../services/supabaseService';
 
 export default function MobileMenu({ onClose }) {
   const { getProgressStats } = useProgress();
   const stats = getProgressStats();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const result = await supabaseService.getNotifications(5);
+        if (mounted && result?.success) {
+          setNotifications(Array.isArray(result.data) ? result.data : []);
+        } else {
+          // Fallback mock notifications
+          setNotifications([
+            { id: 'm1', title: 'Daily Goal Achieved!', message: 'You completed 30 minutes.', isRead: false, type: 'success', timestamp: new Date() },
+            { id: 'm2', title: 'New Badge', message: 'Week Warrior unlocked!', isRead: false, type: 'achievement', timestamp: new Date() },
+            { id: 'm3', title: 'Reminder', message: 'Practice pronunciation today.', isRead: true, type: 'reminder', timestamp: new Date() },
+          ]);
+        }
+      } catch (e) {
+        setNotifications([
+          { id: 'm1', title: 'Daily Goal Achieved!', message: 'You completed 30 minutes.', isRead: false, type: 'success', timestamp: new Date() },
+          { id: 'm2', title: 'New Badge', message: 'Week Warrior unlocked!', isRead: false, type: 'achievement', timestamp: new Date() },
+          { id: 'm3', title: 'Reminder', message: 'Practice pronunciation today.', isRead: true, type: 'reminder', timestamp: new Date() },
+        ]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const progressPercent = Math.max(0, Math.min(100, Math.round(stats?.progressToNextLevel || 0)));
 
@@ -23,9 +56,9 @@ export default function MobileMenu({ onClose }) {
         animate={{ x: 0 }}
         exit={{ x: '-100%' }}
         transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-        className="absolute top-0 left-0 bottom-0 w-[85vw] max-w-[360px] rounded-r-2xl bg-white border-r border-gray-200 shadow-2xl overflow-y-auto"
+        className="absolute top-0 left-0 bottom-0 w-[85vw] max-w-[380px] rounded-r-2xl bg-white border-r border-gray-200 shadow-2xl overflow-y-auto"
       >
-        {/* Drawer Header with hamburger as part of drawer */}
+        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 sticky top-0 bg-white/95 backdrop-blur">
           <button
             onClick={onClose}
@@ -38,7 +71,7 @@ export default function MobileMenu({ onClose }) {
           <div className="text-sm font-semibold">EdLingo</div>
         </div>
 
-        {/* Progress Overview Card */}
+        {/* Progress Overview */}
         <div className="px-4 pt-4 pb-2">
           <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10 ring-1 ring-gray-200 p-4">
             <div className="flex items-start justify-between">
@@ -78,6 +111,89 @@ export default function MobileMenu({ onClose }) {
           </div>
         </div>
 
+        {/* Quick Actions */}
+        <div className="px-4 pt-3">
+          <div className="mb-2 text-xs font-semibold text-gray-600">Quick actions</div>
+          <div className="grid grid-cols-3 gap-3">
+            {/* Profile */}
+            <button
+              onClick={() => { onClose?.(); navigate('/profile'); }}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 ring-1 ring-gray-200 hover:bg-blue-50 transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <User className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-xs font-medium text-gray-700">Profile</span>
+            </button>
+
+            {/* Notifications */}
+            <button
+              onClick={() => setNotifOpen((prev) => !prev)}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 ring-1 ring-gray-200 hover:bg-purple-50 transition-all relative"
+            >
+              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center relative">
+                <Bell className="w-5 h-5 text-purple-600" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-red-500 text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-medium text-gray-700">Notifications</span>
+            </button>
+
+            {/* Dark Mode */}
+            <button
+              onClick={() => toggleTheme()}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-gray-500/10 to-slate-500/10 ring-1 ring-gray-200 hover:bg-gray-50 transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-gray-500/20 flex items-center justify-center">
+                {theme === 'light' ? (
+                  <Moon className="w-5 h-5 text-gray-700" />
+                ) : (
+                  <Sun className="w-5 h-5 text-amber-500" />
+                )}
+              </div>
+              <span className="text-xs font-medium text-gray-700">{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Notifications Panel */}
+        {notifOpen && (
+          <div className="px-4 mt-2">
+            <div className="rounded-xl ring-1 ring-gray-200 bg-white overflow-hidden">
+              <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+                <span className="text-sm font-semibold">Notifications</span>
+                <button className="text-xs text-gray-500 hover:text-gray-700" onClick={() => setNotifOpen(false)}>Close</button>
+              </div>
+              <div className="max-h-56 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-xs text-gray-500">No notifications</div>
+                ) : (
+                  notifications.map((n) => (
+                    <div key={n.id} className={`p-4 border-b border-gray-100 last:border-b-0 ${n.isRead ? 'bg-gray-50' : 'bg-white'}`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`w-2 h-2 rounded-full mt-2 ${
+                          n.type === 'success' ? 'bg-green-500' : n.type === 'achievement' ? 'bg-yellow-500' : 'bg-blue-500'
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800">{n.title}</p>
+                          <p className="text-xs text-gray-600 mt-1">{n.message}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{new Date(n.timestamp).toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="px-4 py-2 border-t border-gray-200">
+                <button className="w-full text-xs font-medium text-gray-700 py-2 rounded-lg hover:bg-gray-100">View all</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="mt-2 pb-6">
           <div className="px-2">
@@ -96,6 +212,5 @@ export default function MobileMenu({ onClose }) {
     </div>
   );
 
-  // Render outside header to avoid clipping/stacking issues
   return createPortal(overlay, document.body);
 }
