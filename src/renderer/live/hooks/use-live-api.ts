@@ -20,7 +20,7 @@ import { LiveClientOptions } from "../types";
 import { AudioStreamer } from "../lib/audio-streamer";
 import { audioContext } from "../lib/utils";
 import VolMeterWorket from "../lib/worklets/vol-meter";
-import { LiveConnectConfig } from "@google/genai";
+import { LiveConnectConfig, Modality, Tool, FunctionDeclaration } from "@google/genai";
 import { useSessionInsightsStore } from "../lib/session-insights-store";
 
 export type UseLiveAPIResults = {
@@ -35,12 +35,102 @@ export type UseLiveAPIResults = {
   volume: number;
 };
 
+// Default System Instructions restored (EdLingo tutor, level-aware guidance)
+const DEFAULT_SYSTEM_INSTRUCTION = `You are an AI language tutor in the EdLingo app, designed to teach English based on a unified proficiency system combining Flesch-Kincaid readability and CEFR levels. Your goal is to communicate effectively with users by adapting your responses to their assigned grade level. Always assess the user's level first and tailor your language, explanations, examples, and questions accordingly. Do not overwhelm beginners or bore advanced learners—keep interactions engaging, supportive, and progressive.
+
+- Identify user level or ask for it politely.
+- Keep responses concise, clear, and encouraging.
+- Correct mistakes gently and focus on one issue at a time.
+- End with a follow-up question or short task to practice.
+- Avoid using functions unless the user explicitly asks for an action (e.g., schedule a session, translate text).`;
+
+// Default Function Declarations (for Settings UI and optional tool use)
+const DEFAULT_FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
+  {
+    name: "schedule_practice_session",
+    description: "Schedule a practice session with topic, level, and duration.",
+    parameters: {
+      type: "object",
+      properties: {
+        topic: { type: "string" },
+        level: {
+          type: "string",
+          enum: [
+            "Basic",
+            "Elementary",
+            "Pre-Intermediate",
+            "Intermediate",
+            "Upper-Intermediate",
+            "Advanced",
+          ],
+        },
+        duration_min: { type: "integer", minimum: 5, maximum: 120 },
+      },
+      required: ["topic", "duration_min"],
+    },
+  },
+  {
+    name: "record_progress",
+    description: "Record user progress for a skill with score and optional notes.",
+    parameters: {
+      type: "object",
+      properties: {
+        skill: {
+          type: "string",
+          enum: ["speaking", "listening", "grammar", "vocabulary", "pronunciation"],
+        },
+        score: { type: "number", minimum: 0, maximum: 100 },
+        notes: { type: "string" },
+      },
+      required: ["skill", "score"],
+    },
+  },
+  {
+    name: "translate_text",
+    description: "Translate text to a target language.",
+    parameters: {
+      type: "object",
+      properties: {
+        text: { type: "string" },
+        target_language: { type: "string" },
+      },
+      required: ["text", "target_language"],
+    },
+  },
+  {
+    name: "fetch_dictionary_definition",
+    description: "Get dictionary definition for a word.",
+    parameters: {
+      type: "object",
+      properties: {
+        word: { type: "string" },
+      },
+      required: ["word"],
+    },
+  },
+];
+
+const DEFAULT_TOOLS: Tool[] = [
+  {
+    functionDeclarations: DEFAULT_FUNCTION_DECLARATIONS,
+  } as Tool,
+];
+
 export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   const client = useMemo(() => new GenAILiveClient(options), [options]);
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
 
   const [model, setModel] = useState<string>("models/gemini-2.0-flash-exp");
-  const [config, setConfig] = useState<LiveConnectConfig>({});
+  const [config, setConfig] = useState<LiveConnectConfig>({
+    systemInstruction: DEFAULT_SYSTEM_INSTRUCTION,
+    tools: DEFAULT_TOOLS,
+    responseModalities: [Modality.AUDIO],
+    speechConfig: {
+      voiceConfig: {
+        prebuiltVoiceConfig: { voiceName: "Fenrir" },
+      },
+    },
+  });
   const [connected, setConnected] = useState(false);
   const [volume, setVolume] = useState(0);
 
