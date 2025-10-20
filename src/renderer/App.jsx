@@ -85,7 +85,7 @@ function AppLayout({ children }) {
         <Header />
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto pb-20 md:pb-0 bg-background">
+        <main className="flex-1 overflow-auto pb-[calc(var(--bottom-nav-height,88px)+env(safe-area-inset-bottom))] md:pb-0 bg-background">
           {children}
         </main>
         <BottomNav />

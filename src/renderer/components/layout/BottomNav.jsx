@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -18,11 +18,21 @@ const navigationItems = [
 
 const BottomNav = () => {
   const location = useLocation();
+  const navRef = useRef(null);
+  useEffect(() => {
+    const updateHeight = () => {
+      const h = navRef.current?.offsetHeight || 88; // fallback height
+      document.documentElement.style.setProperty('--bottom-nav-height', `${h}px`);
+    };
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, [location.pathname]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+    <nav ref={navRef} className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       <div className="mx-auto max-w-7xl">
-        <div className="m-3 rounded-2xl bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-pink-600/90 backdrop-blur-lg ring-1 ring-white/20 shadow-xl">
+        <div className="m-3 rounded-2xl bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-pink-600/90 backdrop-blur-lg ring-1 ring-white/20 shadow-xl pb-[env(safe-area-inset-bottom)]">
           <div className="relative flex items-center justify-around px-3 sm:px-6 py-2 overflow-x-hidden">
             {navigationItems.map((item) => {
               const Icon = item.icon;
