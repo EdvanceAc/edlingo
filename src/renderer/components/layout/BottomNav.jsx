@@ -5,12 +5,11 @@ import {
   MessageCircle, 
   MessageSquare, 
   Radio,
-  Settings,
   ClipboardCheck,
   BookMarked
 } from 'lucide-react';
 
-// Navigation items mirroring the sidebar
+// Navigation items mirroring the sidebar (Settings moved to mobile drawer)
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Courses', href: '/courses', icon: BookMarked },
@@ -18,7 +17,6 @@ const navigationItems = [
   { name: 'Enhanced Chat', href: '/enhanced-chat', icon: MessageSquare },
   { name: 'Live', href: '/live-conversation', icon: Radio },
   { name: 'Assessment', href: '/assessment', icon: ClipboardCheck },
-  { name: 'Settings', href: '/settings', icon: Settings }
 ];
 
 const BottomNav = () => {
@@ -34,7 +32,7 @@ const BottomNav = () => {
                   key={item.href}
                   to={item.href}
                   className={({ isActive }) => `flex flex-col items-center flex-none min-w-[64px] px-2 py-2 rounded-xl text-[11px] ${isActive ? 'text-white' : 'text-white/80'} hover:text-white`}
-                >
+               >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${/* active styles */''} bg-white/10 ring-1 ring-white/20 shadow-sm`}>
                     <Icon className="w-5 h-5" />
                   </div>

@@ -23,6 +23,7 @@ import { useAudio } from '../../providers/AudioProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import DatabaseStatus from '../DatabaseStatus';
 import { AppConfig } from '../../../config/AppConfig';
+import MobileMenu from './MobileMenu';
 
 const Header = ({ onToggleSidebar }) => {
   const { theme, toggleTheme } = useTheme();
@@ -34,6 +35,7 @@ const Header = ({ onToggleSidebar }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMuted, setIsMuted] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Mock notifications
   const notifications = [
@@ -104,7 +106,14 @@ const Header = ({ onToggleSidebar }) => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={onToggleSidebar}
+            onClick={() => {
+              const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+              if (isDesktop) {
+                onToggleSidebar?.();
+              } else {
+                setIsMobileMenuOpen((prev) => !prev);
+              }
+            }}
             className="text-white bg-white/10 ring-1 ring-white/15 hover:bg-white/20 hover:ring-white/25 transition-all duration-300"
           >
             <Menu className="h-6 w-6" />
@@ -118,7 +127,7 @@ const Header = ({ onToggleSidebar }) => {
           </div>
         </div>
 
-        <div className="col-span-1 min-w-0 flex justify-start sm:justify-center">
+        <div className="col-span-1 min-w-0 hidden md:flex justify-start md:justify-center">
           <div className="relative flex items-center space-x-2 sm:space-x-3 bg-white/10 backdrop-blur-md rounded-full px-3 sm:px-6 py-1.5 sm:py-2 ring-1 ring-white/20 shadow-sm overflow-x-auto scrollbar-hide whitespace-nowrap max-w-full">
             {/* soft shimmer sweep */}
             <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-full bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-40 animate-[shine_3.6s_linear_infinite]" />
@@ -297,7 +306,7 @@ const Header = ({ onToggleSidebar }) => {
         </div>
 
         {/* Window Controls (Electron) */}
-        <div className="flex items-center space-x-1 ml-4">
+        <div className="hidden sm:flex items-center space-x-1 ml-4">
           <button
             onClick={() => handleWindowControl('minimize')}
             className="p-2 rounded bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors"
@@ -322,6 +331,10 @@ const Header = ({ onToggleSidebar }) => {
         </div>
       </div>
       </div>
+
+      {isMobileMenuOpen && (
+        <MobileMenu onClose={() => setIsMobileMenuOpen(false)} />
+      )}
 
       {/* Click outside to close dropdowns */}
       {(showUserMenu || showNotifications) && (
