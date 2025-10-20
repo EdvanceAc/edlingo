@@ -20,7 +20,7 @@ import { LiveClientOptions } from "../types";
 import { AudioStreamer } from "../lib/audio-streamer";
 import { audioContext } from "../lib/utils";
 import VolMeterWorket from "../lib/worklets/vol-meter";
-import { LiveConnectConfig, Modality, Tool, FunctionDeclaration } from "@google/genai";
+import { LiveConnectConfig, Modality, Tool, FunctionDeclaration, Type } from "@google/genai";
 import { useSessionInsightsStore } from "../lib/session-insights-store";
 
 export type UseLiveAPIResults = {
@@ -50,11 +50,11 @@ const DEFAULT_FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "schedule_practice_session",
     description: "Schedule a practice session with topic, level, and duration.",
     parameters: {
-      type: "object",
+      type: Type.OBJECT,
       properties: {
-        topic: { type: "string" },
+        topic: { type: Type.STRING },
         level: {
-          type: "string",
+          type: Type.STRING,
           enum: [
             "Basic",
             "Elementary",
@@ -64,7 +64,7 @@ const DEFAULT_FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
             "Advanced",
           ],
         },
-        duration_min: { type: "integer", minimum: 5, maximum: 120 },
+        duration_min: { type: Type.INTEGER, minimum: 5, maximum: 120 },
       },
       required: ["topic", "duration_min"],
     },
@@ -73,14 +73,14 @@ const DEFAULT_FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "record_progress",
     description: "Record user progress for a skill with score and optional notes.",
     parameters: {
-      type: "object",
+      type: Type.OBJECT,
       properties: {
         skill: {
-          type: "string",
+          type: Type.STRING,
           enum: ["speaking", "listening", "grammar", "vocabulary", "pronunciation"],
         },
-        score: { type: "number", minimum: 0, maximum: 100 },
-        notes: { type: "string" },
+        score: { type: Type.NUMBER, minimum: 0, maximum: 100 },
+        notes: { type: Type.STRING },
       },
       required: ["skill", "score"],
     },
@@ -89,10 +89,10 @@ const DEFAULT_FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "translate_text",
     description: "Translate text to a target language.",
     parameters: {
-      type: "object",
+      type: Type.OBJECT,
       properties: {
-        text: { type: "string" },
-        target_language: { type: "string" },
+        text: { type: Type.STRING },
+        target_language: { type: Type.STRING },
       },
       required: ["text", "target_language"],
     },
@@ -101,9 +101,9 @@ const DEFAULT_FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "fetch_dictionary_definition",
     description: "Get dictionary definition for a word.",
     parameters: {
-      type: "object",
+      type: Type.OBJECT,
       properties: {
-        word: { type: "string" },
+        word: { type: Type.STRING },
       },
       required: ["word"],
     },
@@ -140,7 +140,7 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
       audioContext({ id: "audio-out" }).then((audioCtx: AudioContext) => {
         audioStreamerRef.current = new AudioStreamer(audioCtx);
         audioStreamerRef.current
-          .addWorklet<any>("vumeter-out", VolMeterWorket, (ev: any) => {
+          .addWorklet<(ev: MessageEvent<{ volume: number }>) => void>("vumeter-out", VolMeterWorket, (ev: MessageEvent<{ volume: number }>) => {
             setVolume(ev.data.volume);
             try {
               const v = ev.data.volume as number;
@@ -148,7 +148,9 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
               setOutVolume(v);
               const mic = useSessionInsightsStore.getState().micVolume;
               useSessionInsightsStore.getState().addSample({ t: Date.now(), mic, out: v });
-            } catch {}
+            } catch {
+              void 0;
+            }
           })
           .then(() => {
             // Successfully added worklet
