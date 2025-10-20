@@ -95,16 +95,16 @@ const Dashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h1 className="text-6xl md:text-7xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-4 drop-shadow-2xl">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-2 sm:mb-4 drop-shadow-2xl">
               Good {currentTime.getHours() < 12 ? 'morning' : currentTime.getHours() < 18 ? 'afternoon' : 'evening'}! 🌟
             </h1>
-            <p className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-2">
+            <p className="text-base sm:text-xl lg:text-2xl font-bold text-gray-700 dark:text-gray-200 mb-2">
               Ready to continue your language learning journey?
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <p className="text-sm text-muted-foreground">
               {currentTime.toLocaleDateString('en-US', { 
                 weekday: 'long', 
@@ -118,7 +118,7 @@ const Dashboard = () => {
       </motion.div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
         {/* Level Progress */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

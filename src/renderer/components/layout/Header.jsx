@@ -99,8 +99,8 @@ const Header = ({ onToggleSidebar }) => {
         <div className="absolute -bottom-10 left-1/3 h-32 w-56 rounded-full bg-indigo-400/25 blur-2xl" />
         <div className="absolute -top-6 right-0 h-28 w-28 rounded-full bg-pink-400/20 blur-2xl" />
       </div>
-      <div className="container flex h-16 items-center px-4">
-        <div className="flex items-center space-x-4">
+      <div className="container grid grid-cols-3 items-center h-14 sm:h-16 px-2 sm:px-4 gap-2">
+        <div className="col-span-1 flex items-center space-x-3 sm:space-x-4">
           <Button
             variant="ghost"
             size="icon"
@@ -114,42 +114,46 @@ const Header = ({ onToggleSidebar }) => {
             <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm ring-1 ring-white/20 shadow-sm transition-transform duration-300 hover:scale-105">
               <span className="text-white font-bold text-lg">E</span>
             </div>
-            <span className="font-bold text-xl text-white drop-shadow-lg">EdLingo</span>
+            <span className="hidden sm:inline font-bold text-lg sm:text-xl text-white drop-shadow-lg">EdLingo</span>
           </div>
         </div>
 
-        <div className="flex-1 flex justify-center">
-          <div className="relative flex items-center space-x-3 bg-white/10 backdrop-blur-md rounded-full px-6 py-2 ring-1 ring-white/20 shadow-sm">
+        <div className="col-span-1 min-w-0 flex justify-start sm:justify-center">
+          <div className="relative flex items-center space-x-2 sm:space-x-3 bg-white/10 backdrop-blur-md rounded-full px-3 sm:px-6 py-1.5 sm:py-2 ring-1 ring-white/20 shadow-sm overflow-x-auto scrollbar-hide whitespace-nowrap max-w-full">
             {/* soft shimmer sweep */}
             <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-full bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-40 animate-[shine_3.6s_linear_infinite]" />
             <style>{`@keyframes shine{0%{transform:translateX(-60%)}100%{transform:translateX(160%)}}`}</style>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
+            <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
               <div className="w-6 h-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-xs font-bold text-white">🔥</span>
               </div>
-              <span className="text-sm font-bold text-white">{streak} day streak</span>
+              <span className="text-xs sm:text-sm font-bold text-white">{streak} day streak</span>
             </div>
             
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
+            <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
               <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-xs font-bold text-white">⭐</span>
               </div>
-              <span className="text-sm font-bold text-white">Level {level}</span>
+              <span className="text-xs sm:text-sm font-bold text-white">Level {level}</span>
             </div>
             
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
+            <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 shadow-sm transition-transform duration-200 hover:scale-105">
               <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-xs font-bold text-white">💎</span>
               </div>
-              <span className="text-sm font-bold text-white">{totalXP ? totalXP.toLocaleString() : 0} XP</span>
+              <span className="text-xs sm:text-sm font-bold text-white">{totalXP ? totalXP.toLocaleString() : 0} XP</span>
             </div>
           </div>
         </div>
 
       {/* Right Section - Controls */}
-      <div className="flex items-center space-x-2 flex-1 justify-end">
+      <div className="col-span-1 flex items-center justify-end space-x-1 sm:space-x-2">
         {/* Database Status */}
-        {AppConfig.isDatabaseEnabled() && <DatabaseStatus />}
+        {AppConfig.isDatabaseEnabled() && (
+          <div className="transform scale-90 sm:scale-100 origin-right">
+            <DatabaseStatus />
+          </div>
+        )}
         
         {/* Audio Status */}
         <button
