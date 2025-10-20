@@ -167,20 +167,13 @@ const Header = ({ onToggleSidebar }) => {
         {/* Audio Status */}
         <button
           onClick={toggleMute}
-          className="p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors relative"
-          title={isMuted ? 'Unmute' : 'Mute'}
+          className="hidden md:inline-flex items-center justify-center rounded-md px-2 py-2 hover:bg-white/10 transition-colors"
+          aria-label={isMuted ? 'Unmute' : 'Mute'}
         >
           {isMuted ? (
             <VolumeX className="w-5 h-5" />
           ) : (
             <Volume2 className="w-5 h-5" />
-          )}
-          {isPlaying && (
-            <motion.div
-              className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 1 }}
-            />
           )}
         </button>
 

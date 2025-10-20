@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Menu, Flame, Zap, Settings, User, Bell, Sun, Moon } from 'lucide-react';
+import { Menu, Flame, Zap, Settings, User, Bell, Sun, Moon, Volume2, VolumeX } from 'lucide-react';
 import { useProgress } from '../../providers/ProgressProvider';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../providers/ThemeProvider';
 import supabaseService from '../../services/supabaseService';
+import { useAudio } from '../../providers/AudioProvider';
 
 export default function MobileMenu({ onClose }) {
   const { getProgressStats } = useProgress();
   const stats = getProgressStats();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { isPlaying } = useAudio();
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -114,7 +117,7 @@ export default function MobileMenu({ onClose }) {
         {/* Quick Actions */}
         <div className="px-4 pt-3">
           <div className="mb-2 text-xs font-semibold text-gray-600">Quick actions</div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {/* Profile */}
             <button
               onClick={() => { onClose?.(); navigate('/profile'); }}
@@ -140,6 +143,28 @@ export default function MobileMenu({ onClose }) {
                 )}
               </div>
               <span className="text-xs font-medium text-gray-700">Notifications</span>
+            </button>
+
+            {/* Sound */}
+            <button
+              onClick={() => setIsMuted((prev) => !prev)}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 ring-1 ring-gray-200 hover:bg-emerald-50 transition-all relative"
+            >
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center relative">
+                {isMuted ? (
+                  <VolumeX className="w-5 h-5 text-emerald-700" />
+                ) : (
+                  <Volume2 className="w-5 h-5 text-emerald-700" />
+                )}
+                {isPlaying && (
+                  <motion.div
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"
+                    animate={{ scale: [1, 1.15, 1] }}
+                    transition={{ repeat: Infinity, duration: 1.2 }}
+                  />
+                )}
+              </div>
+              <span className="text-xs font-medium text-gray-700">{isMuted ? 'Sound Off' : 'Sound On'}</span>
             </button>
 
             {/* Dark Mode */}
