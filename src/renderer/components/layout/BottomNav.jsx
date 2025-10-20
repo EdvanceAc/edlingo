@@ -32,23 +32,30 @@ const BottomNav = () => {
                   key={item.href}
                   to={item.href}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`relative group flex flex-col items-center flex-none min-w-[64px] px-2 py-2 rounded-xl text-[11px] select-none transition-colors ${isActive ? 'text-white font-semibold' : 'text-white/85 hover:text-white'}`}
+                  className={`relative group flex flex-col items-center flex-none min-w-[72px] px-3 py-3 rounded-2xl text-[12px] select-none transition-colors ${isActive ? 'text-white font-bold' : 'text-white/70 hover:text-white'}`}
                 >
-                  <div className={`relative w-10 h-10 rounded-xl flex items-center justify-center ring-1 shadow-sm transition-all ${isActive ? 'bg-white/25 ring-white/50 shadow-[0_0_24px_rgba(255,255,255,0.25)]' : 'bg-white/10 ring-white/20'}`}>
+                  {isActive && (
+                    <motion.div
+                      layoutId="nav-active-pill"
+                      className="absolute inset-0 -z-10 rounded-2xl bg-white/25 backdrop-blur-md ring-1 ring-white/50 shadow-[0_12px_28px_rgba(0,0,0,0.25)]"
+                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                    />
+                  )}
+                  <div className={`relative w-11 h-11 rounded-xl flex items-center justify-center ring-1 shadow-sm transition-all ${isActive ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 ring-white/60 shadow-[0_8px_24px_rgba(99,102,241,0.35)] scale-105' : 'bg-white/10 ring-white/20'}`}>
                     {isActive && (
                       <motion.div
                         layoutId="nav-active-bg"
-                        className="absolute inset-0 rounded-xl bg-white/25"
+                        className="absolute inset-0 rounded-xl"
                         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                       />
                     )}
-                    <Icon className="w-5 h-5" />
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/85'}`} />
                   </div>
-                  <span className="mt-1 truncate max-w-[72px] text-center">{item.name}</span>
+                  <span className={`mt-1 truncate max-w-[80px] text-center ${isActive ? 'text-white drop-shadow-sm' : 'text-white/75'}`}>{item.name}</span>
                   {isActive && (
                     <motion.div
                       layoutId="nav-active-dot"
-                      className="mt-1 w-2 h-2 rounded-full bg-white/80"
+                      className="mt-1 w-2 h-2 rounded-full bg-white/85"
                       transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                     />
                   )}
