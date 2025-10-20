@@ -94,12 +94,14 @@ function ControlTray({
 
   useEffect(() => {
     const onData = (base64: string) => {
-      client.sendRealtimeInput([
-        {
-          mimeType: "audio/pcm;rate=16000",
-          data: base64,
-        },
-      ]);
+      if (connected) {
+        client.sendRealtimeInput([
+          {
+            mimeType: "audio/pcm;rate=16000",
+            data: base64,
+          },
+        ]);
+      }
     };
     const onVolume = (v: number) => {
       setInVolume(v);
@@ -110,7 +112,7 @@ function ControlTray({
         useSessionInsightsStore.getState().addSample({ t: Date.now(), mic: v, out });
       } catch {}
     };
-    if (connected && !muted && audioRecorder) {
+    if (!muted && audioRecorder) {
       audioRecorder.on("data", onData).on("volume", onVolume).start();
     } else {
       audioRecorder.stop();
