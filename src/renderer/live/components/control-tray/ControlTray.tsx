@@ -106,11 +106,6 @@ function ControlTray({
     const onVolume = (v: number) => {
       setInVolume(v);
       setMicVolume(v);
-      // push a sample for charting
-      try {
-        const out = useSessionInsightsStore.getState().outVolume;
-        useSessionInsightsStore.getState().addSample({ t: Date.now(), mic: v, out });
-      } catch {}
     };
     if (!muted && audioRecorder) {
       audioRecorder.on("data", onData).on("volume", onVolume).start();

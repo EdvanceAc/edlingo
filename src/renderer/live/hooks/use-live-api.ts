@@ -120,6 +120,7 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   const client = useMemo(() => new GenAILiveClient(options), [options]);
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
 
+
   const [model, setModel] = useState<string>("models/gemini-2.0-flash-exp");
   const [config, setConfig] = useState<LiveConnectConfig>({
     systemInstruction: DEFAULT_SYSTEM_INSTRUCTION,
@@ -146,8 +147,6 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
               const v = ev.data.volume as number;
               const { setOutVolume } = useSessionInsightsStore.getState();
               setOutVolume(v);
-              const mic = useSessionInsightsStore.getState().micVolume;
-              useSessionInsightsStore.getState().addSample({ t: Date.now(), mic, out: v });
             } catch {
               void 0;
             }
