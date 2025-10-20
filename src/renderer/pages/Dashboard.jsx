@@ -102,9 +102,9 @@ const Dashboard = () => {
             <h1 className="text-3xl sm:text-5xl md:text-7xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-2 sm:mb-4 drop-shadow-2xl">
               Good {currentTime.getHours() < 12 ? 'morning' : currentTime.getHours() < 18 ? 'afternoon' : 'evening'}! 🌟
             </h1>
-            <p className="text-base sm:text-xl lg:text-2xl font-bold text-gray-700 dark:text-gray-200 mb-2">
-              Ready to continue your language learning journey?
-            </p>
+            <p className="text-base sm:text-xl lg:text-2xl font-bold text-gray-700 mb-2">
+               Ready to continue your language learning journey?
+             </p>
           </div>
           <div className="text-left sm:text-right">
             <p className="text-sm text-muted-foreground dark:text-gray-400">

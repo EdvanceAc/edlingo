@@ -85,7 +85,7 @@ function AppLayout({ children }) {
         <Header />
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto pb-20 md:pb-0">
+        <main className="flex-1 overflow-auto pb-20 md:pb-0 bg-background">
           {children}
         </main>
         <BottomNav />
