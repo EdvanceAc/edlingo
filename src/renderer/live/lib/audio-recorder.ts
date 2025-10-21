@@ -50,7 +50,7 @@ export class AudioRecorder extends EventEmitter {
       throw new Error("Could not request user media");
     }
 
-    this.starting = new Promise(async (resolve, reject) => {
+    this.starting = new Promise(async (resolve) => {
       try {
         // Prefer high-quality voice capture while keeping latency low
         this.stream = await navigator.mediaDevices.getUserMedia({
