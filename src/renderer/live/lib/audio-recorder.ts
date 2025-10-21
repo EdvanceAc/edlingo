@@ -51,8 +51,29 @@ export class AudioRecorder extends EventEmitter {
     }
 
     this.starting = new Promise(async (resolve, reject) => {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      try {
+        // Prefer high-quality voice capture while keeping latency low
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: this.sampleRate,
+            // low-latency hint; browsers may ignore
+            latency: 0.0 as any,
+          } as MediaTrackConstraints,
+        });
+      } catch (err) {
+        // Fallback to default audio if constraints unsupported
+        this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
       this.audioContext = await audioContext({ sampleRate: this.sampleRate });
+      // Use actual device sample rate to decide target encoder rate
+      const deviceRate = this.audioContext.sampleRate;
+      this.sampleRate = Math.min(deviceRate, 16000);
+
       this.source = this.audioContext.createMediaStreamSource(this.stream);
 
       const workletName = "audio-recorder-worklet";
@@ -62,6 +83,7 @@ export class AudioRecorder extends EventEmitter {
       this.recordingWorklet = new AudioWorkletNode(
         this.audioContext,
         workletName,
+        { processorOptions: { targetSampleRate: this.sampleRate } }
       );
 
       this.recordingWorklet.port.onmessage = async (ev: MessageEvent) => {

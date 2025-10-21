@@ -16,23 +16,36 @@
 
 const AudioRecordingWorklet = `
 class AudioProcessingWorklet extends AudioWorkletProcessor {
-
-  // send and clear buffer every 2048 samples, 
-  // which at 16khz is about 8 times a second
-  buffer = new Int16Array(2048);
-
-  // current write index
+  // Output buffer: 1024 samples at target rate (~64ms at 16kHz)
+  buffer = new Int16Array(1024);
   bufferWriteIndex = 0;
 
-  constructor() {
-    super();
-    this.hasAudio = false;
+  // Resampling config
+  inRate = sampleRate; // from AudioWorkletGlobalScope
+  outRate = 16000;
+  step = this.inRate / this.outRate;
+  phase = 0;
+  accum = 0;
+  accumCount = 0;
+
+  // Simple noise gate (RMS-based), very conservative
+  sumSquares = 0;
+
+  constructor(options) {
+    super(options);
+    const opts = options?.processorOptions || {};
+    const desiredOut = Number(opts.targetSampleRate || 16000);
+    // Do NOT upsample unnecessarily; clamp at input rate
+    this.outRate = Math.min(this.inRate, desiredOut);
+    this.step = this.inRate / this.outRate;
+    this.buffer = new Int16Array(1024);
+    this.bufferWriteIndex = 0;
+    this.phase = 0;
+    this.accum = 0;
+    this.accumCount = 0;
+    this.sumSquares = 0;
   }
 
-  /**
-   * @param inputs Float32Array[][] [input#][channel#][sample#] so to access first inputs 1st channel inputs[0][0]
-   * @param outputs Float32Array[][]
-   */
   process(inputs) {
     if (inputs[0].length) {
       const channel0 = inputs[0][0];
@@ -42,24 +55,45 @@ class AudioProcessingWorklet extends AudioWorkletProcessor {
   }
 
   sendAndClearBuffer(){
-    this.port.postMessage({
-      event: "chunk",
-      data: {
-        int16arrayBuffer: this.buffer.slice(0, this.bufferWriteIndex).buffer,
-      },
-    });
+    // Light gating: drop frames that are effectively silence
+    const rms = Math.sqrt(this.sumSquares / Math.max(1, this.bufferWriteIndex)) / 32768;
+    const isSilent = rms < 0.0025; // conservative threshold
+
+    if (!isSilent && this.bufferWriteIndex > 0) {
+      this.port.postMessage({
+        event: "chunk",
+        data: {
+          int16arrayBuffer: this.buffer.slice(0, this.bufferWriteIndex).buffer,
+        },
+      });
+    }
     this.bufferWriteIndex = 0;
+    this.sumSquares = 0;
   }
 
   processChunk(float32Array) {
     const l = float32Array.length;
-    
+
     for (let i = 0; i < l; i++) {
-      // convert float32 -1 to 1 to int16 -32768 to 32767
-      const int16Value = float32Array[i] * 32768;
-      this.buffer[this.bufferWriteIndex++] = int16Value;
-      if(this.bufferWriteIndex >= this.buffer.length) {
-        this.sendAndClearBuffer();
+      const s = float32Array[i];
+      this.accum += s;
+      this.accumCount += 1;
+      this.phase += 1;
+
+      if (this.phase >= this.step) {
+        // Average the accumulated input samples to create one output sample
+        const averaged = this.accum / this.accumCount;
+        const int16Value = Math.max(-32768, Math.min(32767, Math.round(averaged * 32768)));
+        this.buffer[this.bufferWriteIndex++] = int16Value;
+        this.sumSquares += int16Value * int16Value;
+        // Prepare for next output sample
+        this.phase -= this.step;
+        this.accum = 0;
+        this.accumCount = 0;
+
+        if(this.bufferWriteIndex >= this.buffer.length) {
+          this.sendAndClearBuffer();
+        }
       }
     }
 

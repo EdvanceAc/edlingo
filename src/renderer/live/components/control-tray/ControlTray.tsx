@@ -97,7 +97,7 @@ function ControlTray({
       if (connected) {
         client.sendRealtimeInput([
           {
-            mimeType: "audio/pcm;rate=16000",
+            mimeType: `audio/pcm;rate=${audioRecorder.sampleRate}`,
             data: base64,
           },
         ]);
