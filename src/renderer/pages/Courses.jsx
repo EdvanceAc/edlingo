@@ -603,6 +603,10 @@ const Courses = () => {
       .slice(0, 10);
   }, [courses]);
 
+  // Sets used to avoid duplicates across sections
+  const recommendedIds = React.useMemo(() => new Set(recommendedCourses.map(c => c.id)), [recommendedCourses]);
+  const continueLearningIds = React.useMemo(() => new Set(continueLearningCourses.map(c => c.id)), [continueLearningCourses]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -802,7 +806,7 @@ const Courses = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {continueLearningCourses.slice(0, 6).map((course, index) => (
                 <div key={`cont-${course.id}`} className="relative">
-                  <CourseCard course={course} index={index} />
+                  <CourseCard course={course} index={index} variant="dashboard" />
                   <button
                     aria-label="Toggle wishlist"
                     className="absolute top-3 right-3 text-sm rounded-full px-2 py-1 bg-background/80 border"
@@ -846,9 +850,11 @@ const Courses = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredAndSortedCourses.map((course, index) => (
-              <CourseCard key={course.id} course={course} index={index} />
-            ))}
+            {filteredAndSortedCourses
+              .filter((c) => !recommendedIds.has(c.id) && !continueLearningIds.has(c.id))
+              .map((course, index) => (
+                <CourseCard key={course.id} course={course} index={index} variant="dashboard" />
+              ))}
           </div>
         )}
       </motion.div>
