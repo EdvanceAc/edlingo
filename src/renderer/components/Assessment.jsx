@@ -7,6 +7,7 @@ import { Progress } from './ui/Progress';
 import assessmentService from '../services/assessmentService';
 import { useAuth } from '../contexts/AuthContext';
 import { Mic, MicOff, Play, Pause, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react';
+import '../styles/expect-card.css';
 
 const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
   const { user } = useAuth();
@@ -276,35 +277,35 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
         </p>
       </div>
       
-      <Card className="card card-premium p-6 mb-8 bg-white dark:bg-white/10 backdrop-blur-xl ring-1 ring-indigo-200 dark:ring-white/25 shadow-2xl">
-        <h2 className="text-xl font-semibold mb-4">What to Expect</h2>
+      <Card className="card card-premium-expect p-6 mb-8 ring-1 ring-indigo-200/50 dark:ring-white/30 shadow-2xl">
+        <h2 className="text-xl font-extrabold mb-4 text-gray-900 dark:text-white">What to Expect</h2>
         <div className="grid md:grid-cols-2 gap-4 text-left">
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <span className="text-2xl">💬</span>
-              <span>Conversation practice (3 minutes)</span>
+              <span className="text-gray-800 dark:text-white">Conversation practice (3 minutes)</span>
             </div>
             <div className="flex items-center space-x-3">
               <span className="text-2xl">✍️</span>
-              <span>Writing sample (5 minutes)</span>
+              <span className="text-gray-800 dark:text-white">Writing sample (5 minutes)</span>
             </div>
             <div className="flex items-center space-x-3">
               <span className="text-2xl">📝</span>
-              <span>Grammar exercises (2 minutes)</span>
+              <span className="text-gray-800 dark:text-white">Grammar exercises (2 minutes)</span>
             </div>
           </div>
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <span className="text-2xl">📚</span>
-              <span>Vocabulary assessment (4 minutes)</span>
+              <span className="text-gray-800 dark:text-white">Vocabulary assessment (4 minutes)</span>
             </div>
             <div className="flex items-center space-x-3">
               <span className="text-2xl">🗣️</span>
-              <span>Pronunciation check (2 minutes)</span>
+              <span className="text-gray-800 dark:text-white">Pronunciation check (2 minutes)</span>
             </div>
             <div className="flex items-center space-x-3">
               <span className="text-2xl">⏱️</span>
-              <span>Total time: ~15 minutes</span>
+              <span className="text-gray-800 dark:text-white">Total time: ~15 minutes</span>
             </div>
           </div>
         </div>
@@ -372,7 +373,7 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
         </div>
 
         {/* Task Card */}
-        <Card className="card card-premium p-6 bg-white dark:bg-white/10 backdrop-blur-xl ring-1 ring-indigo-200 dark:ring-white/25 shadow-2xl">
+        <Card className="card card-premium-expect p-6 ring-1 ring-indigo-200/50 dark:ring-white/30 shadow-2xl">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <span className="text-3xl">{getTaskIcon(currentTask.task_type)}</span>
