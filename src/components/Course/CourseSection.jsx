@@ -296,12 +296,12 @@ const CourseSection = () => {
 
               {/* Right: badges */}
               <div className="flex items-center gap-3">
-                <Badge className="glass px-3 py-1 text-xs">
-                  <Trophy className="w-3.5 h-3.5 text-yellow-500 mr-1" />
+                <Badge variant="chip" className="badge-chip chip-streak px-3 py-1 text-xs">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-300 mr-1" />
                   {currentStreak} day streak
                 </Badge>
-                <Badge className="glass px-3 py-1 text-xs">
-                  <Star className="w-3.5 h-3.5 text-primary mr-1" />
+                <Badge variant="chip" className="badge-chip chip-xp px-3 py-1 text-xs">
+                  <Star className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300 mr-1" />
                   {totalXP}/{nextLevelXP} XP
                 </Badge>
               </div>

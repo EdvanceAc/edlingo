@@ -554,6 +554,46 @@ body {
   transition: width 0.4s ease;
 }
 
+/* High-contrast badge chips for dark mode visibility */
+.badge-chip {
+  background: rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.30) !important;
+  color: rgba(20, 20, 25, 0.88) !important;
+}
+.dark .badge-chip {
+  background: rgba(255, 255, 255, 0.10) !important;
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+.badge-chip:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.48) !important;
+}
+
+/* Tinted variants for specific chips */
+.badge-chip.chip-streak {
+  background: linear-gradient(180deg, rgba(250, 204, 21, 0.28), rgba(250, 204, 21, 0.14)) !important; /* amber */
+  background-color: rgba(250, 204, 21, 0.18) !important;
+  border-color: rgba(250, 204, 21, 0.45) !important;
+  color: rgba(31, 41, 55, 0.95) !important; /* dark text in light mode for contrast */
+}
+.dark .badge-chip.chip-streak {
+  color: #ffffff !important; /* white text in dark mode */
+}
+.badge-chip.chip-xp {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.28), rgba(99, 102, 241, 0.14)) !important; /* indigo */
+  background-color: rgba(99, 102, 241, 0.18) !important;
+  border-color: rgba(99, 102, 241, 0.45) !important;
+  color: rgba(31, 41, 55, 0.95) !important; /* dark text in light mode for contrast */
+}
+.dark .badge-chip.chip-xp {
+  color: #ffffff !important; /* white text in dark mode */
+}
+
 /* Ultra-premium panel for course sidebar */
 .premium-panel {
   position: relative;
