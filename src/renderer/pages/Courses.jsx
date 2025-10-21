@@ -264,8 +264,9 @@ const Courses = () => {
     }
   };
 
-  const CourseCard = ({ course, index }) => {
+  const CourseCard = ({ course, index, variant = 'default' }) => {
     const isLocked = !course.isUnlocked;
+    const isDashboardStyle = variant === 'dashboard';
     
     return (
       <motion.div
@@ -292,21 +293,25 @@ const Courses = () => {
         {/* Premium glass card styling */}
         <Card className={`relative overflow-hidden h-full transition-all duration-300 ${
           isLocked 
-            ? 'bg-muted/50 border-border opacity-60' 
-            : 'bg-white/10 backdrop-blur-md border border-white/20 ring-1 ring-white/15 hover:ring-white/30 hover:shadow-lg'
+            ? (isDashboardStyle
+                ? 'bg-white/5 border border-primary/20 opacity-60 rounded-xl'
+                : 'bg-muted/50 border-border opacity-60') 
+            : (isDashboardStyle
+                ? 'card-premium rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent hover:shadow-soft'
+                : 'bg-white/10 backdrop-blur-md border border-white/20 ring-1 ring-white/15 hover:ring-white/30 hover:shadow-lg')
         }`}>
           {/* aurora glow accents */}
           {!isLocked && (
             <>
-              <div className="pointer-events-none absolute -top-12 -left-16 w-40 h-40 rounded-full bg-fuchsia-400/15 blur-2xl" />
-              <div className="pointer-events-none absolute -bottom-12 right-0 w-44 h-44 rounded-full bg-indigo-400/15 blur-2xl" />
+              <div className={`pointer-events-none absolute -top-12 -left-16 w-40 h-40 rounded-full ${isDashboardStyle ? 'bg-primary/20' : 'bg-fuchsia-400/15'} blur-2xl`} />
+              <div className={`pointer-events-none absolute -bottom-12 right-0 w-44 h-44 rounded-full ${isDashboardStyle ? 'bg-primary/20' : 'bg-indigo-400/15'} blur-2xl`} />
             </>
           )}
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className={`text-3xl p-3 rounded-xl ring-1 ${
-                  isLocked ? 'bg-muted ring-border' : 'bg-white/10 ring-white/20 shadow-sm'
+                  isLocked ? 'bg-muted ring-border' : (isDashboardStyle ? 'bg-gradient-to-br from-violet-500/20 to-indigo-500/20 ring-primary/30 shadow-soft' : 'bg-white/10 ring-white/20 shadow-sm')
                 }`}>
                   {isLocked ? <Lock className="w-6 h-6 text-muted-foreground" /> : course.icon}
                 </div>
@@ -361,9 +366,9 @@ const Courses = () => {
                   </span>
                 </div>
                 {/* premium gradient progress */}
-                <div className={`h-2 w-full rounded-full bg-white/10 ring-1 ring-white/10 overflow-hidden ${isLocked ? 'opacity-50' : ''}`}>
+                <div className={`h-2 w-full rounded-full ${isDashboardStyle ? 'bg-white/10 ring-1 ring-primary/20' : 'bg-white/10 ring-1 ring-white/10'} overflow-hidden ${isLocked ? 'opacity-50' : ''}`}>
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-emerald-400"
+                    className={`h-full rounded-full ${isDashboardStyle ? 'bg-gradient-to-r from-violet-500 via-indigo-500 to-emerald-400' : 'bg-gradient-to-r from-violet-500 via-indigo-500 to-emerald-400'}`}
                     style={{ width: `${course.progress}%` }}
                   />
                 </div>
@@ -371,7 +376,7 @@ const Courses = () => {
               
               {/* XP and Action */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-white/5 ring-1 ring-white/10">
+                <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${isDashboardStyle ? 'bg-white/5 ring-1 ring-primary/20' : 'bg-white/5 ring-1 ring-white/10'}`}>
                   <Zap className={`w-4 h-4 ${
                     isLocked ? 'text-gray-400' : 'text-yellow-500'
                   }`} />
@@ -386,7 +391,7 @@ const Courses = () => {
                   <Button 
                     size="sm" 
                     variant={course.progress > 0 ? "default" : "outline"}
-                    className="text-xs rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/15"
+                    className={`text-xs rounded-full ${isDashboardStyle ? 'bg-white/10 hover:bg-white/20 ring-1 ring-primary/20' : 'bg-white/10 hover:bg-white/20 ring-1 ring-white/15'}`}
                     onClick={() => navigate(`/courses/${course.id}`)}
                   >
                     {course.progress > 0 ? (
@@ -822,7 +827,7 @@ const Courses = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {recommendedCourses.slice(0, 6).map((course, index) => (
                 <div key={`rec-${course.id}`} className="relative">
-                  <CourseCard course={course} index={index} />
+                  <CourseCard course={course} index={index} variant="dashboard" />
                   <button
                     aria-label="Toggle wishlist"
                     className="absolute top-3 right-3 text-sm rounded-full px-2 py-1 bg-background/80 border"
@@ -855,11 +860,12 @@ const Courses = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <Card className="relative overflow-hidden rounded-2xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-xl">
-          <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-violet-200/40 via-sky-200/30 to-pink-200/40" />
+
+        <Card className="card card-premium relative overflow-hidden p-6 border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
+          <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
           <CardHeader className="relative z-10">
             <CardTitle className="text-lg flex items-center space-x-2 tracking-tight">
-              <Target className="w-5 h-5 text-green-600" />
+              <Play className="w-5 h-5 text-primary" />
               <span>Quick Practice</span>
             </CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -870,45 +876,54 @@ const Courses = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button
                 variant="outline"
-                className="group justify-start h-auto p-4 rounded-xl bg-white/60 backdrop-blur-sm ring-1 ring-white/60 shadow-sm hover:bg-white/70 hover:shadow-md transition-colors"
+                className="group block justify-start h-auto p-4 rounded-xl border border-primary/20 dark:border-white/15 bg-white/5 dark:bg-white/10 hover:bg-white/10 dark:hover:bg-white/15 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl ring-1 ring-white/60 bg-gradient-to-br from-indigo-400/20 to-sky-400/20 shadow-sm flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-indigo-600" />
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-soft">
+                    <BookOpen className="w-5 h-5 text-white" />
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900">Review Vocabulary</p>
-                    <p className="text-xs text-muted-foreground">5 min practice</p>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">Review Vocabulary</p>
+                    <p className="text-sm text-muted-foreground">5 min practice</p>
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-sm ring-1 ring-primary/40 shadow-md shadow-primary/30 flex items-center justify-center transition-all group-hover:bg-white/80 group-hover:ring-primary/60">
+                    <ArrowRight className="w-4 h-4 text-primary drop-shadow-sm" />
                   </div>
                 </div>
               </Button>
 
               <Button
                 variant="outline"
-                className="group justify-start h-auto p-4 rounded-xl bg-white/60 backdrop-blur-sm ring-1 ring-white/60 shadow-sm hover:bg-white/70 hover:shadow-md transition-colors"
+                className="group block justify-start h-auto p-4 rounded-xl border border-primary/20 dark:border-white/15 bg-white/5 dark:bg-white/10 hover:bg-white/10 dark:hover:bg-white/15 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl ring-1 ring-white/60 bg-gradient-to-br from-emerald-400/20 to-lime-400/20 shadow-sm flex items-center justify-center">
-                    <Volume2 className="w-5 h-5 text-emerald-600" />
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-lime-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-soft">
+                    <Volume2 className="w-5 h-5 text-white" />
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900">Pronunciation</p>
-                    <p className="text-xs text-muted-foreground">3 min practice</p>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">Pronunciation</p>
+                    <p className="text-sm text-muted-foreground">3 min practice</p>
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-sm ring-1 ring-primary/40 shadow-md shadow-primary/30 flex items-center justify-center transition-all group-hover:bg-white/80 group-hover:ring-primary/60">
+                    <ArrowRight className="w-4 h-4 text-primary drop-shadow-sm" />
                   </div>
                 </div>
               </Button>
 
               <Button
                 variant="outline"
-                className="group justify-start h-auto p-4 rounded-xl bg-white/60 backdrop-blur-sm ring-1 ring-white/60 shadow-sm hover:bg-white/70 hover:shadow-md transition-colors"
+                className="group block justify-start h-auto p-4 rounded-xl border border-primary/20 dark:border-white/15 bg-white/5 dark:bg-white/10 hover:bg-white/10 dark:hover:bg-white/15 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl ring-1 ring-white/60 bg-gradient-to-br from-violet-400/20 to-fuchsia-400/20 shadow-sm flex items-center justify-center">
-                    <Target className="w-5 h-5 text-violet-600" />
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-soft">
+                    <Target className="w-5 h-5 text-white" />
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900">Grammar Quiz</p>
-                    <p className="text-xs text-muted-foreground">10 min practice</p>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">Grammar Quiz</p>
+                    <p className="text-sm text-muted-foreground">10 min practice</p>
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-sm ring-1 ring-primary/40 shadow-md shadow-primary/30 flex items-center justify-center transition-all group-hover:bg-white/80 group-hover:ring-primary/60">
+                    <ArrowRight className="w-4 h-4 text-primary drop-shadow-sm" />
                   </div>
                 </div>
               </Button>
