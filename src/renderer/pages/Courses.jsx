@@ -713,13 +713,11 @@ const Courses = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Card className="relative overflow-hidden border border-white/20 bg-white/10 backdrop-blur-md rounded-xl ring-1 ring-white/20 shadow-sm">
+        <Card className="card card-premium relative overflow-hidden p-6 border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
           {/* aurora accents */}
-          <div className="pointer-events-none absolute -top-12 -left-16 w-56 h-56 rounded-full bg-fuchsia-400/15 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-10 left-1/3 w-64 h-40 rounded-full bg-indigo-400/15 blur-2xl" />
-          {/* soft shine sweep */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-50 animate-[shine_4s_linear_infinite]" />
-          <style>{`@keyframes shine{0%{transform:translateX(-60%)}100%{transform:translateX(160%)}}`}</style>
+          <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-10 left-1/3 w-64 h-40 rounded-full bg-primary/15 blur-2xl" />
+
           <CardContent className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Search input with icon */}
@@ -730,14 +728,14 @@ const Courses = () => {
                     placeholder="Search courses..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-11 pl-10 rounded-lg bg-white/10 text-foreground placeholder-white/70 ring-1 ring-white/20 focus:ring-white/40 transition-all"
+                    className="h-11 pl-10 rounded-lg bg-white/10 text-foreground placeholder-white/70 ring-1 ring-primary/20 focus:ring-primary/30 transition-all"
                   />
                 </div>
               </div>
               {/* Level filter chip */}
               <div>
                 <Select value={levelFilter} onValueChange={setLevelFilter}>
-                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-white/20 hover:bg-white/15 transition-colors">
+                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-primary/20 hover:bg-white/12 transition-colors">
                     <SelectValue placeholder="Level" />
                   </SelectTrigger>
                   <SelectContent>
@@ -754,7 +752,7 @@ const Courses = () => {
               {/* Availability filter chip */}
               <div>
                 <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
-                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-white/20 hover:bg-white/15 transition-colors">
+                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-primary/20 hover:bg-white/12 transition-colors">
                     <SelectValue placeholder="Availability" />
                   </SelectTrigger>
                   <SelectContent>
@@ -767,7 +765,7 @@ const Courses = () => {
               {/* Sort by chip */}
               <div className="md:col-span-1">
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-white/20 hover:bg-white/15 transition-colors">
+                  <SelectTrigger className="h-11 rounded-lg bg-white/10 text-foreground ring-1 ring-primary/20 hover:bg-white/12 transition-colors">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -781,7 +779,7 @@ const Courses = () => {
                 </Select>
               </div>
             </div>
-            <div className="mt-3 text-xs text-white/80">
+            <div className="mt-3 text-xs text-muted-foreground">
               Showing {filteredAndSortedCourses.length} of {courses.length} courses
             </div>
           </CardContent>
