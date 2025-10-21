@@ -276,7 +276,7 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
         </p>
       </div>
       
-      <Card className="p-6 mb-8">
+      <Card className="card card-premium p-6 mb-8 bg-white dark:bg-white/10 backdrop-blur-xl ring-1 ring-indigo-200 dark:ring-white/25 shadow-2xl">
         <h2 className="text-xl font-semibold mb-4">What to Expect</h2>
         <div className="grid md:grid-cols-2 gap-4 text-left">
           <div className="space-y-3">
@@ -310,12 +310,12 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
         </div>
       </Card>
       
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-8">
+      <div className="bg-white dark:bg-white/10 ring-1 ring-indigo-200 dark:ring-white/25 rounded-lg p-4 mb-8 shadow-sm">
         <div className="flex items-start space-x-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-300 mt-0.5" />
           <div className="text-left">
-            <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-1">Before You Begin</h3>
-            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-1">Before You Begin</h3>
+            <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
               <li>• Ensure you have a quiet environment</li>
               <li>• Allow microphone access for speaking tasks</li>
               <li>• Answer naturally and honestly</li>
@@ -363,21 +363,21 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
               </span>
             )}
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="progress-modern">
             <div 
-              className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
+              className="progress-modern-bar"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
         {/* Task Card */}
-        <Card className="p-6">
+        <Card className="card card-premium p-6 bg-white dark:bg-white/10 backdrop-blur-xl ring-1 ring-indigo-200 dark:ring-white/25 shadow-2xl">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <span className="text-3xl">{getTaskIcon(currentTask.task_type)}</span>
               <div>
-                <h2 className="text-xl font-semibold capitalize">
+                <h2 className="text-xl font-semibold capitalize text-gray-900 dark:text-white">
                   {currentTask.task_type} Assessment
                 </h2>
                 <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
@@ -401,9 +401,9 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
           {(() => {
             const questionData = getQuestionData(currentTask);
             return questionData?.instructions && questionData.instructions !== questionData?.question_text && (
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-                <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Instructions:</h3>
-                <p className="text-gray-800 dark:text-gray-200 leading-relaxed text-sm">
+              <div className="bg-white dark:bg-white/10 ring-1 ring-indigo-200 dark:ring-white/25 rounded-lg p-4 mb-4 shadow-sm">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Instructions:</h3>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
                   {questionData.instructions}
                 </p>
               </div>
@@ -412,8 +412,8 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
           
           {/* Question/Prompt */}
           <div className="mb-6">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
+            <div className="bg-white dark:bg-white/10 ring-1 ring-indigo-200 dark:ring-white/25 rounded-lg p-4 shadow-sm">
+              <p className="text-gray-900 dark:text-gray-100 leading-relaxed">
                 {getQuestionData(currentTask)?.question_text || currentTask.prompt}
               </p>
             </div>
@@ -424,49 +424,47 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
             {isAudioTask ? (
               <div className="space-y-4">
                 {/* Audio Recording Controls */}
-                <div className="flex items-center justify-center space-x-4 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <Button
-                    onClick={isRecording ? stopRecording : startRecording}
-                    variant={isRecording ? 'destructive' : 'default'}
-                    className="flex items-center space-x-2"
-                  >
-                    {isRecording ? (
-                      <><MicOff className="w-4 h-4" /> Stop Recording</>
-                    ) : (
-                      <><Mic className="w-4 h-4" /> Start Recording</>
-                    )}
-                  </Button>
-                  
-                  {audioBlob && (
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                      <span className="text-sm text-green-600 dark:text-green-400">Recording saved</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setAudioBlob(null)}
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Optional Text Response */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Additional notes (optional):
-                  </label>
-                  <textarea
-                    ref={textareaRef}
-                    value={responses[currentTask.id] || ''}
-                    onChange={(e) => handleResponseChange(e.target.value)}
-                    placeholder="Add any additional thoughts or notes here..."
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
-              </div>
+                <div className="flex items-center justify-center space-x-4 p-6 glass shadow-soft rounded-lg bg-white ring-1 ring-indigo-200 dark:bg-white/10 dark:ring-white/25">
+                                <Button
+                                onClick={isRecording ? stopRecording : startRecording}
+                                variant={isRecording ? 'destructive' : 'default'}
+                                className="flex items-center space-x-2"
+                                >
+                                {isRecording ? (
+                                <><MicOff className="w-4 h-4" /> Stop Recording</>
+                                ) : (
+                                <><Mic className="w-4 h-4" /> Start Recording</>
+                                )}
+                                </Button>
+                                {audioBlob && (
+                                <div className="flex items-center space-x-2">
+                                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                <span className="text-sm text-green-600 dark:text-green-400">Recording saved</span>
+                                <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setAudioBlob(null)}
+                                >
+                                <RotateCcw className="w-4 h-4" />
+                                </Button>
+                                </div>
+                                )}
+                                </div>
+                                {/* Optional Text Response */}
+                                <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Additional notes (optional):
+                                </label>
+                                <textarea
+                                ref={textareaRef}
+                                value={responses[currentTask.id] || ''}
+                                onChange={(e) => handleResponseChange(e.target.value)}
+                                placeholder="Add any additional thoughts or notes here..."
+                                className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                rows={3}
+                                />
+                                </div>
+                                </div>
             ) : currentTask.task_type === 'multiple-choice' ? (
               <div className="space-y-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -556,6 +554,7 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
                 }
               }}
               disabled={currentTaskIndex === 0 || isLoading}
+              className="rounded-lg bg-white ring-1 ring-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:bg-white/10 dark:text-white dark:ring-white/25"
             >
               Previous
             </Button>
@@ -563,6 +562,7 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
             <Button
               onClick={submitTaskResponse}
               disabled={isLoading || (!responses[currentTask.id] && !audioBlob)}
+              className="rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white hover:from-indigo-700 hover:to-fuchsia-700 shadow-md"
             >
               {isLoading ? (
                 <LoadingSpinner size="sm" message="" className="w-4 h-4 mr-2" />
@@ -595,7 +595,7 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
       
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         {/* Overall Score */}
-        <Card className="p-6">
+        <Card className="card card-premium p-6">
           <h2 className="text-xl font-semibold mb-4">Overall Results</h2>
           <div className="space-y-4">
             <div className="text-center">
@@ -613,16 +613,16 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
         </Card>
         
         {/* Skill Breakdown */}
-        <Card className="p-6">
+        <Card className="card card-premium p-6">
           <h2 className="text-xl font-semibold mb-4">Skill Breakdown</h2>
           <div className="space-y-3">
             {Object.entries(results.skillBreakdown).map(([skill, score]) => (
               <div key={skill} className="flex items-center justify-between">
                 <span className="capitalize text-sm font-medium">{skill}</span>
                 <div className="flex items-center space-x-2">
-                  <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className="progress-modern w-24">
                     <div 
-                      className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full"
+                      className="progress-modern-bar"
                       style={{ width: `${score}%` }}
                     />
                   </div>
@@ -636,7 +636,7 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
       
       {/* Recommendations */}
       {results.recommendations && (
-        <Card className="p-6 mb-8">
+        <Card className="card card-premium p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Personalized Recommendations</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div>
@@ -675,7 +675,7 @@ const Assessment = ({ onComplete, targetLanguage = 'English' }) => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-white to-gray-100 dark:from-gray-900 dark:to-slate-900 py-8 px-4">
       <AnimatePresence mode="wait">
         {currentStep === 'intro' && renderIntroduction()}
         {currentStep === 'assessment' && renderAssessmentTask()}
