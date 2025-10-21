@@ -658,7 +658,8 @@ const Courses = () => {
       >
         <Card className="relative overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
           {/* decorative glow */}
-          <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
+          <div className="pointer-events-none absolute -top-10 -left-10 w-60 h-60 rounded-full bg-primary/30 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-12 -right-12 w-48 h-48 rounded-full bg-primary/20 blur-2xl" />
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               {/* Left: title and icon */}
@@ -822,7 +823,7 @@ const Courses = () => {
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl font-semibold">Recommended for You</h2>
-              <span className="text-sm text-muted-foreground">Based on your level and progress</span>
+              <span className="text-xs font-semibold text-primary glass px-2 py-1 rounded-md">Based on your level and progress</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {recommendedCourses.slice(0, 6).map((course, index) => (
@@ -861,8 +862,9 @@ const Courses = () => {
         transition={{ delay: 0.4 }}
       >
 
-        <Card className="card card-premium relative overflow-hidden p-6 border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
-          <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
+        <Card className="card card-premium relative overflow-hidden p-6 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/15 via-primary/25 to-primary/5">
+          <div className="pointer-events-none absolute -top-10 -left-10 w-60 h-60 rounded-full bg-primary/30 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-12 -right-12 w-48 h-48 rounded-full bg-primary/20 blur-2xl" />
           <CardHeader className="relative z-10">
             <CardTitle className="text-lg flex items-center space-x-2 tracking-tight">
               <Play className="w-5 h-5 text-primary" />
@@ -876,7 +878,7 @@ const Courses = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button
                 variant="outline"
-                className="group block justify-start h-auto p-4 rounded-xl border border-primary/20 dark:border-white/15 bg-white/5 dark:bg-white/10 hover:bg-white/10 dark:hover:bg-white/15 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
+                className="group block justify-start h-auto p-4 rounded-xl border border-primary/30 dark:border-white/20 bg-white/10 dark:bg-white/15 hover:bg-white/15 dark:hover:bg-white/20 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-soft">
@@ -894,7 +896,7 @@ const Courses = () => {
 
               <Button
                 variant="outline"
-                className="group block justify-start h-auto p-4 rounded-xl border border-primary/20 dark:border-white/15 bg-white/5 dark:bg-white/10 hover:bg-white/10 dark:hover:bg-white/15 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
+                className="group block justify-start h-auto p-4 rounded-xl border border-primary/30 dark:border-white/20 bg-white/10 dark:bg-white/15 hover:bg-white/15 dark:hover:bg-white/20 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-lime-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-soft">
@@ -912,7 +914,7 @@ const Courses = () => {
 
               <Button
                 variant="outline"
-                className="group block justify-start h-auto p-4 rounded-xl border border-primary/20 dark:border-white/15 bg-white/5 dark:bg-white/10 hover:bg-white/10 dark:hover:bg-white/15 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
+                className="group block justify-start h-auto p-4 rounded-xl border border-primary/30 dark:border-white/20 bg-white/10 dark:bg-white/15 hover:bg-white/15 dark:hover:bg-white/20 backdrop-blur-sm transition-all duration-200 hover:shadow-soft"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-soft">

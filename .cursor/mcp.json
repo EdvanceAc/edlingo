@@ -1,14 +1,3 @@
 {
-  "mcpServers": {
-    "supabase_EdLingo": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@supabase/mcp-server-supabase@latest",
-        "--access-token",
-        "sbp_97957041030c8bfb7583c8b7114568a1c004e30c"
-      ],
-      "env": {}
-    }
-  }
+  "mcpServers": {}
 }
