@@ -625,34 +625,34 @@ const Courses = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
       >
-        <div className="flex items-center space-x-3">
-          <div className="p-3 bg-primary/10 rounded-lg">
-            <BookMarked className="w-8 h-8 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Courses</h1>
-            <p className="text-muted-foreground">Structured learning paths to master the language</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <div className="text-center">
-            <div className="flex items-center space-x-1">
-              <Trophy className="w-4 h-4 text-yellow-500" />
-              <span className="text-sm font-medium text-foreground">{userProgress.currentStreak} day streak</span>
+        <Card className="card card-premium no-hover-motion relative overflow-hidden p-5 border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
+          <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-10 right-0 w-64 h-40 rounded-full bg-primary/15 blur-2xl" />
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-sky-500/20 ring-1 ring-primary/30 flex items-center justify-center">
+                  <BookMarked className="w-7 h-7 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Courses</h1>
+                  <p className="text-sm text-muted-foreground">Structured learning paths to master the language</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="rounded-full px-3 py-1 bg-white/20 backdrop-blur-sm ring-1 ring-white/40 shadow-soft flex items-center gap-1">
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                  <span className="text-sm font-medium text-foreground">{userProgress.currentStreak} day streak</span>
+                </div>
+                <div className="rounded-full px-3 py-1 bg-white/20 backdrop-blur-sm ring-1 ring-white/40 shadow-soft flex items-center gap-1">
+                  <Star className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Level {userProgress.level} • {userProgress.totalXP}/{userProgress.nextLevelXP} XP</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center space-x-1">
-              <Star className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">
-                Level {userProgress.level} • {userProgress.totalXP}/{userProgress.nextLevelXP} XP
-              </span>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Course Progress (Premium Redesign) */}

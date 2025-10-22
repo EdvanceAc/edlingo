@@ -986,6 +986,17 @@
 .dark .card-premium .text-xs {
   color: rgba(229, 231, 235, 0.92) !important;
 }
+
+/* Premium card static mode: disable hover motion */
+.card-premium.no-hover-motion,
+.card-premium.no-hover-motion:hover {
+  transform: none !important;
+}
+
+.dark .card-premium.no-hover-motion,
+.dark .card-premium.no-hover-motion:hover {
+  transform: none !important;
+}
   /* Uiverse.io – Yaya12085 exact styles scoped */
   .uiverse-upload .container {
     height: 210px;
