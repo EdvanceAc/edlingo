@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles, ThumbsUp, ThumbsDown, Plus, MessageSquare } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles, ThumbsUp, ThumbsDown, Plus, MessageSquare, Pencil, Trash2 } from 'lucide-react';
 import { useAudio } from '../providers/AudioProvider';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAI } from '../providers/AIProvider';
@@ -29,6 +29,8 @@ const Chat = () => {
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState(null);
+  const messageChannelRef = useRef(null);
+  const messagesRef = useRef(messages);
   // Streaming functionality removed for simple chatbot
   const { isRecording, startRecording, stopRecording, speakText } = useAudio();
   const { addXP, level: currentLevel } = useProgress();
@@ -102,9 +104,31 @@ const Chat = () => {
     loadSessions();
   }, [user]);
 
+  // Keep a live reference of messages for deduplication in realtime handler
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  // Cleanup realtime channel on unmount
+  useEffect(() => {
+    return () => {
+      if (messageChannelRef.current) {
+        supabaseService.removeChannel(messageChannelRef.current);
+        messageChannelRef.current = null;
+      }
+    };
+  }, []);
+
   const openSession = async (session) => {
     setSelectedSessionId(session.id);
     setCurrentSessionIdDirect(session.id);
+
+    // Tear down any previous realtime subscription
+    if (messageChannelRef.current) {
+      supabaseService.removeChannel(messageChannelRef.current);
+      messageChannelRef.current = null;
+    }
+
     // Fetch messages for this session from Supabase and load into UI + provider
     if (supabaseService.isConnected) {
       try {
@@ -131,6 +155,18 @@ const Chat = () => {
             }
           ]);
           loadConversationFromMessages(data || []);
+
+          // Subscribe to new messages for this session (dedup by content/time)
+          const ch = supabaseService.subscribeToSessionMessages(session.id, (row) => {
+            if (!row) return;
+            const type = (row?.message_type || row?.role) === 'user' ? 'user' : 'ai';
+            const createdAt = new Date(row.created_at);
+            const content = row?.content || '';
+            const exists = (messagesRef.current || []).some(m => m.type === type && m.content === content && Math.abs(m.timestamp.getTime() - createdAt.getTime()) < 8000);
+            if (exists) return;
+            setMessages(prev => [...prev, { id: row.id, type, content, timestamp: createdAt, reaction: null }]);
+          });
+          messageChannelRef.current = ch;
         }
       } catch (e) {
         console.warn('Failed to load session messages:', e?.message || e);
@@ -155,6 +191,8 @@ const Chat = () => {
       const { success, data } = await supabaseService.listChatSessions(user.id, 100);
       if (success) setSessions(data || []);
     }
+    // Ensure realtime subscription is attached to the new session
+    openSession({ id: newId });
   };
 
   const handleSendMessage = async (message = inputMessage) => {
@@ -168,6 +206,7 @@ const Chat = () => {
     if (!sessionId) {
       sessionId = await startNewSession();
       setSelectedSessionId(sessionId);
+      setCurrentSessionIdDirect(sessionId);
     }
 
     // Analyze and optimize message
@@ -302,6 +341,22 @@ const Chat = () => {
         console.log('Updated messages array:', newMessages);
         return newMessages;
       });
+
+      // Persist assistant message to Supabase as soon as it’s generated
+      if (supabaseService.isConnected && user?.id && sessionId) {
+        try {
+          await supabaseService.saveChatMessage({
+            sessionId,
+            userId: user.id,
+            role: 'assistant',
+            content: aiMessage.content,
+            metadata: { complexity: complexity.complexity }
+          });
+        } catch (e) {
+          console.warn('Failed to persist assistant message:', e?.message || e);
+        }
+      }
+
       setIsLoading(false);
       setCurrentRequestController(null);
       setLoadingProgress(0);
@@ -422,6 +477,36 @@ const Chat = () => {
     speakText(content, { lang: 'en-US', rate: 0.9 });
   };
 
+  const handleRenameSession = async (e, session) => {
+    e.stopPropagation();
+    const input = window.prompt('نام چت را وارد کنید', session.title || 'New Chat');
+    if (input === null) return; // cancelled
+    const title = input.trim();
+    if (!title) return;
+    const res = await supabaseService.renameChatSession(session.id, title);
+    if (!res?.success) {
+      alert('خطا در تغییر نام: ' + (res?.error || '')); return;
+    }
+    setSessions(prev => prev.map(s => s.id === session.id ? { ...s, title } : s));
+  };
+
+  const handleDeleteSession = async (e, session) => {
+    e.stopPropagation();
+    const ok = window.confirm('این چت و همه پیام‌هایش برای همیشه حذف می‌شود. ادامه می‌دهید؟');
+    if (!ok) return;
+    const res = await supabaseService.deleteChatSession(session.id);
+    if (!res?.success) { alert('حذف ناموفق: ' + (res?.error || '')); return; }
+    setSessions(prev => prev.filter(s => s.id !== session.id));
+    if (selectedSessionId === session.id) {
+      setMessages([
+        { id: Date.now(), type: 'ai', content: 'Chat deleted. Started a new session for you.', timestamp: new Date(), reaction: null }
+      ]);
+      const newId = await startNewSession();
+      setSelectedSessionId(newId);
+      openSession({ id: newId });
+    }
+  };
+
   const persistReaction = async (messageId, nextReaction, messageContent) => {
     try {
       const sessionId = getCurrentSessionId ? getCurrentSessionId() : null;
@@ -506,7 +591,23 @@ const Chat = () => {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-slate-800">{s.title || 'New Chat'}</span>
-                    <span className="text-xs text-slate-500">{new Date(s.last_message_at).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">{new Date(s.last_message_at).toLocaleDateString()}</span>
+                      <button
+                        onClick={(e) => handleRenameSession(e, s)}
+                        className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                        title="Rename"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteSession(e, s)}
+                        className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </button>
               ))}

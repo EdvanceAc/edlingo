@@ -643,6 +643,47 @@ class SupabaseService {
     }
   }
 
+  async renameChatSession(sessionId, title) {
+    try {
+      if (!this.isConnected) {
+        return { success: false, error: 'Database not connected. Please check SETUP_DATABASE.md for setup instructions.' };
+      }
+      if (!sessionId || !title) {
+        return { success: false, error: 'Missing required fields (sessionId, title)' };
+      }
+      try {
+        const { data, error } = await this.client.rpc('rename_chat_session', {
+          p_session_id: sessionId,
+          p_title: title
+        });
+        if (error) throw error;
+        return { success: true, data };
+      } catch (rpcErr) {
+        return await this.updateChatSession(sessionId, { title });
+      }
+    } catch (error) {
+      console.error('Rename chat session error:', error);
+      return { success: false, error: error.message || 'Failed to rename chat session' };
+    }
+  }
+
+  async deleteChatSession(sessionId) {
+    try {
+      if (!this.isConnected) {
+        return { success: false, error: 'Database not connected. Please check SETUP_DATABASE.md for setup instructions.' };
+      }
+      if (!sessionId) {
+        return { success: false, error: 'Missing required field (sessionId)' };
+      }
+      const { error } = await this.client.rpc('delete_chat_session_and_messages', { p_session_id: sessionId });
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Delete chat session error:', error);
+      return { success: false, error: error.message || 'Failed to delete chat session' };
+    }
+  }
+
   // Real-time subscriptions
   subscribeToUserProgress(userId, callback) {
     return this.client
@@ -658,6 +699,25 @@ class SupabaseService {
         callback
       )
       .subscribe();
+  }
+
+  subscribeToSessionMessages(sessionId, onInsert) {
+    if (!this.isConnected || !sessionId) return null;
+    const channel = this.client
+      .channel(`chat_session_${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` },
+        (payload) => { try { onInsert && onInsert(payload?.new || payload?.record || null); } catch (_) {} }
+      )
+      .subscribe();
+    return channel;
+  }
+
+  removeChannel(channel) {
+    if (channel) {
+      try { this.client.removeChannel(channel); } catch (_) {}
+    }
   }
 
   // Assessment Management
