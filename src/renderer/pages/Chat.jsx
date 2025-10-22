@@ -71,16 +71,14 @@ const Chat = () => {
   }, [aiStatus, initializeAI]);
 
   useEffect(() => {
-    // Start a new session when the chat component mounts if none exists
-    const ensureInitialSession = async () => {
-      if (isReady && !getCurrentSessionId()) {
-        const newId = await startNewSession();
-        setSelectedSessionId(newId);
-        console.log('Started new chat session:', newId);
+    // Do not auto-create sessions. If an existing session id is present, select it.
+    if (isReady) {
+      const existingId = getCurrentSessionId && getCurrentSessionId();
+      if (existingId) {
+        setSelectedSessionId(existingId);
       }
-    };
-    ensureInitialSession();
-  }, [isReady, startNewSession, getCurrentSessionId]);
+    }
+  }, [isReady, getCurrentSessionId]);
 
   useEffect(() => {
     // Load sessions from Supabase when user is available
@@ -498,12 +496,13 @@ const Chat = () => {
     if (!res?.success) { alert('حذف ناموفق: ' + (res?.error || '')); return; }
     setSessions(prev => prev.filter(s => s.id !== session.id));
     if (selectedSessionId === session.id) {
-      setMessages([
-        { id: Date.now(), type: 'ai', content: 'Chat deleted. Started a new session for you.', timestamp: new Date(), reaction: null }
-      ]);
-      const newId = await startNewSession();
-      setSelectedSessionId(newId);
-      openSession({ id: newId });
+      if (messageChannelRef.current) {
+        supabaseService.removeChannel(messageChannelRef.current);
+        messageChannelRef.current = null;
+      }
+      setSelectedSessionId(null);
+      setCurrentSessionIdDirect(null);
+      setMessages([]);
     }
   };
 
