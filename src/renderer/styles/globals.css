@@ -976,7 +976,8 @@
     color: #475569;
   }
   .dark .uiverse-login .footer { color: #cbd5e1; }
-/* iOS redesign base tokens */
+
+/* iOS design tokens (light/dark) */
 :root {
   --ios-bg: #f5f7fb;
   --ios-nav: rgba(255, 255, 255, 0.82);
@@ -988,7 +989,8 @@
   --ios-subtext: #6b7280;
 }
 
-.dark :root {
+/* Dark mode tokens (applied when html has .dark) */
+.dark {
   --ios-bg: #0b0b10;
   --ios-nav: rgba(18, 18, 22, 0.75);
   --ios-border: rgba(255,255,255,0.08);
@@ -999,98 +1001,116 @@
   --ios-subtext: #aeb4c0;
 }
 
-/* Page background */
-.ios-page {
-  background: var(--ios-bg);
-}
+/* Optional page background hook */
+.ios-page { background: var(--ios-bg); }
 
-/* Header like iOS nav bar */
-.ios-header {
-  background: var(--ios-nav);
-  backdrop-filter: saturate(180%) blur(16px);
-  border-bottom: 1px solid var(--ios-border);
-  box-shadow: var(--ios-shadow);
-  border-radius: 18px;
-}
-
-/* Chat list area */
+/* iMessage-style chat area and bubbles */
 .ios-chat-area {
-  background: transparent;
-  padding: 12px 12px 84px 12px;
+  padding: 12px 12px 90px;
 }
 
-/* Bubbles */
+.ios-avatar { color: var(--ios-subtext); }
+
 .ios-bubble {
-  border-radius: 18px;
+  position: relative;
+  display: inline-block;
   padding: 10px 12px;
-  font-size: 14px;
-  line-height: 1.38;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-  border: 1px solid var(--ios-border);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  max-width: 75%;
+  line-height: 1.42;
 }
 
 .ios-bubble-user {
-  background: #dcf8c6; /* light WhatsApp-green-ish for iOS feel */
-  color: #0b0b0f;
-  border-color: rgba(0, 0, 0, 0.06);
-  margin-left: 48px;
+  background: var(--ios-blue);
+  color: #fff;
+  border: 1px solid rgba(10,132,255,0.35);
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 18px;
 }
 
 .ios-bubble-ai {
   background: var(--ios-gray-bubble);
   color: var(--ios-text);
-  border-color: var(--ios-border);
-  margin-right: 48px;
+  border: 1px solid var(--ios-border);
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 18px;
 }
 
-/* Tail alignment mimic */
-.message-user .ios-bubble-user { border-bottom-right-radius: 6px; }
-.message-ai .ios-bubble-ai { border-bottom-left-radius: 6px; }
+.ios-timestamp { color: var(--ios-subtext); }
+/* Ensure timestamp is readable on blue user bubble */
+.ios-bubble-user .ios-timestamp { color: rgba(255,255,255,0.95); }
 
-/* Input bar */
-.ios-input {
+@media (max-width: 640px) {
+  .ios-bubble { max-width: 86%; }
+}
+
+/* iOS composer redesign */
+.ios-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  width: 100%;
   background: var(--ios-nav);
   backdrop-filter: saturate(180%) blur(16px);
   border-top: 1px solid var(--ios-border);
   box-shadow: var(--ios-shadow);
-  padding: 12px;
-  border-radius: 18px;
+  padding: 10px 12px;
 }
 
-/* Voice button */
-.ios-voice-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--ios-gray-bubble);
-  color: var(--ios-text);
+.ios-input-wrap { max-width: 860px; margin: 0 auto; }
+
+.ios-input-field {
+  position: relative;
   border: 1px solid var(--ios-border);
+  border-radius: 22px;
+  background: var(--ios-gray-bubble);
 }
 
-/* Send button */
-.ios-send-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+/* Textarea inside pill */
+.ios-input-field .ios-textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 22px;
+  padding: 12px 52px 12px 48px; /* space for icons */
+  font-size: 14px;
+  line-height: 1.42;
+}
+.ios-input-field .ios-textarea::placeholder { color: var(--ios-subtext); }
+.ios-input-field .ios-textarea:focus { outline: none; box-shadow: none; }
+
+/* Inline voice button left */
+.ios-input-field .ios-voice-button {
+  position: absolute;
+  left: 6px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ios-subtext);
+  border: none;
+}
+.ios-input-field .ios-voice-button:hover { background: rgba(0,0,0,0.06); }
+
+/* Inline send button right */
+.ios-input-field .ios-send-button {
+  position: absolute;
+  right: 6px; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px;
+  border-radius: 18px;
   background: var(--ios-blue);
-  color: white;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  color: #fff;
+  border: none;
   box-shadow: 0 6px 14px rgba(10,132,255,0.35);
 }
-
-/* Adjust chat avatars (Bot/User) to neutral circles) */
-.ios-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--ios-gray-bubble);
-  color: var(--ios-text);
-  border: 1px solid var(--ios-border);
+.ios-input-field .ios-send-button:disabled {
+  opacity: 0.6; cursor: not-allowed; box-shadow: none;
 }
 
-/* iOS timestamp */
-.ios-timestamp {
-  color: var(--ios-subtext);
+/* Mobile tweaks */
+@media (max-width: 640px) {
+  .ios-input-wrap { max-width: 100%; }
+  .ios-input-field .ios-textarea { padding-left: 44px; padding-right: 48px; }
+  .ios-input-field .ios-voice-button { width: 30px; height: 30px; }
+  .ios-input-field .ios-send-button { width: 34px; height: 34px; }
 }

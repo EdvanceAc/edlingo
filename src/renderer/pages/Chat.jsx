@@ -353,8 +353,7 @@ const Chat = () => {
     <div className="flex flex-col h-screen ios-page">
       {/* Header */}
       <div className="ios-header p-4 flex-shrink-0">
-      -         <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-violet-200/40 via-sky-200/30 to-pink-200/40" />
-      +         {/* Overlay removed for better contrast */}
+          {/* Overlay removed for better contrast */}
           <div className="flex items-center justify-between">
            <div className="flex items-center space-x-3">
              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -414,7 +413,7 @@ const Chat = () => {
              </button>
            </div>
          </div>
-       </div>
+      </div>
 
       {/* Gemini Settings Panel */}
       {showGeminiSettings && (
@@ -524,73 +523,69 @@ const Chat = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="ios-input">
-      -         <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-blue-200/40 via-teal-200/30 to-purple-200/40" />
-      +         {/* Overlay removed to reduce tinting and eye strain */}
-          <div className="flex items-end space-x-3">
-           {/* Voice Input Button */}
-           <button
-             onClick={handleVoiceInput}
-             className={`ios-voice-button transition-all duration-200 ${
-               isRecording ? 'bg-red-500 text-white animate-pulse' : ''
-             }`}
-             title={isRecording ? 'Stop recording' : 'Start voice input'}
-           >
-             {isRecording ? (
-               <MicOff className="w-5 h-5" />
-             ) : (
-               <Mic className="w-5 h-5" />
-             )}
-           </button>
+      {/* Composer */}
+      <div className="ios-composer">
+        <div className="ios-input-wrap">
+          <div className="ios-input-field">
+            {/* Voice inside */}
+            <button
+              onClick={handleVoiceInput}
+              className={`ios-voice-button ${isRecording ? 'bg-red-500 text-white animate-pulse' : ''}`}
+              title={isRecording ? 'Stop recording' : 'Start voice input'}
+            >
+              {isRecording ? (
+                <MicOff className="w-5 h-5" />
+              ) : (
+                <Mic className="w-5 h-5" />
+              )}
+            </button>
 
-           {/* Text Input */}
-           <div className="flex-1 relative">
-             <textarea
-               ref={inputRef}
-               value={inputMessage}
-               onChange={(e) => setInputMessage(e.target.value)}
-               onKeyPress={handleKeyPress}
-               placeholder="Type your message here..."
-               className="ios-textarea"
-               rows={1}
-               style={{
-                 minHeight: '48px',
-                 maxHeight: '120px',
-                 height: 'auto'
-               }}
-               onInput={(e) => {
-                 e.target.style.height = 'auto';
-                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-               }}
-             />
-           </div>
+            {/* Text Input */}
+            <textarea
+              ref={inputRef}
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type your message here..."
+              className="ios-textarea"
+              rows={1}
+              style={{
+                minHeight: '44px',
+                maxHeight: '140px',
+                height: 'auto'
+              }}
+              onInput={(e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+              }}
+            />
 
-           {/* Send Button */}
-           <button
-             onClick={() => handleSendMessage()}
-             disabled={!inputMessage.trim() || isLoading}
-             className="ios-send-button"
-             title="Send message"
-           >
-             <Send className="w-5 h-5" />
-           </button>
-         </div>
+            {/* Send inside */}
+            <button
+              onClick={() => handleSendMessage()}
+              disabled={!inputMessage.trim() || isLoading}
+              className="ios-send-button"
+              title="Send message"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
 
-         {/* Recording indicator */}
-         {isRecording && (
-           <motion.div
-             initial={{ opacity: 0, y: 10 }}
-             animate={{ opacity: 1, y: 0 }}
-             className="mt-3 flex items-center justify-center space-x-2 text-red-500"
-           >
-             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-             <span className="text-sm font-medium">Recording...</span>
-           </motion.div>
-         )}
-       </div>
-     </div>
-   );
+        {/* Recording indicator */}
+        {isRecording && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 flex items-center justify-center space-x-2 text-red-500"
+          >
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-sm font-medium">Recording...</span>
+          </motion.div>
+        )}
+      </div>
+      </div>
+    );
 };
 
 export default Chat;
