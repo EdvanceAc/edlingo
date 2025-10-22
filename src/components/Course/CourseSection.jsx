@@ -233,7 +233,7 @@ const CourseSection = () => {
                   <Button 
                     size="sm" 
                     variant={unit.progress > 0 ? "outline" : "outline"}
-                    className="text-xs bg-white/60 backdrop-blur-sm ring-1 ring-primary/30 hover:bg-white/80 hover:ring-primary/50"
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-white bg-gradient-to-b from-white/50 to-white/30 backdrop-blur-md ring-1 ring-white/40 shadow-soft shadow-inner hover:from-white/60 hover:to-white/40 transition-all"
                     onClick={(e) => { e.stopPropagation(); navigate(`/courses/${unit.id}`); }}
                   >
                     {unit.progress > 0 ? (
