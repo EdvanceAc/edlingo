@@ -675,8 +675,33 @@ class SupabaseService {
       if (!sessionId) {
         return { success: false, error: 'Missing required field (sessionId)' };
       }
-      const { error } = await this.client.rpc('delete_chat_session_and_messages', { p_session_id: sessionId });
-      if (error) throw error;
+
+      // Try RPC first if available
+      try {
+        const { error } = await this.client.rpc('delete_chat_session_and_messages', { p_session_id: sessionId });
+        if (!error) return { success: true };
+      } catch (_) {
+        // fall through to direct deletes
+      }
+
+      // Fallback: delete messages then the session under RLS
+      const { data: { user } = {} } = await this.client.auth.getUser();
+      const userId = user?.id || null;
+
+      // Delete messages for this session (scoped by user if present)
+      let q1 = this.client.from('chat_messages').delete().eq('session_id', sessionId);
+      if (userId) q1 = q1.eq('user_id', userId);
+      const { error: dmError } = await q1;
+      if (dmError && dmError.code !== 'PGRST116') { // ignore no rows deleted
+        throw dmError;
+      }
+
+      // Delete the session row (also scope by user for RLS)
+      let q2 = this.client.from('chat_sessions').delete().eq('id', sessionId);
+      if (userId) q2 = q2.eq('user_id', userId);
+      const { error: dsError } = await q2;
+      if (dsError) throw dsError;
+
       return { success: true };
     } catch (error) {
       console.error('Delete chat session error:', error);
