@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useAudio } from '../providers/AudioProvider';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAI } from '../providers/AIProvider';
@@ -12,7 +12,8 @@ const Chat = () => {
       id: 1,
       type: 'ai',
       content: 'Hello! I\'m your language learning assistant. How can I help you practice today?',
-      timestamp: new Date()
+      timestamp: new Date(),
+      reaction: null
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
@@ -188,7 +189,8 @@ const Chat = () => {
         type: 'ai',
         content: response + performanceTip,
         timestamp: new Date(),
-        responseTime: responseTime
+        responseTime: responseTime,
+        reaction: null
       };
 
       console.log('Adding AI message to chat:', aiMessage);
@@ -225,7 +227,8 @@ const Chat = () => {
         id: Date.now() + 1,
         type: 'ai',
         content: errorContent,
-        timestamp: new Date()
+        timestamp: new Date(),
+        reaction: null
       };
       setMessages(prev => [...prev, errorMessage]);
       setIsLoading(false);
@@ -320,6 +323,15 @@ const Chat = () => {
     speakText(content, { lang: 'en-US', rate: 0.9 });
   };
 
+  const handleReaction = (messageId, reaction) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId || m.type !== 'ai') return m;
+      // Toggle off if the same reaction is clicked, otherwise set new reaction
+      const next = m.reaction === reaction ? null : reaction;
+      return { ...m, reaction: next };
+    }));
+  };
+
   const handleCancelRequest = () => {
     if (currentRequestController) {
       currentRequestController.abort();
@@ -332,7 +344,8 @@ const Chat = () => {
         id: Date.now() + 1,
         type: 'ai',
         content: '❌ Request cancelled. Feel free to ask me something else!',
-        timestamp: new Date()
+        timestamp: new Date(),
+        reaction: null
       };
       setMessages(prev => [...prev, cancelMessage]);
     }
@@ -460,15 +473,33 @@ const Chat = () => {
                     <span className="text-xs ios-timestamp">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    {message.type === 'ai' && (
-                      <button
-                        onClick={() => handleSpeakMessage(message.content)}
-                        className="ml-2 p-1 rounded hover:bg-black/5 transition-colors"
-                        title="Listen to message"
-                      >
-                        <Volume2 className="w-3 h-3" />
-                      </button>
-                    )}
+                    {message.type === 'ai' ? (
+                      <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 mr-1">
+                          <button
+                            onClick={() => handleReaction(message.id, 'like')}
+                            className={`p-1 rounded hover:bg-black/5 transition-colors ${message.reaction === 'like' ? 'text-blue-600' : 'text-muted-foreground'}`}
+                            title="Like"
+                          >
+                            <ThumbsUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleReaction(message.id, 'dislike')}
+                            className={`p-1 rounded hover:bg-black/5 transition-colors ${message.reaction === 'dislike' ? 'text-red-600' : 'text-muted-foreground'}`}
+                            title="Dislike"
+                          >
+                            <ThumbsDown className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => handleSpeakMessage(message.content)}
+                          className="p-1 rounded hover:bg-black/5 transition-colors"
+                          title="Listen to message"
+                        >
+                          <Volume2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
