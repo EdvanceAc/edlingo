@@ -278,7 +278,7 @@ const CourseSection = () => {
         variants={itemVariants}
         className="relative"
       >
-        <Card className="relative overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl">
+        <Card className="card card-premium relative overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl ring-1 ring-white/10 shadow-soft">
           {/* decorative glow */}
           <div className="pointer-events-none absolute -top-10 -left-10 w-52 h-52 rounded-full bg-primary/20 blur-2xl" />
           <CardContent className="p-6">
