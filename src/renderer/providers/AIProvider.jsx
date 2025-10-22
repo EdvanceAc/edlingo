@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import aiService from '../services/aiService';
 import { useAuth } from '../contexts/AuthContext';
+import supabaseService from '../services/supabaseService';
 
 const AIContext = createContext();
 
@@ -146,11 +147,26 @@ export const AIProvider = ({ children }) => {
 
     try {
       console.log('AIProvider: Generating response for message:', message);
+
+      // Ensure session exists in Supabase if connected and user is present
+      let sessionId = currentSessionId;
+      if (!sessionId && user?.id && supabaseService.isConnected) {
+        const created = await supabaseService.createChatSession(user.id, message?.slice(0, 60) || 'New Chat');
+        if (created?.success && created?.data?.id) {
+          sessionId = created.data.id;
+          setCurrentSessionId(sessionId);
+        } else {
+          // Fallback to local session
+          sessionId = sessionId || crypto.randomUUID();
+          setCurrentSessionId(sessionId);
+        }
+      }
+
       const result = await aiService.generateLanguageLearningResponse(message, {
         targetLanguage: options.targetLanguage || 'English',
         userLevel: options.userLevel || 'intermediate',
         focusArea: options.focusArea || 'conversation',
-        sessionId: currentSessionId,
+        sessionId: sessionId || currentSessionId,
         user: user
       });
 
@@ -158,11 +174,8 @@ export const AIProvider = ({ children }) => {
 
       // Handle different response formats
       let response;
-      let sessionId = currentSessionId;
-      
       if (result && typeof result === 'object') {
         if (result.success) {
-          // Normalize to string in case an object slips through
           response = typeof result.response === 'string' 
             ? result.response 
             : (result.response?.message || result.response?.text || String(result.response || ''));
@@ -178,12 +191,10 @@ export const AIProvider = ({ children }) => {
           console.log('AIProvider: Extracted response from error object:', response);
         }
       } else {
-        // Handle string responses from other providers
         response = result;
         console.log('AIProvider: Using direct string response:', response);
       }
 
-      // Ensure we have a valid response
       if (!response || response === 'undefined' || typeof response === 'undefined') {
         console.warn('AIProvider: Response is undefined, using fallback');
         response = "I'm here to help you learn! Could you please rephrase your question or try asking something else?";
@@ -193,11 +204,26 @@ export const AIProvider = ({ children }) => {
 
       // Update conversation history
       const newHistory = [
-        ...conversationHistory.slice(-8), // Keep last 8 messages
-        { role: 'user', content: message, timestamp: new Date() },
+        ...conversationHistory.slice(-8),
+        { role: 'user', content: message, timestamp: new Date(), sessionId },
         { role: 'assistant', content: response, timestamp: new Date(), sessionId }
       ];
       setConversationHistory(newHistory);
+
+      // Persist assistant message to Supabase (user message can be saved by the UI)
+      if (user?.id && supabaseService.isConnected && sessionId) {
+        try {
+          await supabaseService.saveChatMessage({
+            sessionId,
+            userId: user.id,
+            role: 'assistant',
+            content: response,
+            metadata: { targetLanguage: options.targetLanguage || 'English', focusArea: options.focusArea || 'conversation' }
+          });
+        } catch (e) {
+          console.warn('Failed to persist assistant message:', e?.message || e);
+        }
+      }
 
       return response;
     } catch (error) {
@@ -228,8 +254,22 @@ export const AIProvider = ({ children }) => {
     setCurrentSessionId(null);
   };
 
-  const startNewSession = () => {
-    const newSessionId = crypto.randomUUID();
+  const startNewSession = async () => {
+    // Create Supabase-backed session if connected; fallback to local UUID
+    let newSessionId = null;
+    if (supabaseService.isConnected && user?.id) {
+      try {
+        const created = await supabaseService.createChatSession(user.id);
+        if (created?.success && created?.data?.id) {
+          newSessionId = created.data.id;
+        }
+      } catch (e) {
+        console.warn('Failed to create Supabase chat session, using local session:', e?.message || e);
+      }
+    }
+    if (!newSessionId) {
+      newSessionId = crypto.randomUUID();
+    }
     setCurrentSessionId(newSessionId);
     setConversationHistory([]);
     console.log('Started new session with ID:', newSessionId);
@@ -238,6 +278,20 @@ export const AIProvider = ({ children }) => {
 
   const getCurrentSessionId = () => {
     return currentSessionId;
+  };
+
+  const setCurrentSessionIdDirect = (sessionId) => {
+    setCurrentSessionId(sessionId || null);
+  };
+
+  const loadConversationFromMessages = (messages = []) => {
+    const mapped = messages.map(m => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.content,
+      timestamp: new Date(m.created_at || Date.now()),
+      sessionId: m.session_id
+    }));
+    setConversationHistory(mapped);
   };
 
   const configureGemini = async (apiKey) => {
@@ -293,6 +347,8 @@ export const AIProvider = ({ children }) => {
     startNewSession,
     getCurrentSessionId,
     currentSessionId,
+    setCurrentSessionIdDirect,
+    loadConversationFromMessages,
     
     // Utilities
     getStatusMessage: () => {
@@ -324,16 +380,13 @@ export const AIProvider = ({ children }) => {
     configureGemini,
     disableGemini,
     isGeminiAvailable: () => {
-      // Check if Gemini API key is available in environment variables
       const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (envApiKey) {
         return true;
       }
-      // Fallback to aiService check
       return aiService.isGeminiAvailable();
     },
     getApiKey: () => {
-      // Return Gemini API key from settings or environment
       const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
       return aiSettings.geminiApiKey || envApiKey || null;
     },

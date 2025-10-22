@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles, ThumbsUp, ThumbsDown, Plus, MessageSquare } from 'lucide-react';
 import { useAudio } from '../providers/AudioProvider';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAI } from '../providers/AIProvider';
+import { useAuth } from '../contexts/AuthContext';
 import GeminiSettings from '../components/ui/GeminiSettings';
 import supabaseService from "../services/supabaseService.js";
 
@@ -24,6 +25,10 @@ const Chat = () => {
   const [showGeminiSettings, setShowGeminiSettings] = useState(false);
   const [currentRequestController, setCurrentRequestController] = useState(null);
   const [responseStats, setResponseStats] = useState({ totalRequests: 0, averageTime: 0, fastestTime: Infinity, slowestTime: 0 });
+  const [sessions, setSessions] = useState([]);
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState(null);
   // Streaming functionality removed for simple chatbot
   const { isRecording, startRecording, stopRecording, speakText } = useAudio();
   const { addXP, level: currentLevel } = useProgress();
@@ -38,11 +43,13 @@ const Chat = () => {
     isGeminiAvailable,
     getAIStatus,
     startNewSession,
-    getCurrentSessionId
+    getCurrentSessionId,
+    setCurrentSessionIdDirect,
+    loadConversationFromMessages
   } = useAI();
+  const { user } = useAuth();
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const initializationRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,14 +69,90 @@ const Chat = () => {
   }, [aiStatus, initializeAI]);
 
   useEffect(() => {
-    // Start a new session when the chat component mounts
-    if (isReady && !getCurrentSessionId()) {
-      startNewSession();
-      console.log('Started new chat session');
-    }
+    // Start a new session when the chat component mounts if none exists
+    const ensureInitialSession = async () => {
+      if (isReady && !getCurrentSessionId()) {
+        const newId = await startNewSession();
+        setSelectedSessionId(newId);
+        console.log('Started new chat session:', newId);
+      }
+    };
+    ensureInitialSession();
   }, [isReady, startNewSession, getCurrentSessionId]);
 
-  // Streaming event listeners removed for simple chatbot
+  useEffect(() => {
+    // Load sessions from Supabase when user is available
+    const loadSessions = async () => {
+      if (!supabaseService.isConnected || !user?.id) return;
+      setSessionsLoading(true);
+      setSessionsError(null);
+      try {
+        const { success, data, error } = await supabaseService.listChatSessions(user.id, 100);
+        if (success) {
+          setSessions(data || []);
+        } else {
+          setSessionsError(error || 'Failed to load chat history');
+        }
+      } catch (e) {
+        setSessionsError(e?.message || 'Failed to load chat history');
+      } finally {
+        setSessionsLoading(false);
+      }
+    };
+    loadSessions();
+  }, [user]);
+
+  const openSession = async (session) => {
+    setSelectedSessionId(session.id);
+    setCurrentSessionIdDirect(session.id);
+    // Fetch messages for this session from Supabase and load into UI + provider
+    if (supabaseService.isConnected) {
+      try {
+        const { success, data } = await supabaseService.getChatMessages(session.id);
+        if (success) {
+          // Map messages to UI structure
+          const mapped = (data || []).map(m => ({
+            id: m.id,
+            type: m.role === 'user' ? 'user' : 'ai',
+            content: m.content,
+            timestamp: new Date(m.created_at),
+            reaction: null
+          }));
+          setMessages(mapped.length > 0 ? mapped : [
+            {
+              id: Date.now(),
+              type: 'ai',
+              content: 'Welcome back! Continue your practice.',
+              timestamp: new Date(),
+              reaction: null
+            }
+          ]);
+          loadConversationFromMessages(data || []);
+        }
+      } catch (e) {
+        console.warn('Failed to load session messages:', e?.message || e);
+      }
+    }
+  };
+
+  const createNewChat = async () => {
+    const newId = await startNewSession();
+    setSelectedSessionId(newId);
+    setMessages([
+      {
+        id: Date.now(),
+        type: 'ai',
+        content: 'New chat started. How can I help you today?',
+        timestamp: new Date(),
+        reaction: null
+      }
+    ]);
+    // Refresh sessions list
+    if (supabaseService.isConnected && user?.id) {
+      const { success, data } = await supabaseService.listChatSessions(user.id, 100);
+      if (success) setSessions(data || []);
+    }
+  };
 
   const handleSendMessage = async (message = inputMessage) => {
     if (!message.trim() || isLoading) return;
@@ -77,6 +160,13 @@ const Chat = () => {
     const startTime = Date.now();
     const trimmedMessage = message.trim();
     
+    // Ensure we have a session id for saving
+    let sessionId = getCurrentSessionId();
+    if (!sessionId) {
+      sessionId = await startNewSession();
+      setSelectedSessionId(sessionId);
+    }
+
     // Analyze and optimize message
     const optimization = optimizeMessageForProcessing(trimmedMessage);
     const { processedMessage, userNotification } = optimization;
@@ -85,12 +175,30 @@ const Chat = () => {
     const userMessage = {
       id: Date.now(),
       type: 'user',
-      content: trimmedMessage, // Show original message to user
+      content: trimmedMessage,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
+
+    // Persist user message to Supabase
+    if (supabaseService.isConnected && user?.id && sessionId) {
+      try {
+        await supabaseService.saveChatMessage({
+          sessionId,
+          userId: user.id,
+          role: 'user',
+          content: trimmedMessage,
+          metadata: { complexity: complexity.complexity }
+        });
+        // Update sessions list ordering
+        const { success, data } = await supabaseService.listChatSessions(user.id, 100);
+        if (success) setSessions(data || []);
+      } catch (e) {
+        console.warn('Failed to persist user message:', e?.message || e);
+      }
+    }
     
     // Add user notification if message was optimized
     if (userNotification) {
@@ -104,16 +212,13 @@ const Chat = () => {
     }
 
     try {
-      // Use regular response only (streaming removed for simple chatbot)
       setIsLoading(true);
       setLoadingProgress(0);
       setLoadingMessage('Analyzing your message...');
       
-      // Create an AbortController for cancellation
       const controller = new AbortController();
       setCurrentRequestController(controller);
       
-      // Adaptive progress updates based on complexity
       const progressUpdateInterval = complexity.complexity === 'simple' ? 800 : complexity.complexity === 'moderate' ? 1200 : 1500;
       const progressInterval = setInterval(() => {
         setLoadingProgress(prev => {
@@ -122,7 +227,6 @@ const Chat = () => {
         });
       }, progressUpdateInterval);
       
-      // Dynamic loading messages based on complexity
       const timeouts = [];
       if (complexity.complexity === 'complex') {
         timeouts.push(setTimeout(() => setLoadingMessage('Processing complex request...'), 1500));
@@ -140,7 +244,6 @@ const Chat = () => {
       
       let response;
       if (isReady) {
-        // Use AI provider with processed message
         console.log('Calling generateResponse with:', processedMessage);
         response = await generateResponse(processedMessage, {
           targetLanguage: 'English',
@@ -151,13 +254,11 @@ const Chat = () => {
         });
         console.log('Received response from generateResponse:', response);
       } else {
-        // Fallback to mock response if AI not ready
         console.log('AI not ready, using mock response');
         response = await simulateAIResponse(processedMessage);
         console.log('Mock response:', response);
       }
       
-      // Clear all timeouts and intervals
       timeouts.forEach(timeout => clearTimeout(timeout));
       clearInterval(progressInterval);
       setLoadingProgress(100);
@@ -165,7 +266,6 @@ const Chat = () => {
       const responseTime = Date.now() - startTime;
       console.log(`Response generated in ${responseTime}ms for ${complexity.complexity} message`);
       
-      // Update response statistics
       setResponseStats(prev => {
         const newTotalRequests = prev.totalRequests + 1;
         const newAverageTime = ((prev.averageTime * prev.totalRequests) + responseTime) / newTotalRequests;
@@ -177,7 +277,6 @@ const Chat = () => {
         };
       });
       
-      // Add performance tip if response was slow
       let performanceTip = '';
       if (responseTime > 15000 && complexity.complexity === 'complex') {
         performanceTip = '\n\n💡 *Tip: For faster responses, try breaking complex questions into smaller, focused parts.*';
@@ -204,14 +303,12 @@ const Chat = () => {
       setCurrentRequestController(null);
       setLoadingProgress(0);
       
-      // Award XP based on message complexity
       const xpReward = complexity.complexity === 'simple' ? 5 : complexity.complexity === 'moderate' ? 10 : 15;
       addXP(xpReward, 'conversation');
       
     } catch (error) {
       console.error('Failed to get AI response:', error);
       
-      // Provide specific error messages based on error type
       let errorContent = 'Sorry, I\'m having trouble responding right now. Please try again.';
       
       if (error.error === 'TIMEOUT') {
@@ -266,7 +363,6 @@ const Chat = () => {
     const analysis = analyzeMessageComplexity(message);
     
     if (analysis.complexity === 'complex') {
-      // For complex messages, provide guidance
       console.log('Complex message detected:', analysis);
       
       if (message.length > 1000) {
@@ -292,7 +388,6 @@ const Chat = () => {
 
   const simulateAIResponse = async (userMessage) => {
     const analysis = analyzeMessageComplexity(userMessage);
-    // Simulate API delay based on complexity
     await new Promise(resolve => setTimeout(resolve, Math.min(analysis.estimatedProcessingTime * 0.3, 3000)));
     
     const responses = [
@@ -324,7 +419,6 @@ const Chat = () => {
     speakText(content, { lang: 'en-US', rate: 0.9 });
   };
 
-  // Persist reaction to Supabase for later quality review
   const persistReaction = async (messageId, nextReaction, messageContent) => {
     try {
       const sessionId = getCurrentSessionId ? getCurrentSessionId() : null;
@@ -347,7 +441,6 @@ const Chat = () => {
   const handleReaction = async (messageId, reaction) => {
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId || m.type !== 'ai') return m;
-      // Toggle off if the same reaction is clicked, otherwise set new reaction
       const next = m.reaction === reaction ? null : reaction;
       return { ...m, reaction: next };
     }));
@@ -360,7 +453,6 @@ const Chat = () => {
       setCurrentRequestController(null);
       setLoadingProgress(0);
       
-      // Add a cancelled message
       const cancelMessage = {
         id: Date.now() + 1,
         type: 'ai',
@@ -377,283 +469,309 @@ const Chat = () => {
       e.preventDefault();
       handleSendMessage();
     }
-    // Allow Escape key to cancel ongoing requests
     if (e.key === 'Escape' && isLoading) {
       handleCancelRequest();
     }
   };
 
   return (
-    <div className="flex flex-col h-screen ios-page">
-      {/* Header */}
-      <div className="ios-header p-4 flex-shrink-0">
-          {/* Overlay removed for better contrast */}
-          <div className="flex items-center justify-between">
-           <div className="flex items-center space-x-3">
-             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-               <Bot className="w-5 h-5 text-white" />
-             </div>
-             <div>
-               <h1 className="text-xl font-semibold">Chat Practice</h1>
-               <p className="text-sm text-muted-foreground">Practice conversations with AI</p>
-             </div>
-           </div>
-           
-           {/* AI Status Indicator */}
-           <div className="flex items-center space-x-4">
-             {/* Gemini Status */}
-             {isGeminiAvailable() && (
-               <div className="flex items-center space-x-1 px-2 py-1 bg-white/70 backdrop-blur-sm rounded-full border border-slate-200">
-                  <Sparkles className="w-3 h-3 text-blue-500" />
-                  <span className="text-xs font-medium text-slate-700">Gemini</span>
-               </div>
-             )}
-             
-             {/* AI Status */}
-             <div className="flex items-center space-x-2">
-               <div className={`w-2 h-2 rounded-full ${
-                 aiStatus === 'ready' ? 'bg-green-500' :
-                 aiStatus === 'initializing' ? 'bg-yellow-500 animate-pulse' :
-                 aiStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
-               }`} />
-               <span className={getStatusColor()}>
-                 {getStatusMessage()}
-               </span>
-               {aiStatus === 'ready' && (
-                 <Zap className="w-3 h-3 text-green-500" />
-               )}
-             </div>
-             
-             {/* Performance Stats */}
-             {responseStats.totalRequests > 0 && (
-               <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded-full border border-green-200">
-                 <Zap className="w-3 h-3 text-green-600" />
-                 <span className="text-xs font-medium text-green-700">
-                   Avg: {(responseStats.averageTime / 1000).toFixed(1)}s
-                 </span>
-                 <span className="text-xs text-green-600" title={"Total requests: " + responseStats.totalRequests + ", Fastest: " + (responseStats.fastestTime / 1000).toFixed(1) + "s, Slowest: " + (responseStats.slowestTime / 1000).toFixed(1) + "s"}>
-                   ({responseStats.totalRequests})
-                 </span>
-               </div>
-             )}
-             
-             {/* Settings Button */}
-             <button
-               onClick={() => setShowGeminiSettings(!showGeminiSettings)}
-               className="p-2 hover:bg-accent rounded-lg transition-colors"
-               title="AI Settings"
-             >
-               
-             </button>
-           </div>
-         </div>
-      </div>
-
-      {/* Gemini Settings Panel */}
-      {showGeminiSettings && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="card-premium no-hover-motion shadow-soft p-4 rounded-xl"
-        >
-          <GeminiSettings />
-        </motion.div>
-      )}
-
-      {/* Messages */}
-      <div className="ios-chat-area flex-1 overflow-y-auto">
-        {/* Overlay removed for cleaner background */}
-        <AnimatePresence>
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`flex items-start space-x-3 max-w-xs lg:max-w-md ${
-                message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-              }`}>
-                {/* Avatar */}
-                <div className="ios-avatar flex-shrink-0">
-                  {message.type === 'user' ? (
-                    <User className="w-4 h-4" />
-                  ) : (
-                    <Bot className="w-4 h-4" />
-                  )}
-                </div>
-
-                {/* Message Bubble */}
-                <div className={`ios-bubble ${message.type === 'user' ? 'ios-bubble-user' : 'ios-bubble-ai'}`}>
-                  <div className="flex items-start space-x-2">
-                    <p className="text-sm flex-1">{message.content}</p>
+    <div className="flex h-screen ios-page">
+      {/* Sidebar - iOS-like chat history */}
+      <aside className="w-[320px] flex-shrink-0 bg-white border-r border-slate-200/70">
+        <div className="p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <MessageSquare className="w-5 h-5 text-slate-700" />
+            <span className="text-base font-semibold">Chats</span>
+          </div>
+          <button onClick={createNewChat} className="px-3 py-1.5 rounded-full bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors flex items-center space-x-1">
+            <Plus className="w-4 h-4" />
+            <span>New</span>
+          </button>
+        </div>
+        <div className="px-2">
+          {sessionsLoading ? (
+            <div className="p-3 text-sm text-muted-foreground">Loading history...</div>
+          ) : sessionsError ? (
+            <div className="p-3 text-sm text-red-600">{sessionsError}</div>
+          ) : (
+            <div className="space-y-1">
+              {(sessions || []).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => openSession(s)}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedSessionId === s.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'} `}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-800">{s.title || 'New Chat'}</span>
+                    <span className="text-xs text-slate-500">{new Date(s.last_message_at).toLocaleDateString()}</span>
                   </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs ios-timestamp">
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    {message.type === 'ai' ? (
-                      <div className="flex items-center gap-1">
-                        <div className="flex items-center gap-1 mr-1">
+                </button>
+              ))}
+              {(!sessions || sessions.length === 0) && (
+                <div className="p-3 text-sm text-muted-foreground">No history yet. Start a new chat!</div>
+              )}
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Main chat area */}
+      <div className="flex flex-col h-full flex-1">
+        {/* Header */}
+        <div className="ios-header p-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+             <div className="flex items-center space-x-3">
+               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                 <Bot className="w-5 h-5 text-white" />
+               </div>
+               <div>
+                 <h1 className="text-xl font-semibold">Chat Practice</h1>
+                 <p className="text-sm text-muted-foreground">Practice conversations with AI</p>
+               </div>
+             </div>
+             
+             {/* AI Status Indicator */}
+             <div className="flex items-center space-x-4">
+               {isGeminiAvailable() && (
+                 <div className="flex items-center space-x-1 px-2 py-1 bg-white/70 backdrop-blur-sm rounded-full border border-slate-200">
+                    <Sparkles className="w-3 h-3 text-blue-500" />
+                    <span className="text-xs font-medium text-slate-700">Gemini</span>
+                 </div>
+               )}
+               
+               <div className="flex items-center space-x-2">
+                 <div className={`w-2 h-2 rounded-full ${
+                   aiStatus === 'ready' ? 'bg-green-500' :
+                   aiStatus === 'initializing' ? 'bg-yellow-500 animate-pulse' :
+                   aiStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
+                 }`} />
+                 <span className={getStatusColor()}>
+                   {getStatusMessage()}
+                 </span>
+                 {aiStatus === 'ready' && (
+                   <Zap className="w-3 h-3 text-green-500" />
+                 )}
+               </div>
+               
+               {responseStats.totalRequests > 0 && (
+                 <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded-full border border-green-200">
+                   <Zap className="w-3 h-3 text-green-600" />
+                   <span className="text-xs font-medium text-green-700">
+                     Avg: {(responseStats.averageTime / 1000).toFixed(1)}s
+                   </span>
+                   <span className="text-xs text-green-600" title={"Total requests: " + responseStats.totalRequests + ", Fastest: " + (responseStats.fastestTime / 1000).toFixed(1) + "s, Slowest: " + (responseStats.slowestTime / 1000).toFixed(1) + "s"}>
+                     ({responseStats.totalRequests})
+                   </span>
+                 </div>
+               )}
+               
+               <button
+                 onClick={() => setShowGeminiSettings(!showGeminiSettings)}
+                 className="p-2 hover:bg-accent rounded-lg transition-colors"
+                 title="AI Settings"
+               >
+                 
+               </button>
+             </div>
+           </div>
+        </div>
+
+        {showGeminiSettings && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="card-premium no-hover-motion shadow-soft p-4 rounded-xl"
+          >
+            <GeminiSettings />
+          </motion.div>
+        )}
+
+        {/* Messages */}
+        <div className="ios-chat-area flex-1 overflow-y-auto">
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`flex items-start space-x-3 max-w-xs lg:max-w-md ${
+                  message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                }`}>
+                  <div className="ios-avatar flex-shrink-0">
+                    {message.type === 'user' ? (
+                      <User className="w-4 h-4" />
+                    ) : (
+                      <Bot className="w-4 h-4" />
+                    )}
+                  </div>
+
+                  <div className={`ios-bubble ${message.type === 'user' ? 'ios-bubble-user' : 'ios-bubble-ai'}`}>
+                    <div className="flex items-start space-x-2">
+                      <p className="text-sm flex-1">{message.content}</p>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs ios-timestamp">
+                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {message.type === 'ai' ? (
+                        <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 mr-1">
+                            <button
+                              onClick={() => handleReaction(message.id, 'like')}
+                              className={`p-1 rounded transition-colors transition-transform hover:bg-black/5 active:scale-95 ${
+                                message.reaction === "like"
+                                  ? "text-blue-600 opacity-100"
+                                  : message.reaction === "dislike"
+                                  ? "opacity-40 text-muted-foreground"
+                                  : "text-muted-foreground opacity-80"
+                              }`}
+                            >
+                              <ThumbsUp
+                                className={`w-3 h-3 ${message.reaction === "like" ? "scale-105" : ""}`}
+                                strokeWidth={message.reaction === "like" ? 2.5 : 2}
+                              />
+                            </button>
+                            <button
+                              onClick={() => handleReaction(message.id, 'dislike')}
+                              className={`p-1 rounded transition-colors transition-transform hover:bg-black/5 active:scale-95 ${
+                                message.reaction === "dislike"
+                                  ? "text-red-600 opacity-100"
+                                  : message.reaction === "like"
+                                  ? "opacity-40 text-muted-foreground"
+                                  : "text-muted-foreground opacity-80"
+                              }`}
+                            >
+                              <ThumbsDown
+                                className={`w-3 h-3 ${message.reaction === "dislike" ? "scale-105" : ""}`}
+                                strokeWidth={message.reaction === "dislike" ? 2.5 : 2}
+                              />
+                            </button>
+                          </div>
                           <button
-                            onClick={() => handleReaction(message.id, 'like')}
-                            className={`p-1 rounded transition-colors transition-transform hover:bg-black/5 active:scale-95 ${
-                              message.reaction === "like"
-                                ? "text-blue-600 opacity-100"
-                                : message.reaction === "dislike"
-                                ? "opacity-40 text-muted-foreground"
-                                : "text-muted-foreground opacity-80"
-                            }`}
+                            onClick={() => handleSpeakMessage(message.content)}
+                            className="p-1 rounded hover:bg-black/5 transition-colors"
+                            title="Listen to message"
                           >
-                            <ThumbsUp
-                              className={`w-3 h-3 ${message.reaction === "like" ? "scale-105" : ""}`}
-                              strokeWidth={message.reaction === "like" ? 2.5 : 2}
-                            />
-                          </button>
-                          <button
-                            onClick={() => handleReaction(message.id, 'dislike')}
-                            className={`p-1 rounded transition-colors transition-transform hover:bg-black/5 active:scale-95 ${
-                              message.reaction === "dislike"
-                                ? "text-red-600 opacity-100"
-                                : message.reaction === "like"
-                                ? "opacity-40 text-muted-foreground"
-                                : "text-muted-foreground opacity-80"
-                            }`}
-                          >
-                            <ThumbsDown
-                              className={`w-3 h-3 ${message.reaction === "dislike" ? "scale-105" : ""}`}
-                              strokeWidth={message.reaction === "dislike" ? 2.5 : 2}
-                            />
+                            <Volume2 className="w-3 h-3" />
                           </button>
                         </div>
-                        <button
-                          onClick={() => handleSpeakMessage(message.content)}
-                          className="p-1 rounded hover:bg-black/5 transition-colors"
-                          title="Listen to message"
-                        >
-                          <Volume2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-start"
+            >
+              <div className="flex items-start space-x-3 max-w-md">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <div className="ios-bubble ios-bubble-ai min-w-0 flex-1">
+                  <div className="flex items-center justify-between space-x-3">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm text-muted-foreground truncate">
+                        {loadingMessage}
+                      </span>
+                    </div>
+                    {currentRequestController && (
+                       <button
+                         onClick={handleCancelRequest}
+                         className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                         title="Cancel request (or press Escape)"
+                       >
+                         Cancel
+                       </button>
+                     )}
+                  </div>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
+                    <div 
+                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${loadingProgress}%` }}
+                    ></div>
+                  </div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">
+                    {loadingProgress < 100 ? `${Math.round(loadingProgress)}% complete` : 'Finalizing...'}
                   </div>
                 </div>
               </div>
             </motion.div>
-          ))}
-        </AnimatePresence>
+          )}
 
-        {/* Enhanced Loading indicator */}
-        {isLoading && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex justify-start"
-          >
-            <div className="flex items-start space-x-3 max-w-md">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
-              <div className="ios-bubble ios-bubble-ai min-w-0 flex-1">
-                <div className="flex items-center justify-between space-x-3">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
-                    <span className="text-sm text-muted-foreground truncate">
-                      {loadingMessage}
-                    </span>
-                  </div>
-                  {currentRequestController && (
-                     <button
-                       onClick={handleCancelRequest}
-                       className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors flex-shrink-0"
-                       title="Cancel request (or press Escape)"
-                     >
-                       Cancel
-                     </button>
-                   )}
-                </div>
-                {/* Progress bar */}
-                <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
-                  <div 
-                    className="bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
-                    style={{ width: `${loadingProgress}%` }}
-                  ></div>
-                </div>
-                <div className="text-xs text-muted-foreground/70 mt-1">
-                  {loadingProgress < 100 ? `${Math.round(loadingProgress)}% complete` : 'Finalizing...'}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Composer */}
-      <div className="ios-composer">
-        <div className="ios-input-wrap">
-          <div className="ios-input-field">
-            {/* Voice inside */}
-            <button
-              onClick={handleVoiceInput}
-              className={`ios-voice-button ${isRecording ? 'bg-red-500 text-white animate-pulse' : ''}`}
-              title={isRecording ? 'Stop recording' : 'Start voice input'}
-            >
-              {isRecording ? (
-                <MicOff className="w-5 h-5" />
-              ) : (
-                <Mic className="w-5 h-5" />
-              )}
-            </button>
-
-            {/* Text Input */}
-            <textarea
-              ref={inputRef}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your message here..."
-              className="ios-textarea"
-              rows={1}
-              style={{
-                minHeight: '44px',
-                maxHeight: '140px',
-                height: 'auto'
-              }}
-              onInput={(e) => {
-                e.target.style.height = 'auto';
-                e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
-              }}
-            />
-
-            {/* Send inside */}
-            <button
-              onClick={() => handleSendMessage()}
-              disabled={!inputMessage.trim() || isLoading}
-              className="ios-send-button"
-              title="Send message"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </div>
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Recording indicator */}
-        {isRecording && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 flex items-center justify-center space-x-2 text-red-500"
-          >
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-sm font-medium">Recording...</span>
-          </motion.div>
-        )}
+        {/* Composer */}
+        <div className="ios-composer">
+          <div className="ios-input-wrap">
+            <div className="ios-input-field">
+              <button
+                onClick={handleVoiceInput}
+                className={`ios-voice-button ${isRecording ? 'bg-red-500 text-white animate-pulse' : ''}`}
+                title={isRecording ? 'Stop recording' : 'Start voice input'}
+              >
+                {isRecording ? (
+                  <MicOff className="w-5 h-5" />
+                ) : (
+                  <Mic className="w-5 h-5" />
+                )}
+              </button>
+
+              <textarea
+                ref={inputRef}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message here..."
+                className="ios-textarea"
+                rows={1}
+                style={{
+                  minHeight: '44px',
+                  maxHeight: '140px',
+                  height: 'auto'
+                }}
+                onInput={(e) => {
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+                }}
+              />
+
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={!inputMessage.trim() || isLoading}
+                className="ios-send-button"
+                title="Send message"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {isRecording && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 flex items-center justify-center space-x-2 text-red-500"
+            >
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-sm font-medium">Recording...</span>
+            </motion.div>
+          )}
+        </div>
       </div>
-      </div>
-    );
+    </div>
+  );
 };
 
 export default Chat;

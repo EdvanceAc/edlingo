@@ -485,6 +485,167 @@ class SupabaseService {
     }
   }
 
+  // Chat Sessions & Messages
+  async createChatSession(userId, initialTitle = null) {
+    try {
+      if (!this.isConnected) {
+        return { success: false, error: 'Database not connected. Please check SETUP_DATABASE.md for setup instructions.' };
+      }
+      if (!userId) {
+        return { success: false, error: 'No authenticated user' };
+      }
+      const payload = {
+        user_id: userId,
+        title: initialTitle,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_message_at: new Date().toISOString()
+      };
+      const { data, error } = await this.client
+        .from('chat_sessions')
+        .insert(payload)
+        .select()
+        .single();
+      if (error) {
+        if (error.code === '42P01') {
+          return { success: false, error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md' };
+        }
+        throw error;
+      }
+      return { success: true, data };
+    } catch (error) {
+      console.error('Create chat session error:', error);
+      return { success: false, error: error.message || 'Failed to create chat session' };
+    }
+  }
+
+  async listChatSessions(userId, limit = 50) {
+    try {
+      if (!this.isConnected) {
+        return { success: false, error: 'Database not connected. Please check SETUP_DATABASE.md for setup instructions.', data: [] };
+      }
+      if (!userId) {
+        return { success: false, error: 'No authenticated user', data: [] };
+      }
+      const { data, error } = await this.client
+        .from('chat_sessions')
+        .select('id,title,created_at,updated_at,last_message_at')
+        .eq('user_id', userId)
+        .order('last_message_at', { ascending: false })
+        .limit(limit);
+      if (error) {
+        if (error.code === '42P01') {
+          return { success: false, error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md', data: [] };
+        }
+        throw error;
+      }
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('List chat sessions error:', error);
+      return { success: false, error: error.message || 'Failed to list chat sessions', data: [] };
+    }
+  }
+
+  async getChatMessages(sessionId) {
+    try {
+      if (!this.isConnected) {
+        return { success: false, error: 'Database not connected. Please check SETUP_DATABASE.md for setup instructions.', data: [] };
+      }
+      if (!sessionId) {
+        return { success: false, error: 'Session ID is required', data: [] };
+      }
+      const { data, error } = await this.client
+        .from('chat_messages')
+        .select('id,session_id,user_id,role,content,metadata,audio_url,model,input_tokens,output_tokens,created_at')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+      if (error) {
+        if (error.code === '42P01') {
+          return { success: false, error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md', data: [] };
+        }
+        throw error;
+      }
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Get chat messages error:', error);
+      return { success: false, error: error.message || 'Failed to get chat messages', data: [] };
+    }
+  }
+
+  async saveChatMessage({ sessionId, userId, role, content, metadata = null, audioUrl = null, model = null, inputTokens = null, outputTokens = null }) {
+    try {
+      if (!this.isConnected) {
+        return { success: false, error: 'Database not connected. Please check SETUP_DATABASE.md for setup instructions.' };
+      }
+      if (!sessionId || !userId || !role || !content) {
+        return { success: false, error: 'Missing required fields (sessionId, userId, role, content)' };
+      }
+      const payload = {
+        session_id: sessionId,
+        user_id: userId,
+        role,
+        content,
+        metadata,
+        audio_url: audioUrl,
+        model,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        created_at: new Date().toISOString()
+      };
+      const { data, error } = await this.client
+        .from('chat_messages')
+        .insert(payload)
+        .select()
+        .single();
+      if (error) {
+        if (error.code === '42P01') {
+          return { success: false, error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md' };
+        }
+        throw error;
+      }
+      // Update session with latest info
+      await this.client
+        .from('chat_sessions')
+        .update({
+          updated_at: new Date().toISOString(),
+          last_message_at: new Date().toISOString(),
+          title: role === 'user' ? (content?.slice(0, 60) || 'New Chat') : undefined
+        })
+        .eq('id', sessionId);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Save chat message error:', error);
+      return { success: false, error: error.message || 'Failed to save chat message' };
+    }
+  }
+
+  async updateChatSession(sessionId, updates) {
+    try {
+      if (!this.isConnected) {
+        return { success: false, error: 'Database not connected. Please check SETUP_DATABASE.md for setup instructions.' };
+      }
+      const { data, error } = await this.client
+        .from('chat_sessions')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId)
+        .select()
+        .single();
+      if (error) {
+        if (error.code === '42P01') {
+          return { success: false, error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md' };
+        }
+        throw error;
+      }
+      return { success: true, data };
+    } catch (error) {
+      console.error('Update chat session error:', error);
+      return { success: false, error: error.message || 'Failed to update chat session' };
+    }
+  }
+
   // Real-time subscriptions
   subscribeToUserProgress(userId, callback) {
     return this.client
