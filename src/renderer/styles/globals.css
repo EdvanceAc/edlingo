@@ -1037,9 +1037,43 @@
   border-bottom-left-radius: 18px;
 }
 
-.ios-timestamp { color: var(--ios-subtext); }
+.ios-timestamp { color: var(--ios-subtext); font-size: 11px; font-weight: 300; line-height: 1.2; }
+/* Darker timestamp for AI bubble to improve contrast */
+.ios-bubble-ai .ios-timestamp { color: #6d6d72; }
 /* Ensure timestamp is readable on blue user bubble */
-.ios-bubble-user .ios-timestamp { color: rgba(255,255,255,0.95); }
+.ios-bubble-user .ios-timestamp { color: rgba(255,255,255,0.85); }
+
+/* Reduce internal gap above timestamp inside bubble */
+.ios-bubble .mt-2 { margin-top: 4px !important; }
+
+/* Bubble tails */
+.ios-bubble-user { margin-right: 2px; }
+.ios-bubble-user::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  bottom: 10px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-bottom-left-radius: 10px;
+  transform: rotate(45deg);
+}
+
+.ios-bubble-ai { margin-left: 2px; }
+.ios-bubble-ai::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  bottom: 10px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-bottom-right-radius: 10px;
+  transform: rotate(-45deg);
+  border-left: 1px solid var(--ios-border);
+  border-bottom: 1px solid var(--ios-border);
+}
 
 @media (max-width: 640px) {
   .ios-bubble { max-width: 86%; }
