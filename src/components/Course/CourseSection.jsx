@@ -149,10 +149,10 @@ const CourseSection = () => {
           isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
-        <Card className={`relative overflow-hidden h-full transition-all duration-300 ${
+        <Card className={`card card-premium card-hover relative overflow-hidden h-full transition-all duration-300 rounded-xl ${
           isLocked 
             ? 'bg-muted/50 border-border opacity-60' 
-            : 'border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent rounded-xl hover:border-primary/30 hover:shadow-soft'
+            : 'border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent hover:border-primary/30 hover:shadow-soft ring-1 ring-primary/20 backdrop-blur-sm'
         }`} onClick={() => { if (!isLocked) navigate(`/courses/${unit.id}`); }}>
           {!isLocked && (
             <div className="pointer-events-none absolute -top-10 -left-10 w-40 h-40 rounded-full bg-primary/20 blur-2xl" />
@@ -160,13 +160,13 @@ const CourseSection = () => {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className={`text-3xl p-2 rounded-xl ${
-                  isLocked ? 'bg-muted' : 'bg-white/10 backdrop-blur-sm shadow-soft'
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
+                  isLocked ? 'bg-muted' : 'bg-white/20 backdrop-blur-sm ring-1 ring-primary/30 shadow-soft'
                 }`}>
                   {isLocked ? <Lock className="w-6 h-6 text-muted-foreground" /> : unit.icon}
                 </div>
                 <div>
-                  <CardTitle className={`text-lg font-semibold tracking-tight ${
+                  <CardTitle className={`text-xl font-semibold tracking-tight ${
                     isLocked ? 'text-muted-foreground' : 'text-foreground'
                   }`}>
                     {unit.title}
@@ -210,7 +210,7 @@ const CourseSection = () => {
                     initial={{ width: 0 }}
                     animate={{ width: `${unit.progress}%` }}
                     transition={{ duration: 0.8, delay: 0.2 + index * 0.05 }}
-                    className="progress-modern-bar bg-primary"
+                    className="progress-modern-bar"
                   />
                 </div>
               </div>
@@ -232,8 +232,8 @@ const CourseSection = () => {
                 {!isLocked && (
                   <Button 
                     size="sm" 
-                    variant={unit.progress > 0 ? "default" : "outline"}
-                    className="text-xs glass ring-1 ring-primary/30 hover:ring-primary/50"
+                    variant={unit.progress > 0 ? "outline" : "outline"}
+                    className="text-xs bg-white/60 backdrop-blur-sm ring-1 ring-primary/30 hover:bg-white/80 hover:ring-primary/50"
                     onClick={(e) => { e.stopPropagation(); navigate(`/courses/${unit.id}`); }}
                   >
                     {unit.progress > 0 ? (
