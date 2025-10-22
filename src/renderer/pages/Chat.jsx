@@ -5,6 +5,7 @@ import { useAudio } from '../providers/AudioProvider';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAI } from '../providers/AIProvider';
 import GeminiSettings from '../components/ui/GeminiSettings';
+import supabaseService from "../services/supabaseService.js";
 
 const Chat = () => {
   const [messages, setMessages] = useState([
@@ -323,7 +324,27 @@ const Chat = () => {
     speakText(content, { lang: 'en-US', rate: 0.9 });
   };
 
-  const handleReaction = (messageId, reaction) => {
+  // Persist reaction to Supabase for later quality review
+  const persistReaction = async (messageId, nextReaction, messageContent) => {
+    try {
+      const sessionId = getCurrentSessionId ? getCurrentSessionId() : null;
+      const userId = await supabaseService.getOrCreateUserProfileId();
+      const result = await supabaseService.saveChatReaction({
+        userId,
+        sessionId,
+        messageId,
+        reaction: nextReaction,
+        messageContent,
+      });
+      if (!result?.success) {
+        console.warn("Failed to save reaction:", result?.error);
+      }
+    } catch (e) {
+      console.warn("Reaction persistence error:", e?.message || e);
+    }
+  };
+
+  const handleReaction = async (messageId, reaction) => {
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId || m.type !== 'ai') return m;
       // Toggle off if the same reaction is clicked, otherwise set new reaction
@@ -478,17 +499,33 @@ const Chat = () => {
                         <div className="flex items-center gap-1 mr-1">
                           <button
                             onClick={() => handleReaction(message.id, 'like')}
-                            className={`p-1 rounded hover:bg-black/5 transition-colors ${message.reaction === 'like' ? 'text-blue-600' : 'text-muted-foreground'}`}
-                            title="Like"
+                            className={`p-1 rounded transition-colors transition-transform hover:bg-black/5 active:scale-95 ${
+                              message.reaction === "like"
+                                ? "text-blue-600 opacity-100"
+                                : message.reaction === "dislike"
+                                ? "opacity-40 text-muted-foreground"
+                                : "text-muted-foreground opacity-80"
+                            }`}
                           >
-                            <ThumbsUp className="w-3 h-3" />
+                            <ThumbsUp
+                              className={`w-3 h-3 ${message.reaction === "like" ? "scale-105" : ""}`}
+                              strokeWidth={message.reaction === "like" ? 2.5 : 2}
+                            />
                           </button>
                           <button
                             onClick={() => handleReaction(message.id, 'dislike')}
-                            className={`p-1 rounded hover:bg-black/5 transition-colors ${message.reaction === 'dislike' ? 'text-red-600' : 'text-muted-foreground'}`}
-                            title="Dislike"
+                            className={`p-1 rounded transition-colors transition-transform hover:bg-black/5 active:scale-95 ${
+                              message.reaction === "dislike"
+                                ? "text-red-600 opacity-100"
+                                : message.reaction === "like"
+                                ? "opacity-40 text-muted-foreground"
+                                : "text-muted-foreground opacity-80"
+                            }`}
                           >
-                            <ThumbsDown className="w-3 h-3" />
+                            <ThumbsDown
+                              className={`w-3 h-3 ${message.reaction === "dislike" ? "scale-105" : ""}`}
+                              strokeWidth={message.reaction === "dislike" ? 2.5 : 2}
+                            />
                           </button>
                         </div>
                         <button

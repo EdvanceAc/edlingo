@@ -408,6 +408,83 @@ class SupabaseService {
     }
   }
 
+  // Chat Reactions
+  async saveChatReaction({ userId, sessionId = null, messageId, reaction, messageContent = null }) {
+    try {
+      if (!this.isConnected) {
+        return {
+          success: false,
+          error: 'Database not connected. Please check SETUP_DATABASE.md for setup instructions.'
+        };
+      }
+      if (!userId) {
+        return { success: false, error: 'No authenticated user' };
+      }
+      if (!messageId) {
+        return { success: false, error: 'Missing messageId' };
+      }
+      if (!reaction) {
+        return { success: false, error: 'Missing reaction' };
+      }
+
+      const payload = {
+        user_id: userId,
+        session_id: sessionId,
+        message_id: String(messageId),
+        reaction,
+        message_excerpt: messageContent ? String(messageContent).slice(0, 200) : null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: existing, error: selErr } = await this.client
+        .from('chat_reactions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('message_id', String(messageId))
+        .eq('session_id', sessionId)
+        .limit(1);
+
+      if (selErr && selErr.code === '42P01') {
+        return {
+          success: false,
+          error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md'
+        };
+      }
+      if (selErr && selErr.code !== 'PGRST116') throw selErr;
+
+      if (Array.isArray(existing) && existing.length > 0) {
+        const { data, error } = await this.client
+          .from('chat_reactions')
+          .update({ reaction, updated_at: new Date().toISOString() })
+          .eq('id', existing[0].id)
+          .select()
+          .single();
+        if (error) throw error;
+        return { success: true, data };
+      }
+
+      const { data, error } = await this.client
+        .from('chat_reactions')
+        .insert(payload)
+        .select()
+        .single();
+      if (error) {
+        if (error.code === '42P01') {
+          return {
+            success: false,
+            error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md'
+          };
+        }
+        throw error;
+      }
+      return { success: true, data };
+    } catch (error) {
+      console.error('Save chat reaction error:', error);
+      return { success: false, error: error.message || 'Failed to save reaction' };
+    }
+  }
+
   // Real-time subscriptions
   subscribeToUserProgress(userId, callback) {
     return this.client
