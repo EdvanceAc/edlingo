@@ -350,70 +350,71 @@ const Chat = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen ios-page">
       {/* Header */}
-      <div className="relative overflow-hidden p-4 flex-shrink-0 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-lg">
-        <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-violet-200/40 via-sky-200/30 to-pink-200/40" />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold">Chat Practice</h1>
-              <p className="text-sm text-muted-foreground">Practice conversations with AI</p>
-            </div>
-          </div>
-          
-          {/* AI Status Indicator */}
-          <div className="flex items-center space-x-4">
-            {/* Gemini Status */}
-            {isGeminiAvailable() && (
-              <div className="flex items-center space-x-1 px-2 py-1 bg-gradient-to-r from-blue-50 to-purple-50 rounded-full border border-blue-200">
-                <Sparkles className="w-3 h-3 text-blue-500" />
-                <span className="text-xs font-medium text-blue-700">Gemini</span>
-              </div>
-            )}
-            
-            {/* AI Status */}
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${
-                aiStatus === 'ready' ? 'bg-green-500' :
-                aiStatus === 'initializing' ? 'bg-yellow-500 animate-pulse' :
-                aiStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
-              }`} />
-              <span className={getStatusColor()}>
-                {getStatusMessage()}
-              </span>
-              {aiStatus === 'ready' && (
-                <Zap className="w-3 h-3 text-green-500" />
-              )}
-            </div>
-            
-            {/* Performance Stats */}
-            {responseStats.totalRequests > 0 && (
-              <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded-full border border-green-200">
-                <Zap className="w-3 h-3 text-green-600" />
-                <span className="text-xs font-medium text-green-700">
-                  Avg: {(responseStats.averageTime / 1000).toFixed(1)}s
-                </span>
-                <span className="text-xs text-green-600" title={`Total requests: ${responseStats.totalRequests}\nFastest: ${(responseStats.fastestTime / 1000).toFixed(1)}s\nSlowest: ${(responseStats.slowestTime / 1000).toFixed(1)}s`}>
-                  ({responseStats.totalRequests})
-                </span>
-              </div>
-            )}
-            
-            {/* Settings Button */}
-            <button
-              onClick={() => setShowGeminiSettings(!showGeminiSettings)}
-              className="p-2 hover:bg-accent rounded-lg transition-colors"
-              title="AI Settings"
-            >
-              
-            </button>
-          </div>
-        </div>
-      </div>
+      <div className="ios-header p-4 flex-shrink-0">
+      -         <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-violet-200/40 via-sky-200/30 to-pink-200/40" />
+      +         {/* Overlay removed for better contrast */}
+          <div className="flex items-center justify-between">
+           <div className="flex items-center space-x-3">
+             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+               <Bot className="w-5 h-5 text-white" />
+             </div>
+             <div>
+               <h1 className="text-xl font-semibold">Chat Practice</h1>
+               <p className="text-sm text-muted-foreground">Practice conversations with AI</p>
+             </div>
+           </div>
+           
+           {/* AI Status Indicator */}
+           <div className="flex items-center space-x-4">
+             {/* Gemini Status */}
+             {isGeminiAvailable() && (
+               <div className="flex items-center space-x-1 px-2 py-1 bg-white/70 backdrop-blur-sm rounded-full border border-slate-200">
+                  <Sparkles className="w-3 h-3 text-blue-500" />
+                  <span className="text-xs font-medium text-slate-700">Gemini</span>
+               </div>
+             )}
+             
+             {/* AI Status */}
+             <div className="flex items-center space-x-2">
+               <div className={`w-2 h-2 rounded-full ${
+                 aiStatus === 'ready' ? 'bg-green-500' :
+                 aiStatus === 'initializing' ? 'bg-yellow-500 animate-pulse' :
+                 aiStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
+               }`} />
+               <span className={getStatusColor()}>
+                 {getStatusMessage()}
+               </span>
+               {aiStatus === 'ready' && (
+                 <Zap className="w-3 h-3 text-green-500" />
+               )}
+             </div>
+             
+             {/* Performance Stats */}
+             {responseStats.totalRequests > 0 && (
+               <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded-full border border-green-200">
+                 <Zap className="w-3 h-3 text-green-600" />
+                 <span className="text-xs font-medium text-green-700">
+                   Avg: {(responseStats.averageTime / 1000).toFixed(1)}s
+                 </span>
+                 <span className="text-xs text-green-600" title={"Total requests: " + responseStats.totalRequests + ", Fastest: " + (responseStats.fastestTime / 1000).toFixed(1) + "s, Slowest: " + (responseStats.slowestTime / 1000).toFixed(1) + "s"}>
+                   ({responseStats.totalRequests})
+                 </span>
+               </div>
+             )}
+             
+             {/* Settings Button */}
+             <button
+               onClick={() => setShowGeminiSettings(!showGeminiSettings)}
+               className="p-2 hover:bg-accent rounded-lg transition-colors"
+               title="AI Settings"
+             >
+               
+             </button>
+           </div>
+         </div>
+       </div>
 
       {/* Gemini Settings Panel */}
       {showGeminiSettings && (
@@ -421,15 +422,15 @@ const Chat = () => {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="p-4 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-md"
+          className="card-premium no-hover-motion shadow-soft p-4 rounded-xl"
         >
           <GeminiSettings />
         </motion.div>
       )}
 
       {/* Messages */}
-      <div className="relative flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-        <div className="pointer-events-none absolute inset-0 opacity-60 bg-gradient-to-b from-transparent via-indigo-50/50 to-transparent" />
+      <div className="ios-chat-area flex-1 overflow-y-auto">
+        {/* Overlay removed for cleaner background */}
         <AnimatePresence>
           {messages.map((message) => (
             <motion.div
@@ -443,33 +444,21 @@ const Chat = () => {
                 message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
               }`}>
                 {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  message.type === 'user' 
-                    ? 'bg-gradient-to-br from-green-500 to-green-600' 
-                    : 'bg-gradient-to-br from-blue-500 to-purple-600'
-                }`}>
+                <div className="ios-avatar flex-shrink-0">
                   {message.type === 'user' ? (
-                    <User className="w-4 h-4 text-white" />
+                    <User className="w-4 h-4" />
                   ) : (
-                    <Bot className="w-4 h-4 text-white" />
+                    <Bot className="w-4 h-4" />
                   )}
                 </div>
 
                 {/* Message Bubble */}
-                <div className={`rounded-2xl px-4 py-3 shadow-sm ring-1 ${
-                  message.type === 'user'
-                    ? 'bg-white/70 backdrop-blur-md ring-white/60 text-gray-900 rounded-br-md'
-                    : 'bg-white/60 backdrop-blur-md ring-white/60 text-gray-700 rounded-bl-md'
-                }`}>
+                <div className={`ios-bubble ${message.type === 'user' ? 'ios-bubble-user' : 'ios-bubble-ai'}`}>
                   <div className="flex items-start space-x-2">
                     <p className="text-sm flex-1">{message.content}</p>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className={`text-xs ${
-                      message.type === 'user' 
-                        ? 'text-gray-600' 
-                        : 'text-gray-600'
-                    }`}>
+                    <span className="text-xs ios-timestamp">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                     {message.type === 'ai' && (
@@ -499,7 +488,7 @@ const Chat = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                 <Bot className="w-4 h-4 text-white" />
               </div>
-              <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 min-w-0 flex-1">
+              <div className="ios-bubble ios-bubble-ai min-w-0 flex-1">
                 <div className="flex items-center justify-between space-x-3">
                   <div className="flex items-center space-x-2 min-w-0">
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
@@ -520,7 +509,7 @@ const Chat = () => {
                 {/* Progress bar */}
                 <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
                   <div 
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-1.5 rounded-full transition-all duration-300 ease-out"
+                    className="bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
                     style={{ width: `${loadingProgress}%` }}
                   ></div>
                 </div>
@@ -536,73 +525,72 @@ const Chat = () => {
       </div>
 
       {/* Input Area */}
-      <div className="relative p-4 flex-shrink-0 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-lg">
-        <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-blue-200/40 via-teal-200/30 to-purple-200/40" />
-        <div className="flex items-end space-x-3">
-          {/* Voice Input Button */}
-          <button
-            onClick={handleVoiceInput}
-            className={`p-3 rounded-full transition-all duration-200 ${
-              isRecording 
-                ? 'bg-red-500 text-white animate-pulse' 
-                : 'bg-accent hover:bg-accent/80 text-accent-foreground'
-            }`}
-            title={isRecording ? 'Stop recording' : 'Start voice input'}
-          >
-            {isRecording ? (
-              <MicOff className="w-5 h-5" />
-            ) : (
-              <Mic className="w-5 h-5" />
-            )}
-          </button>
+      <div className="ios-input">
+      -         <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-blue-200/40 via-teal-200/30 to-purple-200/40" />
+      +         {/* Overlay removed to reduce tinting and eye strain */}
+          <div className="flex items-end space-x-3">
+           {/* Voice Input Button */}
+           <button
+             onClick={handleVoiceInput}
+             className={`ios-voice-button transition-all duration-200 ${
+               isRecording ? 'bg-red-500 text-white animate-pulse' : ''
+             }`}
+             title={isRecording ? 'Stop recording' : 'Start voice input'}
+           >
+             {isRecording ? (
+               <MicOff className="w-5 h-5" />
+             ) : (
+               <Mic className="w-5 h-5" />
+             )}
+           </button>
 
-          {/* Text Input */}
-          <div className="flex-1 relative">
-            <textarea
-              ref={inputRef}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your message here..."
-              className="w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-              rows={1}
-              style={{
-                minHeight: '48px',
-                maxHeight: '120px',
-                height: 'auto'
-              }}
-              onInput={(e) => {
-                e.target.style.height = 'auto';
-                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-              }}
-            />
-          </div>
+           {/* Text Input */}
+           <div className="flex-1 relative">
+             <textarea
+               ref={inputRef}
+               value={inputMessage}
+               onChange={(e) => setInputMessage(e.target.value)}
+               onKeyPress={handleKeyPress}
+               placeholder="Type your message here..."
+               className="ios-textarea"
+               rows={1}
+               style={{
+                 minHeight: '48px',
+                 maxHeight: '120px',
+                 height: 'auto'
+               }}
+               onInput={(e) => {
+                 e.target.style.height = 'auto';
+                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+               }}
+             />
+           </div>
 
-          {/* Send Button */}
-          <button
-            onClick={() => handleSendMessage()}
-            disabled={!inputMessage.trim() || isLoading}
-            className="p-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-            title="Send message"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
+           {/* Send Button */}
+           <button
+             onClick={() => handleSendMessage()}
+             disabled={!inputMessage.trim() || isLoading}
+             className="ios-send-button"
+             title="Send message"
+           >
+             <Send className="w-5 h-5" />
+           </button>
+         </div>
 
-        {/* Recording indicator */}
-        {isRecording && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 flex items-center justify-center space-x-2 text-red-500"
-          >
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-sm font-medium">Recording...</span>
-          </motion.div>
-        )}
-      </div>
-    </div>
-  );
+         {/* Recording indicator */}
+         {isRecording && (
+           <motion.div
+             initial={{ opacity: 0, y: 10 }}
+             animate={{ opacity: 1, y: 0 }}
+             className="mt-3 flex items-center justify-center space-x-2 text-red-500"
+           >
+             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+             <span className="text-sm font-medium">Recording...</span>
+           </motion.div>
+         )}
+       </div>
+     </div>
+   );
 };
 
 export default Chat;
