@@ -286,8 +286,8 @@ export const AIProvider = ({ children }) => {
 
   const loadConversationFromMessages = (messages = []) => {
     const mapped = messages.map(m => ({
-      role: m.role === 'user' ? 'user' : 'assistant',
-      content: m.content,
+      role: (m?.message_type || m?.role || (m?.is_user ? 'user' : 'assistant')) === 'user' ? 'user' : 'assistant',
+      content: m?.content || m?.message || '',
       timestamp: new Date(m.created_at || Date.now()),
       sessionId: m.session_id
     }));

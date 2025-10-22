@@ -554,14 +554,13 @@ class SupabaseService {
       if (!sessionId) {
         return { success: false, error: 'Session ID is required', data: [] };
       }
-      const { data, error } = await this.client
-        .from('chat_messages')
-        .select('id,session_id,user_id,role,content,metadata,audio_url,model,input_tokens,output_tokens,created_at')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
+      // Use RPC to ensure RLS respects session ownership and type casts
+      const { data, error } = await this.client.rpc('get_chat_messages_for_session', {
+        p_session_id: sessionId
+      });
       if (error) {
         if (error.code === '42P01') {
-          return { success: false, error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md', data: [] };
+          return { success: false, error: 'Database function not found. Please run the database migration. See SETUP_DATABASE.md', data: [] };
         }
         throw error;
       }
@@ -580,16 +579,14 @@ class SupabaseService {
       if (!sessionId || !userId || !role || !content) {
         return { success: false, error: 'Missing required fields (sessionId, userId, role, content)' };
       }
+      // Align with current DB schema: message_type/content columns exist; drop unsupported fields
       const payload = {
         session_id: sessionId,
         user_id: userId,
-        role,
         content,
-        metadata,
-        audio_url: audioUrl,
-        model,
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
+        message_type: role === 'assistant' ? 'assistant' : 'user',
+        user_level: metadata?.userLevel || metadata?.level || null,
+        focus_area: metadata?.focusArea || null,
         created_at: new Date().toISOString()
       };
       const { data, error } = await this.client

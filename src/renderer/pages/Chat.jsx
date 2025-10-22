@@ -110,14 +110,17 @@ const Chat = () => {
       try {
         const { success, data } = await supabaseService.getChatMessages(session.id);
         if (success) {
-          // Map messages to UI structure
-          const mapped = (data || []).map(m => ({
-            id: m.id,
-            type: m.role === 'user' ? 'user' : 'ai',
-            content: m.content,
-            timestamp: new Date(m.created_at),
-            reaction: null
-          }));
+          // Map messages to UI structure (support both legacy and current schema)
+          const mapped = (data || []).map(m => {
+            const role = m?.message_type || m?.role || (m?.is_user ? 'user' : 'assistant');
+            return {
+              id: m.id,
+              type: role === 'user' ? 'user' : 'ai',
+              content: m?.content || m?.message || '',
+              timestamp: new Date(m.created_at),
+              reaction: null
+            };
+          });
           setMessages(mapped.length > 0 ? mapped : [
             {
               id: Date.now(),
