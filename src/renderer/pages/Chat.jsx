@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles, ThumbsUp, ThumbsDown, Plus, MessageSquare, Pencil, Trash2 } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles, ThumbsUp, ThumbsDown, Plus, MessageSquare, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAudio } from '../providers/AudioProvider';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAI } from '../providers/AIProvider';
@@ -29,6 +29,8 @@ const Chat = () => {
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
   const messageChannelRef = useRef(null);
   const messagesRef = useRef(messages);
   // Streaming functionality removed for simple chatbot
@@ -72,13 +74,12 @@ const Chat = () => {
 
   useEffect(() => {
     // Do not auto-create sessions. If an existing session id is present, select it.
-    if (isReady) {
-      const existingId = getCurrentSessionId && getCurrentSessionId();
-      if (existingId) {
-        setSelectedSessionId(existingId);
-      }
+    if (!isReady) return;
+    const existingId = getCurrentSessionId && getCurrentSessionId();
+    if (existingId && existingId !== selectedSessionId) {
+      setSelectedSessionId(existingId);
     }
-  }, [isReady, getCurrentSessionId]);
+  }, [isReady, getCurrentSessionId, selectedSessionId]);
 
   useEffect(() => {
     // Load sessions from Supabase when user is available
@@ -564,58 +565,77 @@ const Chat = () => {
   return (
     <div className="flex h-screen ios-page">
       {/* Sidebar - iOS-like chat history */}
-      <aside className="w-[320px] flex-shrink-0 bg-white border-r border-slate-200/70">
+      <aside className={`${isSidebarCollapsed ? 'w-[56px]' : 'w-[320px]'} flex-shrink-0 bg-white border-r border-slate-200/70 transition-all duration-300 overflow-hidden`}> 
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <MessageSquare className="w-5 h-5 text-slate-700" />
-            <span className="text-base font-semibold">Chats</span>
-          </div>
-          <button onClick={createNewChat} className="px-3 py-1.5 rounded-full bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors flex items-center space-x-1">
-            <Plus className="w-4 h-4" />
-            <span>New</span>
-          </button>
-        </div>
-        <div className="px-2">
-          {sessionsLoading ? (
-            <div className="p-3 text-sm text-muted-foreground">Loading history...</div>
-          ) : sessionsError ? (
-            <div className="p-3 text-sm text-red-600">{sessionsError}</div>
-          ) : (
-            <div className="space-y-1">
-              {(sessions || []).map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => openSession(s)}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedSessionId === s.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'} `}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-800">{s.title || 'New Chat'}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500">{new Date(s.last_message_at).toLocaleDateString()}</span>
-                      <button
-                        onClick={(e) => handleRenameSession(e, s)}
-                        className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700"
-                        title="Rename"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteSession(e, s)}
-                        className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </button>
-              ))}
-              {(!sessions || sessions.length === 0) && (
-                <div className="p-3 text-sm text-muted-foreground">No history yet. Start a new chat!</div>
+            <button onClick={toggleSidebar} className="p-1.5 rounded-full hover:bg-slate-100" title={isSidebarCollapsed ? 'باز کردن' : 'بستن'}>
+              {isSidebarCollapsed ? (
+                <ChevronRight className="w-4 h-4 text-slate-700" />
+              ) : (
+                <ChevronLeft className="w-4 h-4 text-slate-700" />
               )}
-            </div>
+            </button>
+            {!isSidebarCollapsed && (
+              <>
+                <MessageSquare className="w-5 h-5 text-slate-700" />
+                <span className="text-base font-semibold">Chats</span>
+              </>
+            )}
+          </div>
+          {!isSidebarCollapsed ? (
+            <button onClick={createNewChat} className="px-3 py-1.5 rounded-full bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors flex items-center space-x-1">
+              <Plus className="w-4 h-4" />
+              <span>New</span>
+            </button>
+          ) : (
+            <button onClick={createNewChat} className="p-1.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors" title="New">
+              <Plus className="w-4 h-4" />
+            </button>
           )}
         </div>
+        {!isSidebarCollapsed && (
+          <div className="px-2">
+            {sessionsLoading ? (
+              <div className="p-3 text-sm text-muted-foreground">Loading history...</div>
+            ) : sessionsError ? (
+              <div className="p-3 text-sm text-red-600">{sessionsError}</div>
+            ) : (
+              <div className="space-y-1">
+                {(sessions || []).map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => openSession(s)}
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedSessionId === s.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'} `}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-800">{s.title || 'New Chat'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">{new Date(s.last_message_at).toLocaleDateString()}</span>
+                        <button
+                          onClick={(e) => handleRenameSession(e, s)}
+                          className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                          title="Rename"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteSession(e, s)}
+                          className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                {(!sessions || sessions.length === 0) && (
+                  <div className="p-3 text-sm text-muted-foreground">No history yet. Start a new chat!</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </aside>
 
       {/* Main chat area */}
