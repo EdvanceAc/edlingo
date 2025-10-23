@@ -29,7 +29,44 @@ const Chat = () => {
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState(null);
+  // Sidebar collapse state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Hover peek when collapsed
+  const [isHoverPeek, setIsHoverPeek] = useState(false);
+  
+  // Persist collapse state
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('chatSidebarCollapsed');
+      if (saved !== null) {
+        setIsSidebarCollapsed(saved === 'true');
+      }
+    } catch (e) {
+      // ignore storage errors
+    }
+  }, []);
+  
+  useEffect(() => {
+    try {
+      localStorage.setItem('chatSidebarCollapsed', String(isSidebarCollapsed));
+    } catch (e) {
+      // ignore storage errors
+    }
+  }, [isSidebarCollapsed]);
+  
+  // Keyboard shortcut: Ctrl+B toggles sidebar
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setIsSidebarCollapsed(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  
+  // Toggle handler
   const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
   const messageChannelRef = useRef(null);
   const messagesRef = useRef(messages);
@@ -478,23 +515,21 @@ const Chat = () => {
 
   const handleRenameSession = async (e, session) => {
     e.stopPropagation();
-    const input = window.prompt('نام چت را وارد کنید', session.title || 'New Chat');
+    const input = window.prompt('Enter chat name', session.title || 'New Chat');
     if (input === null) return; // cancelled
     const title = input.trim();
     if (!title) return;
     const res = await supabaseService.renameChatSession(session.id, title);
-    if (!res?.success) {
-      alert('خطا در تغییر نام: ' + (res?.error || '')); return;
-    }
+    if (!res?.success) { alert('Rename failed: ' + (res?.error || '')); return; }
     setSessions(prev => prev.map(s => s.id === session.id ? { ...s, title } : s));
   };
 
   const handleDeleteSession = async (e, session) => {
     e.stopPropagation();
-    const ok = window.confirm('این چت و همه پیام‌هایش برای همیشه حذف می‌شود. ادامه می‌دهید؟');
+    const ok = window.confirm('This chat and all its messages will be permanently deleted. Continue?');
     if (!ok) return;
     const res = await supabaseService.deleteChatSession(session.id);
-    if (!res?.success) { alert('حذف ناموفق: ' + (res?.error || '')); return; }
+    if (!res?.success) { alert('Delete failed: ' + (res?.error || '')); return; }
     setSessions(prev => prev.filter(s => s.id !== session.id));
     if (selectedSessionId === session.id) {
       if (messageChannelRef.current) {
@@ -568,7 +603,7 @@ const Chat = () => {
       <aside className={`${isSidebarCollapsed ? 'w-[56px]' : 'w-[320px]'} flex-shrink-0 bg-white border-r border-slate-200/70 transition-all duration-300 overflow-hidden`}> 
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <button onClick={toggleSidebar} className="p-1.5 rounded-full hover:bg-slate-100" title={isSidebarCollapsed ? 'باز کردن' : 'بستن'}>
+            <button onClick={toggleSidebar} className="p-1.5 rounded-full hover:bg-slate-100" title={isSidebarCollapsed ? 'Expand' : 'Collapse'}>
               {isSidebarCollapsed ? (
                 <ChevronRight className="w-4 h-4 text-slate-700" />
               ) : (

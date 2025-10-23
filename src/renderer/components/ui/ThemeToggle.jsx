@@ -8,10 +8,10 @@ const ThemeToggle = ({ showAccentPicker = false }) => {
   const [showPicker, setShowPicker] = useState(false);
 
   const accentColors = [
-    { name: 'blue', color: '#3b82f6', label: 'آبی' },
-    { name: 'purple', color: '#8b5cf6', label: 'بنفش' },
-    { name: 'emerald', color: '#10b981', label: 'سبز' },
-    { name: 'rose', color: '#f43f5e', label: 'صورتی' }
+    { name: 'blue', color: '#3b82f6', label: 'Blue' },
+    { name: 'purple', color: '#8b5cf6', label: 'Purple' },
+    { name: 'emerald', color: '#10b981', label: 'Emerald' },
+    { name: 'rose', color: '#f43f5e', label: 'Rose' }
   ];
 
   return (
@@ -22,7 +22,7 @@ const ThemeToggle = ({ showAccentPicker = false }) => {
         className="relative p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 focus-ring"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        title={isDark ? 'تغییر به تم روشن' : 'تغییر به تم تاریک'}
+        title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       >
         <AnimatePresence mode="wait">
           {isDark ? (
@@ -57,7 +57,7 @@ const ThemeToggle = ({ showAccentPicker = false }) => {
             className="p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 focus-ring"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            title="تغییر رنگ اصلی"
+            title="Change primary color"
           >
             <Palette className="w-5 h-5" style={{ color: accentColors.find(c => c.name === accentColor)?.color }} />
           </motion.button>
