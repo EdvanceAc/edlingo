@@ -631,7 +631,7 @@ const Chat = () => {
           )}
         </div>
         {!isSidebarCollapsed && (
-          <div className="px-2 flex-1 overflow-y-auto" style={{ paddingBottom: 'max(var(--bottom-nav-height, 0px), env(safe-area-inset-bottom))' }}>
+          <div className="px-2 flex-1 overflow-y-auto ios-scrollbar" style={{ paddingBottom: 'max(var(--bottom-nav-height, 0px), env(safe-area-inset-bottom))' }}>
             {sessionsLoading ? (
               <div className="p-3 text-sm text-muted-foreground">Loading history...</div>
             ) : sessionsError ? (
@@ -756,7 +756,7 @@ const Chat = () => {
         )}
 
         {/* Messages */}
-        <div className="ios-chat-area flex-1 overflow-y-auto">
+        <div className="ios-chat-area flex-1 overflow-y-auto ios-scrollbar">
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div
@@ -973,7 +973,7 @@ const Chat = () => {
                   </button>
                 </div>
               </div>
-              <div className="px-2 flex-1 overflow-y-auto" style={{ paddingBottom: 'max(var(--bottom-nav-height, 0px), env(safe-area-inset-bottom))' }}>
+              <div className="px-2 flex-1 overflow-y-auto ios-scrollbar" style={{ paddingBottom: 'max(var(--bottom-nav-height, 0px), env(safe-area-inset-bottom))' }}>
                 {sessionsLoading ? (
                   <div className="p-3 text-sm text-muted-foreground">Loading history...</div>
                 ) : sessionsError ? (

@@ -445,6 +445,40 @@
     display: none;
   }
   
+  /* Themed, modern scrollbars (chat/history) */
+  .ios-scrollbar {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(99,102,241,0.55) transparent;
+  }
+  .ios-scrollbar:hover {
+    scrollbar-color: rgba(99,102,241,0.72) transparent;
+  }
+  .ios-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .ios-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 6px 0; /* rounded caps */
+  }
+  .ios-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(99,102,241,0.58), rgba(139,92,246,0.58));
+    border-radius: 9999px;
+    border: 2px solid rgba(255,255,255,0.7); /* creates pill on light bg */
+  }
+  .ios-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(99,102,241,0.75), rgba(139,92,246,0.75));
+  }
+  .ios-scrollbar::-webkit-scrollbar-corner { background: transparent; }
+  
+  /* Dark mode scrollbar tuning */
+  .dark .ios-scrollbar { scrollbar-color: rgba(139,92,246,0.75) transparent; }
+  .dark .ios-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(139,92,246,0.85), rgba(99,102,241,0.85));
+    border: 2px solid rgba(17,24,39,0.7);
+  }
+  
   /* Animation utilities */
   .animate-in {
     animation: fadeIn 0.5s ease-out;
