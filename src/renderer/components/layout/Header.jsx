@@ -37,6 +37,9 @@ const Header = ({ onToggleSidebar }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Detect browser (non-Electron) mode to control desktop-only UI differences
+  const isBrowserMode = typeof window !== 'undefined' && (!window.electronAPI || window.isBrowserMode);
+
   // Mock notifications
   const notifications = [
     {
@@ -114,7 +117,7 @@ const Header = ({ onToggleSidebar }) => {
                 setIsMobileMenuOpen((prev) => !prev);
               }
             }}
-            className="text-white bg-white/10 ring-1 ring-white/15 hover:bg-white/20 hover:ring-white/25 transition-all duration-300"
+            className={`text-white bg-white/10 ring-1 ring-white/15 hover:bg-white/20 hover:ring-white/25 transition-all duration-300 ${isBrowserMode ? 'md:hidden' : ''}`}
           >
             <Menu className="h-6 w-6" />
           </Button>
