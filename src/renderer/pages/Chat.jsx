@@ -947,7 +947,7 @@ const Chat = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/40 md:hidden"
+              className="fixed inset-0 z-[100] bg-black/40 md:hidden"
               onClick={() => setIsMobileSidebarOpen(false)}
             />
             <motion.aside
@@ -956,7 +956,7 @@ const Chat = () => {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 360, damping: 34 }}
-              className="fixed inset-y-0 left-0 z-50 w-[86%] max-w-[360px] bg-white border-r border-slate-200/70 shadow-xl flex flex-col md:hidden"
+              className="fixed inset-y-0 left-0 z-[110] w-[86%] max-w-[360px] bg-white border-r border-slate-200/70 shadow-xl flex flex-col md:hidden"
             >
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -973,7 +973,7 @@ const Chat = () => {
                   </button>
                 </div>
               </div>
-              <div className="px-2 flex-1 overflow-y-auto">
+              <div className="px-2 flex-1 overflow-y-auto" style={{ paddingBottom: 'max(var(--bottom-nav-height, 0px), env(safe-area-inset-bottom))' }}>
                 {sessionsLoading ? (
                   <div className="p-3 text-sm text-muted-foreground">Loading history...</div>
                 ) : sessionsError ? (
