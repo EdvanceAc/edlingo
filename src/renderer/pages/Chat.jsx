@@ -600,7 +600,7 @@ const Chat = () => {
   return (
     <div className="flex h-screen ios-page">
       {/* Sidebar - iOS-like chat history */}
-      <aside className={`${isSidebarCollapsed ? 'w-[56px]' : 'w-[320px]'} flex-shrink-0 bg-white border-r border-slate-200/70 transition-all duration-300 overflow-hidden`}> 
+      <aside className={`${isSidebarCollapsed ? 'w-[56px]' : 'w-[320px]'} sticky top-0 h-screen flex-shrink-0 bg-white border-r border-slate-200/70 transition-all duration-300 overflow-hidden flex flex-col`}> 
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <button onClick={toggleSidebar} className="p-1.5 rounded-full hover:bg-slate-100" title={isSidebarCollapsed ? 'Expand' : 'Collapse'}>
@@ -629,7 +629,7 @@ const Chat = () => {
           )}
         </div>
         {!isSidebarCollapsed && (
-          <div className="px-2">
+          <div className="px-2 flex-1 overflow-y-auto">
             {sessionsLoading ? (
               <div className="p-3 text-sm text-muted-foreground">Loading history...</div>
             ) : sessionsError ? (
