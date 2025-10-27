@@ -638,7 +638,7 @@ const Chat = () => {
             {!isSidebarCollapsed && (
               <>
                 <MessageSquare className="w-5 h-5 text-slate-700" />
-                <span className="text-base font-semibold">Chats</span>
+                <span className="text-base font-semibold">Chats History</span>
               </>
             )}
           </div>
@@ -984,7 +984,7 @@ const Chat = () => {
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <MessageSquare className="w-5 h-5 text-slate-700" />
-                  <span className="text-base font-semibold">Chats</span>
+                  <span className="text-base font-semibold">Chats History</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={createNewChat} className="px-3 py-1.5 rounded-full bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors flex items-center space-x-1">
