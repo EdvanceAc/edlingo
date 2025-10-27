@@ -423,9 +423,7 @@ class SupabaseService {
       if (!messageId) {
         return { success: false, error: 'Missing messageId' };
       }
-      if (!reaction) {
-        return { success: false, error: 'Missing reaction' };
-      }
+      // Allow clearing reactions by sending null -> delete row
 
       const payload = {
         user_id: userId,
@@ -454,6 +452,11 @@ class SupabaseService {
       if (selErr && selErr.code !== 'PGRST116') throw selErr;
 
       if (Array.isArray(existing) && existing.length > 0) {
+        if (reaction == null) {
+          const { error } = await this.client.from('chat_reactions').delete().eq('id', existing[0].id);
+          if (error && error.code !== 'PGRST116') throw error;
+          return { success: true, data: null };
+        }
         const { data, error } = await this.client
           .from('chat_reactions')
           .update({ reaction, updated_at: new Date().toISOString() })
@@ -464,6 +467,9 @@ class SupabaseService {
         return { success: true, data };
       }
 
+      if (reaction == null) {
+        return { success: true, data: null };
+      }
       const { data, error } = await this.client
         .from('chat_reactions')
         .insert(payload)
@@ -737,6 +743,30 @@ class SupabaseService {
       )
       .subscribe();
     return channel;
+  }
+
+  async getChatReactions(sessionId) {
+    try {
+      if (!this.isConnected) {
+        return { success: false, error: 'Database not connected.', data: [] };
+      }
+      const { data: { user } = {} } = await this.client.auth.getUser();
+      if (!user) return { success: true, data: [] };
+      let query = this.client
+        .from('chat_reactions')
+        .select('message_id,reaction,updated_at')
+        .eq('session_id', sessionId)
+        .eq('user_id', user.id);
+      const { data, error } = await query;
+      if (error) throw error;
+      const map = {};
+      (data || []).forEach(r => { map[String(r.message_id)] = r.reaction; });
+      return { success: true, data: map };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: {} };
+      console.error('Get chat reactions error:', error);
+      return { success: false, error: error.message, data: {} };
+    }
   }
 
   removeChannel(channel) {

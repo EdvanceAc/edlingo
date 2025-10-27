@@ -170,17 +170,24 @@ const Chat = () => {
     // Fetch messages for this session from Supabase and load into UI + provider
     if (supabaseService.isConnected) {
       try {
-        const { success, data } = await supabaseService.getChatMessages(session.id);
+        const [msgRes, reactRes] = await Promise.all([
+          supabaseService.getChatMessages(session.id),
+          supabaseService.getChatReactions(session.id)
+        ]);
+        const success = msgRes?.success;
+        const data = msgRes?.data || [];
         if (success) {
           // Map messages to UI structure (support both legacy and current schema)
+          const reactionsMap = reactRes?.data || {};
           const mapped = (data || []).map(m => {
             const role = m?.message_type || m?.role || (m?.is_user ? 'user' : 'assistant');
+            const idStr = String(m.id);
             return {
               id: m.id,
               type: role === 'user' ? 'user' : 'ai',
               content: m?.content || m?.message || '',
               timestamp: new Date(m.created_at),
-              reaction: null
+              reaction: reactionsMap[idStr] || null
             };
           });
           setMessages(mapped.length > 0 ? mapped : [
@@ -265,13 +272,17 @@ const Chat = () => {
     // Persist user message to Supabase
     if (supabaseService.isConnected && user?.id && sessionId) {
       try {
-        await supabaseService.saveChatMessage({
+        const res = await supabaseService.saveChatMessage({
           sessionId,
           userId: user.id,
           role: 'user',
           content: trimmedMessage,
           metadata: { complexity: complexity.complexity }
         });
+        // If DB generated an id, map it back to the temp message to enable reaction persistence
+        if (res?.success && res?.data?.id) {
+          setMessages(prev => prev.map(m => (m.id === userMessage.id ? { ...m, id: res.data.id } : m)));
+        }
         // Update sessions list ordering
         const { success, data } = await supabaseService.listChatSessions(user.id, 100);
         if (success) setSessions(data || []);
@@ -383,13 +394,16 @@ const Chat = () => {
       // Persist assistant message to Supabase as soon as it’s generated
       if (supabaseService.isConnected && user?.id && sessionId) {
         try {
-          await supabaseService.saveChatMessage({
+          const res = await supabaseService.saveChatMessage({
             sessionId,
             userId: user.id,
             role: 'assistant',
             content: aiMessage.content,
             metadata: { complexity: complexity.complexity }
           });
+          if (res?.success && res?.data?.id) {
+            setMessages(prev => prev.map(m => (m.id === aiMessage.id ? { ...m, id: res.data.id } : m)));
+          }
         } catch (e) {
           console.warn('Failed to persist assistant message:', e?.message || e);
         }
@@ -569,6 +583,15 @@ const Chat = () => {
       const next = m.reaction === reaction ? null : reaction;
       return { ...m, reaction: next };
     }));
+    // Persist in background
+    const msg = (messagesRef.current || []).find(m => m.id === messageId);
+    const nextReaction = (msg?.reaction === reaction) ? null : reaction;
+    if (nextReaction) {
+      persistReaction(messageId, nextReaction, msg?.content || null);
+    } else {
+      // Use same API to clear by saving null? We'll skip deletion for now
+      persistReaction(messageId, null, msg?.content || null);
+    }
   };
 
   const handleCancelRequest = () => {
