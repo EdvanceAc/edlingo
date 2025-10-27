@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Settings, BookOpen, Target, Zap, MessageSquare, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Zap, Sparkles, ThumbsUp, ThumbsDown, MessageSquare, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useAudio } from '../providers/AudioProvider';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAI } from '../providers/AIProvider';
@@ -22,10 +22,13 @@ const EnhancedChat = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('Thinking...');
+  const [currentRequestController, setCurrentRequestController] = useState(null);
+  const [responseStats, setResponseStats] = useState({ totalRequests: 0, averageTime: 0, fastestTime: Infinity, slowestTime: 0 });
   const [chatMode, setChatMode] = useState('conversation'); // conversation, grammar, vocabulary, pronunciation
   const { level: currentLevel } = useProgress();
   const [difficulty, setDifficulty] = useState(currentLevel ? currentLevel.toString() : 'intermediate');
-  const [showSettings, setShowSettings] = useState(false);
   const { isRecording, startRecording, stopRecording, speakText } = useAudio();
   const { addXP } = useProgress();
   const {
@@ -243,8 +246,8 @@ const EnhancedChat = () => {
   const handleSpeakMessage = (content) => { speakText(content, { lang: 'en-US', rate: 0.9 }); };
   const handleKeyPress = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } };
 
-  const modeIcons = { conversation: Bot, grammar: BookOpen, vocabulary: Target, pronunciation: Volume2 };
-  const ModeIcon = modeIcons[chatMode];
+  // Unified icon for avatars (to match Chat bubble visuals)
+  const ModeIcon = Bot;
   const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
   return (
@@ -293,8 +296,7 @@ const EnhancedChat = () => {
 
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="relative overflow-hidden p-4 flex-shrink-0 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-lg">
-          <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-violet-200/40 via-sky-200/30 to-pink-200/40" />
+        <div className="ios-header p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               {/* Mobile: open history */}
@@ -305,61 +307,64 @@ const EnhancedChat = () => {
               >
                 <MessageSquare className="w-5 h-5" />
               </button>
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
-                <ModeIcon className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <Bot className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-semibold">Enhanced Chat</h1>
-                <p className="text-sm text-muted-foreground">{chatMode.charAt(0).toUpperCase() + chatMode.slice(1)} practice • {difficulty} level</p>
+                <p className="text-sm text-muted-foreground">Practice conversations with AI</p>
               </div>
             </div>
-            <button onClick={() => setShowSettings(!showSettings)} className="p-2 rounded-lg hover:bg-black/5 transition-colors"><Settings className="w-5 h-5" /></button>
-          </div>
-          <AnimatePresence>
-            {showSettings && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-4 p-4 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-md">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Chat Mode</label>
-                    <select value={chatMode} onChange={(e) => setChatMode(e.target.value)} className="w-full p-2 rounded-xl ring-1 ring-white/60 bg-white/60 backdrop-blur-sm shadow-sm">
-                      <option value="conversation">General Conversation</option>
-                      <option value="grammar">Grammar Focus</option>
-                      <option value="vocabulary">Vocabulary Building</option>
-                      <option value="pronunciation">Pronunciation Practice</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Difficulty Level</label>
-                    <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full p-2 rounded-xl ring-1 ring-white/60 bg-white/60 backdrop-blur-sm shadow-sm">
-                      <option value="beginner">Beginner</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                      <option value="expert">Expert</option>
-                    </select>
-                  </div>
+            {/* AI Status (match Chat) */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1 px-2 py-1 bg-white/70 backdrop-blur-sm rounded-full border border-slate-200">
+                <Sparkles className="w-3 h-3 text-blue-500" />
+                <span className="text-xs font-medium text-slate-700">Gemini</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${aiStatus === 'ready' ? 'bg-green-500' : aiStatus === 'initializing' ? 'bg-yellow-500 animate-pulse' : aiStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'}`} />
+                <span className="text-sm text-slate-700">{getStatusMessage()}</span>
+                {aiStatus === 'ready' && (<Zap className="w-3 h-3 text-green-500" />)}
+              </div>
+              {responseStats.totalRequests > 0 && (
+                <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded-full border border-green-200">
+                  <Zap className="w-3 h-3 text-green-600" />
+                  <span className="text-xs font-medium text-green-700">Avg: {(responseStats.averageTime / 1000).toFixed(1)}s</span>
+                  <span className="text-xs text-green-600" title={`Total requests: ${responseStats.totalRequests}, Fastest: ${(responseStats.fastestTime / 1000).toFixed(1)}s, Slowest: ${(responseStats.slowestTime / 1000).toFixed(1)}s`}>
+                    ({responseStats.totalRequests})
+                  </span>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Messages */}
-        <div className="relative flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-          <div className="pointer-events-none absolute inset-0 opacity-60 bg-gradient-to-b from-transparent via-indigo-50/50 to-transparent" />
+        <div className="ios-chat-area flex-1 overflow-y-auto ios-scrollbar">
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div key={message.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`flex items-start space-x-3 max-w-xs lg:max-w-md ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.type === 'user' ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-purple-500 to-pink-600'}`}>
-                    {message.type === 'user' ? (<User className="w-4 h-4 text-white" />) : (<ModeIcon className="w-4 h-4 text-white" />)}
-                  </div>
-                  <div className="space-y-2">
-                    <div className={`rounded-2xl px-4 py-3 shadow-sm ring-1 ${message.type === 'user' ? 'bg-white/70 backdrop-blur-md ring-white/60 text-gray-900 rounded-br-md' : 'bg-white/60 backdrop-blur-md ring-white/60 text-gray-700 rounded-bl-md'}`}>
-                      <p className="text-sm">{message.content}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className={`text-xs ${message.type === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground/70'}`}>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        {message.type === 'ai' && (<button onClick={() => speakText(message.content, { lang: 'en-US', rate: 0.9 })} className="ml-2 p-1 rounded hover:bg-black/5 transition-colors" title="Listen to message"><Volume2 className="w-3 h-3" /></button>)}
-                      </div>
+                  <div className="ios-avatar flex-shrink-0">{message.type === 'user' ? (<User className="w-4 h-4" />) : (<Bot className="w-4 h-4" />)}</div>
+                  <div className={`ios-bubble ${message.type === 'user' ? 'ios-bubble-user' : 'ios-bubble-ai'}`}>
+                    <div className="flex items-start space-x-2">
+                      <p className="text-sm flex-1">{message.content}</p>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs ios-timestamp">{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      {message.type === 'ai' ? (
+                        <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 mr-1">
+                            <button onClick={() => setMessages(prev => prev.map(m => m.id !== message.id ? m : { ...m, reaction: m.reaction === 'like' ? null : 'like' }))} className={`p-1 rounded transition-colors transition-transform hover:bg-black/5 active:scale-95 ${message.reaction === 'like' ? 'text-blue-600 opacity-100' : message.reaction === 'dislike' ? 'opacity-40 text-muted-foreground' : 'text-muted-foreground opacity-80'}`}>
+                              <ThumbsUp className={`w-3 h-3 ${message.reaction === 'like' ? 'scale-105' : ''}`} strokeWidth={message.reaction === 'like' ? 2.5 : 2} />
+                            </button>
+                            <button onClick={() => setMessages(prev => prev.map(m => m.id !== message.id ? m : { ...m, reaction: m.reaction === 'dislike' ? null : 'dislike' }))} className={`p-1 rounded transition-colors transition-transform hover:bg-black/5 active:scale-95 ${message.reaction === 'dislike' ? 'text-red-600 opacity-100' : message.reaction === 'like' ? 'opacity-40 text-muted-foreground' : 'text-muted-foreground opacity-80'}`}>
+                              <ThumbsDown className={`w-3 h-3 ${message.reaction === 'dislike' ? 'scale-105' : ''}`} strokeWidth={message.reaction === 'dislike' ? 2.5 : 2} />
+                            </button>
+                          </div>
+                          <button onClick={() => speakText(message.content, { lang: 'en-US', rate: 0.9 })} className="p-1 rounded hover:bg-black/5 transition-colors" title="Listen to message"><Volume2 className="w-3 h-3" /></button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -368,10 +373,19 @@ const EnhancedChat = () => {
           </AnimatePresence>
           {isLoading && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
-              <div className="flex items-start space-x-3 max-w-xs">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center"><Bot className="w-4 h-4 text-white" /></div>
-                <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-white/60 backdrop-blur-md ring-1 ring-white/60 shadow-sm">
-                  <div className="flex items-center space-x-2"><Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm text-muted-foreground">Analyzing...</span></div>
+              <div className="flex items-start space-x-3 max-w-md">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center"><Bot className="w-4 h-4 text-white" /></div>
+                <div className="ios-bubble ios-bubble-ai min-w-0 flex-1">
+                  <div className="flex items-center justify-between space-x-3">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm text-muted-foreground truncate">{loadingMessage}</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
+                    <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${loadingProgress}%` }}></div>
+                  </div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">{loadingProgress < 100 ? `${Math.round(loadingProgress)}% complete` : 'Finalizing...'}</div>
                 </div>
               </div>
             </motion.div>
@@ -380,14 +394,13 @@ const EnhancedChat = () => {
         </div>
 
         {/* Input Area */}
-        <div className="relative p-4 flex-shrink-0 rounded-xl bg-white/40 backdrop-blur-xl ring-1 ring-white/60 shadow-lg">
-          <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-blue-200/40 via-teal-200/30 to-purple-200/40" />
-          <div className="flex items-end space-x-3">
+        <div className="ios-composer">
+          <div className="ios-input-wrap">
+            <div className="ios-input-field">
             <button onClick={() => { if (isRecording) { stopRecording(); } else { startRecording().catch(err => console.error('Failed to start recording:', err)); } }} className={`p-3 rounded-full transition-all duration-200 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-white/60 ring-1 ring-white/60 backdrop-blur-sm text-gray-900 hover:bg-white/70 shadow-sm'}`} title={isRecording ? 'Stop recording' : 'Start voice input'}>{isRecording ? (<MicOff className="w-5 h-5" />) : (<Mic className="w-5 h-5" />)}</button>
-            <div className="flex-1 relative">
-              <textarea ref={inputRef} value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder={`Type your message for ${chatMode} practice...`} className="w-full resize-none rounded-xl ring-1 ring-white/60 bg-white/60 backdrop-blur-sm shadow-sm px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all" rows={1} style={{ minHeight: '48px', maxHeight: '120px', height: 'auto' }} onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }} />
+              <textarea ref={inputRef} value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder="Type your message here..." className="ios-textarea" rows={1} style={{ minHeight: '44px', maxHeight: '140px', height: 'auto' }} onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'; }} />
+              <button onClick={() => handleSendMessage()} disabled={!inputMessage.trim() || isLoading} className="ios-send-button" title="Send message"><Send className="w-5 h-5" /></button>
             </div>
-            <button onClick={() => handleSendMessage()} disabled={!inputMessage.trim() || isLoading} className="p-3 rounded-full bg-white/70 backdrop-blur-sm ring-1 ring-white/60 text-gray-900 hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative shadow-sm" title="Send message"><Send className="w-5 h-5" />{chatMode !== 'conversation' && (<div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center"><Zap className="w-2 h-2 text-white" /></div>)}</button>
           </div>
         </div>
       </div>
