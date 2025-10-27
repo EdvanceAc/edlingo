@@ -82,7 +82,7 @@ const EnhancedChat = () => {
         const { success, user } = await supabaseService.getCurrentUser();
         const userId = user?.id;
         if (!success || !userId) { setSessionsLoading(false); return; }
-        const res = await supabaseService.listChatSessions(userId, 100);
+        const res = await supabaseService.listEnhancedSessions(userId, 100);
         if (res.success) setSessions(res.data || []); else setSessionsError(res.error || 'Failed to load chat history');
       } catch (e) {
         setSessionsError(e?.message || 'Failed to load chat history');
@@ -121,7 +121,7 @@ const EnhancedChat = () => {
     if (messageChannelRef.current) { supabaseService.removeChannel(messageChannelRef.current); messageChannelRef.current = null; }
     if (supabaseService.isConnected) {
       try {
-        const { success, data } = await supabaseService.getChatMessages(session.id);
+        const { success, data } = await supabaseService.getEnhancedMessages(session.id);
         if (success) {
           const mapped = (data || []).map(m => {
             const role = m?.message_type || m?.role || (m?.is_user ? 'user' : 'assistant');
@@ -129,7 +129,7 @@ const EnhancedChat = () => {
           });
           setMessages(mapped.length > 0 ? mapped : messages);
           loadConversationFromMessages(data || []);
-          const ch = supabaseService.subscribeToSessionMessages(session.id, (row) => {
+          const ch = supabaseService.subscribeToEnhancedMessages(session.id, (row) => {
             if (!row) return;
             const type = (row?.message_type || row?.role) === 'user' ? 'user' : 'ai';
             const createdAt = new Date(row.created_at);
@@ -145,13 +145,21 @@ const EnhancedChat = () => {
   };
 
   const createNewChat = async () => {
-    const newId = await startNewSession();
+    let newId = null;
+    if (supabaseService.isConnected) {
+      const { success, user } = await supabaseService.getCurrentUser();
+      if (success && user?.id) {
+        const created = await supabaseService.createEnhancedSession(user.id);
+        if (created?.success && created?.data?.id) newId = created.data.id;
+      }
+    }
+    if (!newId) newId = await startNewSession();
     setSelectedSessionId(newId);
     setMessages([{ id: Date.now(), type: 'ai', content: 'New enhanced chat started. What would you like to practice?', timestamp: new Date() }]);
     if (supabaseService.isConnected) {
       const { success, user } = await supabaseService.getCurrentUser();
       if (success && user?.id) {
-        const { success: ok, data } = await supabaseService.listChatSessions(user.id, 100);
+        const { success: ok, data } = await supabaseService.listEnhancedSessions(user.id, 100);
         if (ok) setSessions(data || []);
       }
     }
@@ -193,9 +201,9 @@ const EnhancedChat = () => {
       try {
         const { success, user } = await supabaseService.getCurrentUser();
         if (success && user?.id && sessionId) {
-          const res = await supabaseService.saveChatMessage({ sessionId, userId: user.id, role: 'user', content: message.trim(), metadata: { mode: chatMode, difficulty } });
+          const res = await supabaseService.saveEnhancedMessage({ sessionId, userId: user.id, role: 'user', content: message.trim(), metadata: { mode: chatMode, difficulty } });
           if (res?.success && res?.data?.id) { setMessages(prev => prev.map(m => (m.id === userMessageObj.id ? { ...m, id: res.data.id } : m))); }
-          const list = await supabaseService.listChatSessions(user.id, 100); if (list.success) setSessions(list.data || []);
+          const list = await supabaseService.listEnhancedSessions(user.id, 100); if (list.success) setSessions(list.data || []);
         }
       } catch (e) { console.warn('EnhancedChat: persist user message failed:', e?.message || e); }
     }
@@ -210,7 +218,7 @@ const EnhancedChat = () => {
           const { success, user } = await supabaseService.getCurrentUser();
           const sid = getCurrentSessionId && getCurrentSessionId();
           if (success && user?.id && sid) {
-            const res = await supabaseService.saveChatMessage({ sessionId: sid, userId: user.id, role: 'assistant', content: response, metadata: { mode: chatMode, difficulty } });
+            const res = await supabaseService.saveEnhancedMessage({ sessionId: sid, userId: user.id, role: 'assistant', content: response, metadata: { mode: chatMode, difficulty } });
             if (res?.success && res?.data?.id) { setMessages(prev => prev.map(m => (m.id === aiMessage.id ? { ...m, id: res.data.id } : m))); }
           }
         } catch (e) { console.warn('EnhancedChat: persist assistant message failed:', e?.message || e); }
@@ -261,8 +269,8 @@ const EnhancedChat = () => {
                       <span className="text-sm font-medium text-slate-800">{s.title || 'New Chat'}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-500">{new Date(s.last_message_at).toLocaleDateString()}</span>
-                        <button onClick={(e) => { e.stopPropagation(); const t = window.prompt('Enter chat name', s.title || 'New Chat'); if (!t) return; supabaseService.renameChatSession(s.id, t).then(r => { if (r?.success) setSessions(prev => prev.map(x => x.id === s.id ? { ...x, title: t } : x)); }); }} className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700" title="Rename"><Pencil className="w-3.5 h-3.5" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); const ok = window.confirm('Delete this chat?'); if (!ok) return; supabaseService.deleteChatSession(s.id).then(r => { if (r?.success) setSessions(prev => prev.filter(x => x.id !== s.id)); }); }} className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); const t = window.prompt('Enter chat name', s.title || 'New Chat'); if (!t) return; supabaseService.renameEnhancedSession(s.id, t).then(r => { if (r?.success) setSessions(prev => prev.map(x => x.id === s.id ? { ...x, title: t } : x)); }); }} className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700" title="Rename"><Pencil className="w-3.5 h-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); const ok = window.confirm('Delete this chat?'); if (!ok) return; supabaseService.deleteEnhancedSession(s.id).then(r => { if (r?.success) setSessions(prev => prev.filter(x => x.id !== s.id)); }); }} className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                   </button>
