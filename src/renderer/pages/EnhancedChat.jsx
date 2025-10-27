@@ -127,7 +127,14 @@ const EnhancedChat = () => {
             const role = m?.message_type || m?.role || (m?.is_user ? 'user' : 'assistant');
             return { id: m.id, type: role === 'user' ? 'user' : 'ai', content: m?.content || m?.message || '', timestamp: new Date(m.created_at) };
           });
-          setMessages(mapped.length > 0 ? mapped : messages);
+          setMessages(mapped.length > 0 ? mapped : [
+            {
+              id: Date.now(),
+              type: 'ai',
+              content: 'New enhanced chat started. What would you like to practice?',
+              timestamp: new Date()
+            }
+          ]);
           loadConversationFromMessages(data || []);
           const ch = supabaseService.subscribeToEnhancedMessages(session.id, (row) => {
             if (!row) return;
