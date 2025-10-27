@@ -560,17 +560,22 @@ class SupabaseService {
       if (!sessionId) {
         return { success: false, error: 'Session ID is required', data: [] };
       }
-      // Use RPC to ensure RLS respects session ownership and type casts
-      const { data, error } = await this.client.rpc('get_chat_messages_for_session', {
-        p_session_id: sessionId
-      });
-      if (error) {
-        if (error.code === '42P01') {
-          return { success: false, error: 'Database function not found. Please run the database migration. See SETUP_DATABASE.md', data: [] };
-        }
-        throw error;
+      // Try RPC first
+      const { data, error } = await this.client.rpc('get_chat_messages_for_session', { p_session_id: sessionId });
+      if (!error) {
+        return { success: true, data: data || [] };
       }
-      return { success: true, data: data || [] };
+      // Fallback: direct select guarded by RLS
+      const { data: { user } = {} } = await this.client.auth.getUser();
+      let q = this.client
+        .from('chat_messages')
+        .select('id, session_id, user_id, content, message, message_type, is_user, created_at')
+        .eq('user_id', user?.id || '00000000-0000-0000-0000-000000000000')
+        .or(`session_id.eq.${sessionId},chat_id.eq.${sessionId}`)
+        .order('created_at', { ascending: true });
+      const { data: fallData, error: fallErr } = await q;
+      if (fallErr) throw fallErr;
+      return { success: true, data: fallData || [] };
     } catch (error) {
       console.error('Get chat messages error:', error);
       return { success: false, error: error.message || 'Failed to get chat messages', data: [] };
@@ -588,6 +593,7 @@ class SupabaseService {
       // Align with current DB schema: message_type/content columns exist; drop unsupported fields
       const payload = {
         session_id: sessionId,
+        chat_id: sessionId, // keep legacy column satisfied
         user_id: userId,
         content,
         message_type: role === 'assistant' ? 'assistant' : 'user',
