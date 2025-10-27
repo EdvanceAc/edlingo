@@ -596,6 +596,8 @@ class SupabaseService {
         chat_id: sessionId, // keep legacy column satisfied
         user_id: userId,
         content,
+        message: content, // legacy column compatibility
+        is_user: role !== 'assistant',
         message_type: role === 'assistant' ? 'assistant' : 'user',
         user_level: metadata?.userLevel || metadata?.level || null,
         focus_area: metadata?.focusArea || null,
