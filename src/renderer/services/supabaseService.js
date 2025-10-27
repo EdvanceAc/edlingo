@@ -785,6 +785,93 @@ class SupabaseService {
     }
   }
 
+  // ---------------- Enhanced Chat (independent storage) -----------------
+  async createEnhancedSession(userId, initialTitle = null) {
+    try {
+      if (!this.isConnected) return { success: false, error: 'DB not connected' };
+      const { data, error } = await this.client
+        .from('enhanced_chat_sessions')
+        .insert({ user_id: userId, title: initialTitle, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), last_message_at: new Date().toISOString() })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (e) { return { success: false, error: e.message }; }
+  }
+
+  async listEnhancedSessions(userId, limit = 50) {
+    try {
+      const { data, error } = await this.client
+        .from('enhanced_chat_sessions')
+        .select('id,title,created_at,updated_at,last_message_at')
+        .eq('user_id', userId)
+        .order('last_message_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (e) { return { success: false, error: e.message, data: [] }; }
+  }
+
+  async getEnhancedMessages(sessionId) {
+    try {
+      const { data, error } = await this.client.rpc('get_enhanced_messages_for_session', { p_session_id: sessionId });
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (e) {
+      try {
+        const { data, error } = await this.client
+          .from('enhanced_chat_messages')
+          .select('id, session_id, user_id, content, message_type, created_at')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        return { success: true, data: data || [] };
+      } catch (err) { return { success: false, error: err.message, data: [] }; }
+    }
+  }
+
+  async saveEnhancedMessage({ sessionId, userId, role, content, metadata = {} }) {
+    try {
+      const generatedId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : (Math.random().toString(16).slice(2) + '-' + Date.now());
+      const payload = { id: generatedId, session_id: sessionId, user_id: userId, content, message_type: role === 'assistant' ? 'assistant' : 'user', mode: metadata?.mode || null, difficulty: metadata?.difficulty || null, created_at: new Date().toISOString() };
+      const { error } = await this.client.from('enhanced_chat_messages').insert(payload);
+      if (error) throw error;
+      await this.client.from('enhanced_chat_sessions').update({ updated_at: new Date().toISOString(), last_message_at: new Date().toISOString(), title: role === 'user' ? (content?.slice(0,60) || 'New Chat') : undefined }).eq('id', sessionId);
+      return { success: true, data: { id: generatedId } };
+    } catch (e) { return { success: false, error: e.message }; }
+  }
+
+  async renameEnhancedSession(sessionId, title) {
+    try {
+      const { data, error } = await this.client
+        .from('enhanced_chat_sessions')
+        .update({ title, updated_at: new Date().toISOString() })
+        .eq('id', sessionId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (e) { return { success: false, error: e.message }; }
+  }
+
+  async deleteEnhancedSession(sessionId) {
+    try {
+      await this.client.from('enhanced_chat_messages').delete().eq('session_id', sessionId);
+      const { error } = await this.client.from('enhanced_chat_sessions').delete().eq('id', sessionId);
+      if (error) throw error;
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+  }
+
+  subscribeToEnhancedMessages(sessionId, onInsert) {
+    if (!this.isConnected || !sessionId) return null;
+    const channel = this.client
+      .channel(`enhanced_chat_session_${sessionId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'enhanced_chat_messages', filter: `session_id=eq.${sessionId}` }, (payload) => { try { onInsert && onInsert(payload?.new || payload?.record || null); } catch (_) {} })
+      .subscribe();
+    return channel;
+  }
+
   // Assessment Management
   async createAssessmentSession(userId, targetLanguage, assessmentType) {
     try {
