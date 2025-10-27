@@ -566,11 +566,9 @@ class SupabaseService {
         return { success: true, data: data || [] };
       }
       // Fallback: direct select guarded by RLS
-      const { data: { user } = {} } = await this.client.auth.getUser();
       let q = this.client
         .from('chat_messages')
         .select('id, session_id, user_id, content, message, message_type, is_user, created_at')
-        .eq('user_id', user?.id || '00000000-0000-0000-0000-000000000000')
         .or(`session_id.eq.${sessionId},chat_id.eq.${sessionId}`)
         .order('created_at', { ascending: true });
       const { data: fallData, error: fallErr } = await q;
@@ -591,7 +589,13 @@ class SupabaseService {
         return { success: false, error: 'Missing required fields (sessionId, userId, role, content)' };
       }
       // Align with current DB schema: message_type/content columns exist; drop unsupported fields
+      // Generate an id client-side so we don't need returning representation (avoids SELECT policy during insert)
+      const generatedId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+        ? crypto.randomUUID() 
+        : (Math.random().toString(16).slice(2) + '-' + Date.now());
+
       const payload = {
+        id: generatedId,
         session_id: sessionId,
         chat_id: sessionId, // keep legacy column satisfied
         user_id: userId,
@@ -603,11 +607,9 @@ class SupabaseService {
         focus_area: metadata?.focusArea || null,
         created_at: new Date().toISOString()
       };
-      const { data, error } = await this.client
+      const { error } = await this.client
         .from('chat_messages')
-        .insert(payload)
-        .select()
-        .single();
+        .insert(payload);
       if (error) {
         if (error.code === '42P01') {
           return { success: false, error: 'Database tables not found. Please run the database migration. See SETUP_DATABASE.md' };
@@ -623,7 +625,7 @@ class SupabaseService {
           title: role === 'user' ? (content?.slice(0, 60) || 'New Chat') : undefined
         })
         .eq('id', sessionId);
-      return { success: true, data };
+      return { success: true, data: { id: generatedId } };
     } catch (error) {
       console.error('Save chat message error:', error);
       return { success: false, error: error.message || 'Failed to save chat message' };
