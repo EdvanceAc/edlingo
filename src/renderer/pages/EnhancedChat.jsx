@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Settings, BookOpen, Target, Zap, MessageSquare, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, Bot, User, Loader2, Settings, BookOpen, Target, Zap, MessageSquare, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useAudio } from '../providers/AudioProvider';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAI } from '../providers/AIProvider';
@@ -51,6 +51,7 @@ const EnhancedChat = () => {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -247,6 +248,7 @@ const EnhancedChat = () => {
   const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
   return (
+    <>
     <div className="flex h-screen ios-page">
       <aside className={`${isSidebarCollapsed ? 'w-[56px]' : 'w-[320px]'} sticky top-0 h-screen z-[30] flex-shrink-0 bg-white border-r border-slate-200/70 transition-all duration-300 overflow-hidden flex flex-col hidden md:flex`}>
         <div className="p-4 flex items-center justify-between">
@@ -295,6 +297,14 @@ const EnhancedChat = () => {
           <div className="pointer-events-none absolute inset-0 opacity-70 bg-gradient-to-br from-violet-200/40 via-sky-200/30 to-pink-200/40" />
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
+              {/* Mobile: open history */}
+              <button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="p-2 rounded-lg hover:bg-slate-100 md:hidden"
+                title="Open chats"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </button>
               <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
                 <ModeIcon className="w-5 h-5 text-white" />
               </div>
@@ -382,6 +392,87 @@ const EnhancedChat = () => {
         </div>
       </div>
     </div>
+    {/* Mobile slide-over for chat history */}
+    <AnimatePresence>
+      {isMobileSidebarOpen && (
+        <>
+          <motion.div
+            key="mb-backdrop-enhanced"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/40 md:hidden"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          <motion.aside
+            key="mb-panel-enhanced"
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+            className="fixed inset-y-0 left-0 z-[110] w-[86%] max-w-[360px] bg-white border-r border-slate-200/70 shadow-xl flex flex-col md:hidden"
+          >
+            <div className="p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <MessageSquare className="w-5 h-5 text-slate-700" />
+                <span className="text-base font-semibold">Chats History</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={createNewChat} className="px-3 py-1.5 rounded-full bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors flex items-center space-x-1">
+                  <Plus className="w-4 h-4" />
+                  <span>New</span>
+                </button>
+                <button onClick={() => setIsMobileSidebarOpen(false)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Close chats">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="px-2 flex-1 overflow-y-auto ios-scrollbar" style={{ paddingBottom: 'max(var(--bottom-nav-height, 0px), env(safe-area-inset-bottom))' }}>
+              {sessionsLoading ? (
+                <div className="p-3 text-sm text-muted-foreground">Loading history...</div>
+              ) : sessionsError ? (
+                <div className="p-3 text-sm text-red-600">{sessionsError}</div>
+              ) : (
+                <div className="space-y-1">
+                  {(sessions || []).map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => { openSession(s); setIsMobileSidebarOpen(false); }}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedSessionId === s.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'} `}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-slate-800">{s.title || 'New Chat'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500">{new Date(s.last_message_at).toLocaleDateString()}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); const t = window.prompt('Enter chat name', s.title || 'New Chat'); if (!t) return; supabaseService.renameEnhancedSession(s.id, t).then(r => { if (r?.success) setSessions(prev => prev.map(x => x.id === s.id ? { ...x, title: t } : x)); }); }}
+                            className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                            title="Rename"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); const ok = window.confirm('Delete this chat?'); if (!ok) return; supabaseService.deleteEnhancedSession(s.id).then(r => { if (r?.success) setSessions(prev => prev.filter(x => x.id !== s.id)); if (selectedSessionId === s.id) { setSelectedSessionId(null); setMessages([{ id: Date.now(), type: 'ai', content: 'New enhanced chat started. What would you like to practice?', timestamp: new Date() }]); } }); }}
+                            className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  {(!sessions || sessions.length === 0) && (
+                    <div className="p-3 text-sm text-muted-foreground">No history yet. Start a new chat!</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.aside>
+        </>
+      )}
+    </AnimatePresence>
+    </>
   );
 };
 
