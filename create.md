@@ -9,8 +9,8 @@
  3) Open Courses → pick a course → try an Assessment.
  4) Check your progress on the Dashboard.
  
- ## How to Run Locally
- - Prereqs: Node 18+, npm 9+.
+## How to Run Locally
+- Prereqs: Node 20+, npm 10+.
  - Env: copy `.env.example` to `.env`; set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (optional: `VITE_GEMINI_API_KEY` for direct Gemini fallback).
  - Desktop dev: `npm install && npm run dev` (starts Vite on http://127.0.0.1:3002 and Electron).
  - Admin (dev): open http://127.0.0.1:3002/admin for the Admin dashboard.

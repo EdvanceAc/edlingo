@@ -27,7 +27,7 @@ EdLingo is a modern, AI-powered language learning desktop application built with
 
 ## 📋 Prerequisites
 
-- Node.js (v18 or higher)
+- Node.js (v20 or higher)
 - npm or yarn
 
 

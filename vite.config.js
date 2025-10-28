@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
 
 
 // Load environment variables for server-side API usage
@@ -76,6 +75,8 @@ const adminRoutePlugin = () => {
             return;
           }
 
+          // Lazy-load Supabase client to avoid running on server startup
+          const { createClient } = await import('@supabase/supabase-js');
           const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
             auth: { autoRefreshToken: false, persistSession: false },
           });
