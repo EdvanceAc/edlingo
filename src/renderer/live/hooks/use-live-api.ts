@@ -121,14 +121,18 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
 
 
-  const [model, setModel] = useState<string>("models/gemini-2.0-flash-exp");
+  // Use an audio-capable Live model by default so the server returns PCM audio
+  // Choose widely-available EXP model for stability
+  const [model, setModel] = useState<string>(
+    "models/gemini-2.5-flash-exp"
+  );
   const [config, setConfig] = useState<LiveConnectConfig>({
     systemInstruction: DEFAULT_SYSTEM_INSTRUCTION,
     tools: DEFAULT_TOOLS,
     responseModalities: [Modality.AUDIO],
     speechConfig: {
       voiceConfig: {
-        prebuiltVoiceConfig: { voiceName: "Fenrir" },
+        prebuiltVoiceConfig: { voiceName: "Zephyr" },
       },
     },
   });
@@ -161,6 +165,12 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   useEffect(() => {
     const onOpen = () => {
       setConnected(true);
+      // Ensure audio context is resumed on user-initiated connect (mobile browsers)
+      try {
+        audioStreamerRef.current?.resume();
+      } catch {
+        // no-op
+      }
     };
 
     const onClose = () => {
@@ -197,6 +207,11 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   const connect = useCallback(async () => {
     if (!config) {
       throw new Error("config has not been set");
+    }
+    // Guard: require API key for Live connection to succeed (avoids opaque 403)
+    const hasKey = Boolean((client as any)?.['client']?.options?.apiKey) || Boolean((options as any)?.apiKey);
+    if (!hasKey) {
+      throw new Error("Missing Gemini API key. Set VITE_GEMINI_API_KEY or VITE_GOOGLE_GEMINI_API_KEY.");
     }
     client.disconnect();
     await client.connect(model, config);

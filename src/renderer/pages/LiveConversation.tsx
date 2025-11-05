@@ -11,8 +11,15 @@ import { LiveClientOptions } from "../live/types";
 import { motion } from "framer-motion";
 import { Mic, Settings, Info } from "lucide-react";
 
-// Read Gemini API key from Vite env; if missing, UI renders but connect will fail until provided
-const API_KEY = (import.meta as any).env?.VITE_GOOGLE_GEMINI_API_KEY as string | undefined;
+// Read Gemini API key from env (support multiple variable names and runtime-injected fallbacks)
+const API_KEY = (
+  (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+  (import.meta as any).env?.VITE_GOOGLE_GEMINI_API_KEY ||
+  (typeof window !== 'undefined' ? (window as any)?.__ENV__?.VITE_GEMINI_API_KEY : undefined) ||
+  (typeof window !== 'undefined' ? (window as any)?.__ENV__?.VITE_GOOGLE_GEMINI_API_KEY : undefined) ||
+  (typeof window !== 'undefined' ? (window as any)?.ENV?.VITE_GEMINI_API_KEY : undefined) ||
+  (typeof window !== 'undefined' ? (window as any)?.ENV?.VITE_GOOGLE_GEMINI_API_KEY : undefined)
+) as string | undefined;
 
 const apiOptions: LiveClientOptions = {
   apiKey: API_KEY || "",

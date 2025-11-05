@@ -80,11 +80,25 @@ export class AudioRecorder extends EventEmitter {
       const src = createWorketFromSrc(workletName, AudioRecordingWorklet);
 
       await this.audioContext.audioWorklet.addModule(src);
-      this.recordingWorklet = new AudioWorkletNode(
-        this.audioContext,
-        workletName,
-        { processorOptions: { targetSampleRate: this.sampleRate } }
-      );
+      // Some environments need a short delay after addModule before instantiation
+      let lastErr: any = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          this.recordingWorklet = new AudioWorkletNode(
+            this.audioContext,
+            workletName,
+            { processorOptions: { targetSampleRate: this.sampleRate } }
+          );
+          lastErr = null;
+          break;
+        } catch (e) {
+          lastErr = e;
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }
+      if (!this.recordingWorklet) {
+        throw lastErr || new Error("Failed to create audio recorder worklet");
+      }
 
       this.recordingWorklet.port.onmessage = async (ev: MessageEvent) => {
         // worklet processes recording floats and messages converted buffer
@@ -102,7 +116,20 @@ export class AudioRecorder extends EventEmitter {
       await this.audioContext.audioWorklet.addModule(
         createWorketFromSrc(vuWorkletName, VolMeterWorket),
       );
-      this.vuWorklet = new AudioWorkletNode(this.audioContext, vuWorkletName);
+      let vuErr: any = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          this.vuWorklet = new AudioWorkletNode(this.audioContext, vuWorkletName);
+          vuErr = null;
+          break;
+        } catch (e) {
+          vuErr = e;
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }
+      if (!this.vuWorklet) {
+        throw vuErr || new Error("Failed to create vu-meter worklet");
+      }
       this.vuWorklet.port.onmessage = (ev: MessageEvent) => {
         this.emit("volume", ev.data.volume);
       };

@@ -163,6 +163,7 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
 
   protected onerror(e: ErrorEvent) {
     this.log("server.error", e.message);
+    this._status = "disconnected";
     this.emit("error", e);
   }
 
@@ -171,6 +172,7 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
       `server.close`,
       `disconnected ${e.reason ? `with reason: ${e.reason}` : ``}`
     );
+    this._status = "disconnected";
     this.emit("close", e);
   }
 
@@ -244,10 +246,20 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
    * send realtimeInput, this is base64 chunks of "audio/pcm" and/or "image/jpg"
    */
   sendRealtimeInput(chunks: Array<{ mimeType: string; data: string }>) {
+    if (this._status !== "connected" || !this.session) {
+      return;
+    }
     let hasAudio = false;
     let hasVideo = false;
     for (const ch of chunks) {
-      this.session?.sendRealtimeInput({ media: ch });
+      try {
+        this.session?.sendRealtimeInput({ media: ch });
+      } catch (err) {
+        // Avoid console noise when WS is closing/closed; update status
+        this._status = "disconnected";
+        this.log("client.realtimeInput.error", (err as Error)?.message || String(err));
+        break;
+      }
       if (ch.mimeType.includes("audio")) {
         hasAudio = true;
       }
@@ -288,7 +300,15 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
    * send normal content parts such as { text }
    */
   send(parts: Part | Part[], turnComplete: boolean = true) {
-    this.session?.sendClientContent({ turns: parts, turnComplete });
+    if (this._status !== "connected" || !this.session) {
+      return;
+    }
+    try {
+      this.session?.sendClientContent({ turns: parts, turnComplete });
+    } catch (err) {
+      this._status = "disconnected";
+      this.log("client.send.error", (err as Error)?.message || String(err));
+    }
     this.log(`client.send`, {
       turns: Array.isArray(parts) ? parts : [parts],
       turnComplete,

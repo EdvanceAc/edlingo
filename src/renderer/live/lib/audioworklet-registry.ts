@@ -32,12 +32,11 @@ export const createWorketFromSrc = (
   workletName: string,
   workletSrc: string,
 ) => {
-  const script = new Blob(
-    [`registerProcessor("${workletName}", ${workletSrc})`],
-    {
-      type: "application/javascript",
-    },
-  );
+  const wrapped = `(() => {\n  const __WorkletClass = ${workletSrc};\n  // Ensure class expression is registered under the provided name\n  registerProcessor("${workletName}", __WorkletClass);\n})();`;
+
+  const script = new Blob([wrapped], {
+    type: "application/javascript",
+  });
 
   return URL.createObjectURL(script);
 };
