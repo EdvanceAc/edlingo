@@ -183,11 +183,39 @@ class AIService {
     const chatMode = options.focusArea || options.mode || 'conversation';
     const userLevel = options.userLevel || 'beginner';
     const targetLanguage = options.targetLanguage || 'English';
+    const conversation = Array.isArray(options.conversation) ? options.conversation : [];
+
+    // Build a compact, token-efficient context prefix from recent turns
+    const contextLines = [];
+    for (const msg of conversation.slice(-20)) {
+      const role = msg.role === 'assistant' ? 'Tutor' : 'Learner';
+      const content = (msg.content || '').toString().trim();
+      if (!content) continue;
+      // Clamp each line to avoid overly long prompts
+      const snippet = content.length > 220 ? `${content.slice(0, 220)}…` : content;
+      contextLines.push(`${role}: ${snippet}`);
+    }
+
+    const educationalPreamble =
+      `You are a supportive ${targetLanguage} tutor. Follow global best practices:\n` +
+      `- Keep answers concise and level-appropriate (${userLevel}).\n` +
+      `- Encourage, correct gently, and provide one actionable follow-up question.\n` +
+      `- Prefer examples over long theory; keep responses under ~120 words.\n` +
+      `- If user asks for corrections, show corrected sentence and brief reason.\n`;
+
+    const conversationPrefix =
+      contextLines.length > 0
+        ? `Conversation so far (most recent last):\n${contextLines.join('\n')}\n\n`
+        : '';
+
+    const messageForModel =
+      `${educationalPreamble}\n${conversationPrefix}Learner now says: "${userMessage}"\n` +
+      `Please respond as the tutor in ${targetLanguage}.`;
 
     // Use Supabase Gemini service as primary method
     try {
       console.log('aiService: Using Supabase Gemini service for language learning response');
-      const supabaseResult = await supabaseGeminiService.sendMessage(userMessage, {
+      const supabaseResult = await supabaseGeminiService.sendMessage(messageForModel, {
         userLevel,
         focusArea: chatMode,
         sessionId: options.sessionId,

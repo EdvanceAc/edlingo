@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import aiService from '../services/aiService';
 import { useAuth } from '../contexts/AuthContext';
 import supabaseService from '../services/supabaseService';
+import { ConversationMemory, addMessage as cmAdd, getRecentContext as cmGet, loadHistory as cmLoad, clearHistory as cmClear, saveHistory as cmSave } from '../utils/conversationMemory';
 
 const AIContext = createContext();
 
@@ -161,13 +162,25 @@ export const AIProvider = ({ children }) => {
           setCurrentSessionId(sessionId);
         }
       }
+      // If still no session, create a local one
+      if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        setCurrentSessionId(sessionId);
+      }
+
+      // Build contextual memory: load existing, append current user message, keep last 10 turns (20 messages)
+      const MEMORY_WINDOW = 20;
+      const prior = cmGet(sessionId, MEMORY_WINDOW);
+      cmAdd(sessionId, { role: 'user', content: message });
+      const contextForModel = cmGet(sessionId, MEMORY_WINDOW);
 
       const result = await aiService.generateLanguageLearningResponse(message, {
         targetLanguage: options.targetLanguage || 'English',
         userLevel: options.userLevel || 'intermediate',
         focusArea: options.focusArea || 'conversation',
         sessionId: sessionId || currentSessionId,
-        user: user
+        user: user,
+        conversation: contextForModel
       });
 
       console.log('AIProvider: Raw result from aiService:', result);
@@ -203,12 +216,9 @@ export const AIProvider = ({ children }) => {
       console.log('AIProvider: Final response to return:', response);
 
       // Update conversation history
-      const newHistory = [
-        ...conversationHistory.slice(-8),
-        { role: 'user', content: message, timestamp: new Date(), sessionId },
-        { role: 'assistant', content: response, timestamp: new Date(), sessionId }
-      ];
-      setConversationHistory(newHistory);
+      cmAdd(sessionId, { role: 'assistant', content: response });
+      const updatedMemory = cmGet(sessionId, 20);
+      setConversationHistory(updatedMemory.map(m => ({ ...m, sessionId })));
 
       // Persist assistant message to Supabase (user message can be saved by the UI)
       if (user?.id && supabaseService.isConnected && sessionId) {
@@ -250,8 +260,14 @@ export const AIProvider = ({ children }) => {
   };
 
   const clearConversationHistory = () => {
-    setConversationHistory([]);
-    setCurrentSessionId(null);
+    try {
+      if (currentSessionId) cmClear(currentSessionId);
+    } catch {
+      // ignore
+    } finally {
+      setConversationHistory([]);
+      setCurrentSessionId(null);
+    }
   };
 
   const startNewSession = async () => {
@@ -271,6 +287,7 @@ export const AIProvider = ({ children }) => {
       newSessionId = crypto.randomUUID();
     }
     setCurrentSessionId(newSessionId);
+    cmClear(newSessionId);
     setConversationHistory([]);
     console.log('Started new session with ID:', newSessionId);
     return newSessionId;
@@ -282,6 +299,12 @@ export const AIProvider = ({ children }) => {
 
   const setCurrentSessionIdDirect = (sessionId) => {
     setCurrentSessionId(sessionId || null);
+    if (sessionId) {
+      const hist = cmLoad(sessionId);
+      setConversationHistory(hist.map(m => ({ ...m, sessionId })));
+    } else {
+      setConversationHistory([]);
+    }
   };
 
   const loadConversationFromMessages = (messages = []) => {
