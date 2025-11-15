@@ -20,6 +20,8 @@ const Settings = () => {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState(null);
   const [usernameStatus, setUsernameStatus] = useState('idle'); // idle | checking | available | taken | invalid
+  const [isUsernameEditing, setIsUsernameEditing] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState('');
   const [profile, setProfile] = useState({
     full_name: '',
     email: '',
@@ -64,6 +66,7 @@ const Settings = () => {
         placement_level: row?.placement_level || '',
         avatar_url: row?.avatar_url || ''
       }));
+      setUsernameDraft((row?.username || '').toString());
     } catch (e) {
       setProfileError(e?.message || 'Failed to load profile');
     } finally {
@@ -103,21 +106,22 @@ const Settings = () => {
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  // Simple username rules: 3-32 chars letters, numbers, underscore, dot
+  // Username rules (editing): 6-32 chars, a-z 0-9 . _
   const isValidUsername = useMemo(() => {
-    const u = (profile.username || '').trim();
-    return !!u && /^[a-zA-Z0-9._]{3,32}$/.test(u);
-  }, [profile.username]);
+    const u = (usernameDraft || '').trim();
+    return !!u && /^(?![._])(?!.*[._]{2})[a-z0-9._]{6,32}(?<![._])$/.test(u);
+  }, [usernameDraft]);
 
   // Debounced username availability check
   useEffect(() => {
     let timer;
-    const u = (profile.username || '').trim();
+    if (!isUsernameEditing) return () => {};
+    const u = (usernameDraft || '').trim();
     if (!u) {
       setUsernameStatus('idle');
       return;
     }
-    if (!/^[a-zA-Z0-9._]{3,32}$/.test(u)) {
+    if (!/^(?![._])(?!.*[._]{2})[a-z0-9._]{6,32}(?<![._])$/.test(u)) {
       setUsernameStatus('invalid');
       return;
     }
@@ -129,15 +133,64 @@ const Settings = () => {
       } else {
         setUsernameStatus('idle');
       }
-    }, 450);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [profile.username]);
+  }, [usernameDraft, isUsernameEditing]);
 
   const saveProfile = async () => {
     try {
       setProfileSaving(true);
       setProfileError(null);
-      if (profile.username && !isValidUsername) {
+      const res = await supabaseService.updateUserProfile(profile);
+      if (!res.success) {
+        throw new Error(res.error || 'Save failed');
+      }
+    } catch (e) {
+      setProfileError(e?.message || 'Failed to save profile');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  // Username editing handlers
+  const startEditUsername = () => {
+    setUsernameDraft((profile.username || '').toString());
+    setIsUsernameEditing(true);
+    setUsernameStatus('idle');
+  };
+
+  const cancelEditUsername = () => {
+    setUsernameDraft((profile.username || '').toString());
+    setIsUsernameEditing(false);
+    setUsernameStatus('idle');
+  };
+
+  const onUsernameInput = (e) => {
+    // Force lowercase and allowed characters only
+    const raw = (e.target.value || '').toLowerCase();
+    const cleaned = raw
+      .replace(/[^a-z0-9._]/g, '')
+      .replace(/[._]{2,}/g, '.')
+      .replace(/^[._]+|[._]+$/g, '');
+    setUsernameDraft(cleaned);
+  };
+
+  const handleSaveUsername = async () => {
+    try {
+      setProfileSaving(true);
+      setProfileError(null);
+      // Pad to minimum length 6 if needed (append random digits)
+      let candidate = (usernameDraft || '').trim().toLowerCase();
+      if (!candidate) {
+        setProfileError('Username cannot be empty');
+        setProfileSaving(false);
+        return;
+      }
+      while (candidate.length < 6) {
+        candidate += Math.floor(Math.random() * 10).toString();
+      }
+      // Validate final candidate
+      if (!/^(?![._])(?!.*[._]{2})[a-z0-9._]{6,32}(?<![._])$/.test(candidate)) {
         setProfileError('Username format is invalid');
         setProfileSaving(false);
         return;
@@ -147,12 +200,18 @@ const Settings = () => {
         setProfileSaving(false);
         return;
       }
-      const res = await supabaseService.updateUserProfile(profile);
+      // Persist along with other profile fields to avoid clearing anything
+      const payload = { ...profile, username: candidate };
+      const res = await supabaseService.updateUserProfile(payload);
       if (!res.success) {
         throw new Error(res.error || 'Save failed');
       }
+      // Reflect in UI
+      setProfile(prev => ({ ...prev, username: candidate }));
+      setIsUsernameEditing(false);
+      setUsernameStatus('idle');
     } catch (e) {
-      setProfileError(e?.message || 'Failed to save profile');
+      setProfileError(e?.message || 'Failed to save username');
     } finally {
       setProfileSaving(false);
     }
@@ -235,24 +294,54 @@ const Settings = () => {
                     <div className="relative">
                       <input
                         name="username"
-                        value={profile.username}
-                        onChange={onProfileChange}
+                        value={isUsernameEditing ? usernameDraft : (profile.username || '')}
+                        onChange={isUsernameEditing ? onUsernameInput : () => {}}
                         placeholder="username"
+                        disabled={!isUsernameEditing}
+                        maxLength={32}
                         aria-invalid={usernameStatus === 'taken' || usernameStatus === 'invalid'}
-                        className={`w-full px-3 py-2 rounded-lg bg-white/60 dark:bg-gray-800/50 backdrop-blur-sm ring-1 ring-white/60 dark:ring-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 ${
-                          usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'focus:ring-red-500' : 'focus:ring-indigo-400'
+                        className={`w-full px-3 py-2 rounded-lg bg-white/60 dark:bg-gray-800/50 backdrop-blur-sm ring-1 ring-white/60 dark:ring-white/10 focus:outline-none focus:ring-2 ${
+                          !isUsernameEditing ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900 dark:text-white'
+                        } ${usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'focus:ring-red-500' : 'focus:ring-indigo-400'
                         }`}
                       />
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-                        {usernameStatus === 'checking' && <span className="text-gray-500">Checking…</span>}
-                        {usernameStatus === 'available' && <span className="text-green-600">Available</span>}
-                        {usernameStatus === 'taken' && <span className="text-red-600">Taken</span>}
-                        {usernameStatus === 'invalid' && <span className="text-red-600">Invalid</span>}
+                        {isUsernameEditing && usernameStatus === 'checking' && <span className="text-gray-500">Checking…</span>}
+                        {isUsernameEditing && usernameStatus === 'available' && <span className="text-green-600">Available</span>}
+                        {isUsernameEditing && usernameStatus === 'taken' && <span className="text-red-600">Taken</span>}
+                        {isUsernameEditing && usernameStatus === 'invalid' && <span className="text-red-600">Invalid</span>}
                       </div>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                      Use 3–32 characters: letters, numbers, dot or underscore
+                      Use 6–32 characters: a-z, 0-9, dot or underscore. Can't start/end with . or _
                     </p>
+                    {!isUsernameEditing ? (
+                      <button
+                        type="button"
+                        onClick={startEditUsername}
+                        className="mt-2 px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm transition-colors"
+                      >
+                        Edit Username
+                      </button>
+                    ) : (
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveUsername}
+                          disabled={profileSaving}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm transition-colors disabled:opacity-70"
+                        >
+                          {profileSaving ? 'Saving…' : 'Save Username'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEditUsername}
+                          className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-gray-800 dark:text-gray-200">Target Language</label>
