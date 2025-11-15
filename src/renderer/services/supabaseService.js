@@ -273,6 +273,30 @@ class SupabaseService {
       const { data: { user } } = await this.client.auth.getUser();
       if (!user) return { success: false, error: 'No authenticated user' };
 
+      // Ensure profile row exists (RLS allows inserting own row)
+      try {
+        const existing = await this.client
+          .from('user_profiles')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (!existing.data) {
+          await this.client
+            .from('user_profiles')
+            .upsert({ id: user.id, email: user.email || null })
+            .select()
+            .maybeSingle();
+        }
+      } catch (_) {
+        try {
+          await this.client.rpc('create_missing_user_profile', {
+            user_id: user.id,
+            user_email: user.email || null,
+            user_name: user.user_metadata?.full_name || user.user_metadata?.name || null
+          });
+        } catch (_) {}
+      }
+
       const payload = {
         full_name: updates.full_name ?? null,
         username: updates.username ?? null,
