@@ -281,21 +281,6 @@ const ComprehensiveAdminDashboard = () => {
       }, ...prev]);
     }
   };
-  const [notificationFeed, setNotificationFeed] = useState([]);
-  const [notificationRealtimeStatus, setNotificationRealtimeStatus] = useState('idle');
-  const [isNotificationFeedLoading, setIsNotificationFeedLoading] = useState(false);
-  const [isSendingNotification, setIsSendingNotification] = useState(false);
-  const [notificationForm, setNotificationForm] = useState({
-    title: '',
-    message: '',
-    type: 'info',
-    priority: 'normal',
-    audience: 'all',
-    targetIdentifiers: '',
-    courseIds: '',
-    actionUrl: '',
-    isVisible: true
-  });
 
   // Navigation sections
   const navigationSections = [
