@@ -273,6 +273,17 @@ class SupabaseService {
       const { data: { user } } = await this.client.auth.getUser();
       if (!user) return { success: false, error: 'No authenticated user' };
 
+      // Normalize username: empty string => null, trim spaces
+      let normalizedUsername = undefined;
+      if (Object.prototype.hasOwnProperty.call(updates, 'username')) {
+        if (typeof updates.username === 'string') {
+          const t = updates.username.trim();
+          normalizedUsername = t.length ? t : null;
+        } else {
+          normalizedUsername = updates.username ?? null;
+        }
+      }
+
       // Ensure profile row exists (RLS allows inserting own row)
       try {
         const existing = await this.client
@@ -299,13 +310,16 @@ class SupabaseService {
 
       const payload = {
         full_name: updates.full_name ?? null,
-        username: updates.username ?? null,
+        // username handled below
         target_language: updates.target_language ?? null,
         native_language: updates.native_language ?? null,
         placement_level: updates.placement_level ?? null,
         avatar_url: updates.avatar_url ?? null,
         updated_at: new Date().toISOString()
       };
+      if (normalizedUsername !== undefined) {
+        payload.username = normalizedUsername;
+      }
 
       // Try updating by PK first
       let query = this.client.from('user_profiles').update(payload).eq('id', user.id).select().maybeSingle();
