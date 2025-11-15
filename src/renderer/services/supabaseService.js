@@ -235,6 +235,138 @@ class SupabaseService {
     return this.client.auth.onAuthStateChange(callback);
   }
 
+  // ---------------- User Profile -----------------
+  async getUserProfile() {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: true, data: null };
+
+      // Try primary key (id === auth.uid())
+      let { data, error } = await this.client
+        .from('user_profiles')
+        .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (!data) {
+        // Fallback by user_id relationship if schema differs
+        const res = await this.client
+          .from('user_profiles')
+          .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        data = Array.isArray(res.data) ? res.data[0] : res.data;
+      }
+
+      return { success: true, data: data || null };
+    } catch (error) {
+      console.error('Get user profile error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateUserProfile(updates = {}) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      const payload = {
+        full_name: updates.full_name ?? null,
+        username: updates.username ?? null,
+        target_language: updates.target_language ?? null,
+        native_language: updates.native_language ?? null,
+        placement_level: updates.placement_level ?? null,
+        avatar_url: updates.avatar_url ?? null,
+        updated_at: new Date().toISOString()
+      };
+
+      // Try updating by PK first
+      let query = this.client.from('user_profiles').update(payload).eq('id', user.id).select().maybeSingle();
+      let { data, error } = await query;
+
+      // If no row updated (or schema uses user_id), try user_id fallback
+      if ((error?.code === 'PGRST116') || (!error && !data)) {
+        const res = await this.client
+          .from('user_profiles')
+          .update(payload)
+          .eq('user_id', user.id)
+          .select()
+          .maybeSingle();
+        data = res.data; error = res.error;
+      }
+
+      if (error) throw error;
+      return { success: true, data: data || null };
+    } catch (error) {
+      // Handle unique constraint violation cleanly
+      if (error?.code === '23505' && /username/i.test(error?.message || '')) {
+        return { success: false, error: 'Username already taken' };
+      }
+      console.error('Update user profile error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async checkUsernameAvailable(username) {
+    try {
+      if (!username || typeof username !== 'string') {
+        return { success: false, available: false, error: 'Invalid username' };
+      }
+
+      // Normalize for case-insensitive check
+      const normalized = username.trim();
+      if (!normalized) return { success: false, available: false, error: 'Invalid username' };
+
+      const { data: { user } } = await this.client.auth.getUser();
+      const myId = user?.id || null;
+
+      // Use ilike for case-insensitive, exact-match pattern
+      let query = this.client
+        .from('user_profiles')
+        .select('id,username')
+        .ilike('username', normalized)
+        .limit(1);
+
+      if (myId) query = query.neq('id', myId);
+
+      const { data, error } = await query;
+      if (error && error.code !== 'PGRST116') throw error;
+
+      const taken = Array.isArray(data) ? data.length > 0 : !!data;
+      return { success: true, available: !taken };
+    } catch (error) {
+      console.error('Check username availability error:', error);
+      return { success: false, available: false, error: error.message };
+    }
+  }
+
+  async uploadAvatar(file) {
+    try {
+      if (!file) return { success: false, error: 'No file provided' };
+
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      const result = await supabaseStorageService.uploadFile(
+        file,
+        'shared-resources', // Reuse existing public bucket to avoid missing-bucket failures
+        `avatars/${user.id}`,
+        { contentType: file.type }
+      );
+
+      // Persist URL on profile
+      await this.updateUserProfile({ avatar_url: result.url });
+
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Upload avatar error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // User Progress Management
   async saveUserProgress(userId, progressData) {
     try {
