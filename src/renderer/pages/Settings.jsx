@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../providers/ThemeProvider';
-import { useAI } from '../providers/AIProvider';
 import { useAuth } from '../contexts/AuthContext';
 import supabaseService from '../services/supabaseService.js';
 
@@ -10,9 +9,7 @@ const Settings = () => {
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [volume, setVolume] = useState(80);
-  const [showApiKey, setShowApiKey] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { aiSettings, saveAISettings, aiStatus, getStatusMessage } = useAI();
   const { user } = useAuth();
 
   // Profile state
@@ -92,15 +89,6 @@ const Settings = () => {
       console.log('Settings saved successfully');
     } catch (error) {
       console.error('Failed to save settings:', error);
-    }
-  };
-
-  const handleAISettingsChange = async (newSettings) => {
-    try {
-      await saveAISettings(newSettings);
-      console.log('AI settings saved successfully');
-    } catch (error) {
-      console.error('Failed to save AI settings:', error);
     }
   };
 
@@ -468,93 +456,6 @@ const Settings = () => {
                 />
                 <span className="text-gray-800 dark:text-gray-200 min-w-[40px]">{volume}%</span>
               </div>
-            </div>
-          </div>
-
-          {/* AI Settings */}
-          <div className="rounded-2xl p-6 bg-white/50 dark:bg-gray-800/40 backdrop-blur-md ring-1 ring-white/60 dark:ring-white/10 shadow-sm">
-            <h2 className="text-xl font-semibold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-emerald-600">
-              AI Configuration
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">AI Status</span>
-                <span className={`text-sm px-3 py-1 rounded-full backdrop-blur-sm ring-1 ring-white/60 ${
-                  aiStatus === 'ready' ? 'bg-green-100 text-green-800' :
-                  aiStatus === 'initializing' ? 'bg-yellow-100 text-yellow-800' :
-                  aiStatus === 'error' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {getStatusMessage()}
-                </span>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <label className="text-gray-800 dark:text-gray-200 min-w-[120px]">AI Provider:</label>
-                <select
-                  value={aiSettings.provider}
-                  onChange={(e) => handleAISettingsChange({ provider: e.target.value })}
-                  className="px-3 py-2 rounded-lg bg-white/60 dark:bg-gray-800/50 backdrop-blur-sm ring-1 ring-white/60 dark:ring-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
-                  <option value="transformers">Transformers.js (Local)</option>
-                  <option value="openai">OpenAI API</option>
-
-                <option value="vertex-ai">Google Vertex AI</option>
-                </select>
-              </div>
-              
-              {aiSettings.provider !== 'transformers' && (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-4">
-                    <label className="text-gray-800 dark:text-gray-200 min-w-[120px]">API Key:</label>
-                    <div className="flex-1 relative">
-                      <input
-                        type={showApiKey ? 'text' : 'password'}
-                        value={aiSettings.apiKey}
-                        onChange={(e) => handleAISettingsChange({ apiKey: e.target.value })}
-                        placeholder={`Enter your ${aiSettings.provider} API key`}
-                        className="w-full px-3 py-2 rounded-lg bg-white/60 dark:bg-gray-800/50 backdrop-blur-sm ring-1 ring-white/60 dark:ring-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                      >
-                        {showApiKey ? 'Hide' : 'Show'}
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 ml-[120px]">
-                    {aiSettings.provider === 'openai' && 'Get your API key from https://platform.openai.com/api-keys'}
-                    {aiSettings.provider === 'vertex-ai' && 'Configure Google Cloud authentication with: gcloud auth application-default login'}
-                  </p>
-                </div>
-              )}
-              
-              {aiSettings.provider === 'transformers' && (
-                <div className="ml-[120px]">
-                  <p className="text-sm text-green-700 dark:text-green-400">
-                    ✓ Using local AI models - no API key required
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                    Models run locally in your browser for privacy and offline use
-                  </p>
-                </div>
-              )}
-              
-              <div className="flex items-center space-x-4">
-                <label className="text-gray-800 dark:text-gray-200 min-w-[120px]">AI Model:</label>
-                <input
-                  type="text"
-                  value={aiSettings.model}
-                  onChange={(e) => handleAISettingsChange({ model: e.target.value })}
-                  placeholder="Model name or ID"
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/60 dark:bg-gray-800/50 backdrop-blur-sm ring-1 ring-white/60 dark:ring-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-              <p className="text-xs text-gray-600 dark:text-gray-300 ml-[120px]">
-                Specify the AI model to use (e.g., gpt-3.5-turbo for OpenAI)
-              </p>
             </div>
           </div>
 
