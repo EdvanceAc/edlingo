@@ -438,19 +438,31 @@ class SupabaseService {
         payload.username = normalizedUsername;
       }
 
-      // Try updating by PK first
-      let query = this.client.from('user_profiles').update(payload).eq('id', user.id).select().maybeSingle();
-      let { data, error } = await query;
+      // Prefer UPSERT to avoid representation issues and ensure row exists
+      const upsertPayload = { id: user.id, email: user.email || null, ...payload };
+      let { data, error } = await this.client
+        .from('user_profiles')
+        .upsert(upsertPayload, { onConflict: 'id' })
+        .select()
+        .maybeSingle();
 
-      // If no row updated (or schema uses user_id), try user_id fallback
-      if ((error?.code === 'PGRST116') || (!error && !data)) {
-        const res = await this.client
-          .from('user_profiles')
-          .update(payload)
-          .eq('user_id', user.id)
-          .select()
-          .maybeSingle();
+      // If UPSERT is not allowed (older schema), fallback to update paths
+      if (error) {
+        // Try updating by PK first
+        let query = this.client.from('user_profiles').update(payload).eq('id', user.id).select().maybeSingle();
+        let res = await query;
         data = res.data; error = res.error;
+
+        // If no row updated (or schema uses user_id), try user_id fallback
+        if ((error?.code === 'PGRST116') || (!error && !data)) {
+          const res2 = await this.client
+            .from('user_profiles')
+            .update(payload)
+            .eq('user_id', user.id)
+            .select()
+            .maybeSingle();
+          data = res2.data; error = res2.error;
+        }
       }
 
       if (error) throw error;
