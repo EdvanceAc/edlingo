@@ -303,6 +303,10 @@
                     <i data-lucide="folder" class="w-5 h-5"></i>
                     <span>Files</span>
                 </button>
+                <button id="notifications-tab" class="lux-tab flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showTab('notifications')">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span>Notifications</span>
+                </button>
             </div>
         </div>
     </nav>
@@ -1187,6 +1191,108 @@
                             <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors" onclick="showUploadModal()">
                                 Upload Files
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Tab -->
+        <div id="notifications-content" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- Composer -->
+                <div class="bg-white glass-card gradient-border shine-on-hover lg:col-span-2">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold section-title">Create Notification</h2>
+                            <p class="text-xs lux-muted">Send announcements directly from the dashboard.</p>
+                        </div>
+                        <span id="notification-last-sent" class="text-xs text-gray-400">Never sent</span>
+                    </div>
+                    <div class="p-6">
+                        <form id="notification-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                <input type="text" name="title" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Week Warrior unlocked">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Message *</label>
+                                <textarea name="message" rows="4" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Share the update…" required></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                    <select name="type" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="info">Info</option>
+                                        <option value="success">Success</option>
+                                        <option value="reminder">Reminder</option>
+                                        <option value="achievement">Achievement</option>
+                                        <option value="discount">Discount</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                                    <select name="priority" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="normal">Normal</option>
+                                        <option value="high">High</option>
+                                        <option value="low">Low</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Audience</label>
+                                <select name="audience" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="all">All learners</option>
+                                    <option value="user">Specific learners (comma separated)</option>
+                                    <option value="course">Course enrollees (course IDs)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Target identifiers</label>
+                                <input type="text" name="targetIdentifiers" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="username, email یا user_id">
+                                <p class="text-xs text-gray-500 mt-1">Only required when audience = specific learners.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Course IDs</label>
+                                <input type="text" name="courseIds" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="uuid-1, uuid-2">
+                                <p class="text-xs text-gray-500 mt-1">Only required when audience = course enrollees.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Action URL</label>
+                                <input type="url" name="actionUrl" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="https://example.com/lesson">
+                            </div>
+                            <label class="inline-flex items-center text-sm text-gray-700">
+                                <input type="checkbox" name="isVisible" class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                Show immediately after sending
+                            </label>
+                            <button id="send-notification-btn" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center">
+                                <i data-lucide="send" class="w-4 h-4 mr-2"></i>
+                                Send Notification
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Feed -->
+                <div class="bg-white glass-card gradient-border shine-on-hover lg:col-span-3">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold section-title">Recent Deliveries</h2>
+                            <div class="text-xs text-gray-500 flex items-center gap-2">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700" id="notification-realtime-chip">Realtime: idle</span>
+                                <span id="notification-feed-count">0 entries</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="glass-icon-btn" onclick="refreshNotificationFeed()" aria-label="Refresh feed">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="notification-feed" class="p-6 space-y-4">
+                        <div class="text-center text-gray-500 py-8">
+                            <i data-lucide="bell" class="w-8 h-8 mx-auto mb-2"></i>
+                            <p>No notifications yet.</p>
                         </div>
                     </div>
                 </div>
@@ -3941,10 +4047,206 @@
                 }
             } else if (tabName === 'questions') {
                 loadQuestions();
+            } else if (tabName === 'notifications') {
+                initNotificationsTab();
             }
         }
         
         window.showTab = window.showTab || showTab;
+
+        let notificationsTabInitialized = false;
+
+        function parseCommaList(value = '') {
+            return value
+                .split(',')
+                .map((entry) => entry.trim())
+                .filter(Boolean);
+        }
+
+        function formatNotificationTimestamp(value) {
+            try {
+                const date = new Date(value);
+                if (isNaN(date.getTime())) return value || '';
+                return date.toLocaleString();
+            } catch (_) {
+                return value || '';
+            }
+        }
+
+        function updateNotificationRealtimeChip(stateText = 'idle') {
+            const chip = document.getElementById('notification-realtime-chip');
+            if (chip) {
+                chip.textContent = `Realtime: ${stateText}`;
+            }
+        }
+
+        async function initNotificationsTab(force = false) {
+            const form = document.getElementById('notification-form');
+            if (form && !form.dataset.bound) {
+                form.addEventListener('submit', handleNotificationFormSubmit);
+                form.dataset.bound = 'true';
+            }
+
+            if (!notificationsTabInitialized || force) {
+                notificationsTabInitialized = true;
+                updateNotificationRealtimeChip('ready');
+            }
+
+            await refreshNotificationFeed();
+        }
+
+        async function handleNotificationFormSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const submitBtn = document.getElementById('send-notification-btn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 mr-2 animate-spin"></i>Sending...';
+            }
+
+            const formData = new FormData(form);
+            const payload = {
+                p_title: (formData.get('title') || '').trim(),
+                p_content: (formData.get('message') || '').trim(),
+                p_type: formData.get('type') || 'info',
+                p_priority: formData.get('priority') || 'normal',
+                p_audience: formData.get('audience') || 'all',
+                p_target_identifiers: parseCommaList(formData.get('targetIdentifiers') || ''),
+                p_course_ids: parseCommaList(formData.get('courseIds') || ''),
+                p_action_url: (formData.get('actionUrl') || '').trim(),
+                p_metadata: {},
+                p_is_visible: formData.get('isVisible') === 'on'
+            };
+
+            if (!payload.p_content) {
+                createToast({ type: 'warning', message: 'Message body is required' });
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4 mr-2"></i>Send Notification';
+                return;
+            }
+
+            if (payload.p_audience === 'user' && payload.p_target_identifiers.length === 0) {
+                createToast({ type: 'warning', message: 'لطفاً شناسه کاربران را وارد کنید' });
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4 mr-2"></i>Send Notification';
+                return;
+            }
+
+            if (payload.p_audience === 'course' && payload.p_course_ids.length === 0) {
+                createToast({ type: 'warning', message: 'لطفاً شناسه دوره‌ها را وارد کنید' });
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4 mr-2"></i>Send Notification';
+                return;
+            }
+
+            if (payload.p_target_identifiers.length === 0) payload.p_target_identifiers = null;
+            if (payload.p_course_ids.length === 0) payload.p_course_ids = null;
+
+            try {
+                const { error } = await supabaseAdmin.rpc('admin_dispatch_notification', payload);
+                if (error) throw error;
+                createToast({ type: 'success', message: 'اعلان با موفقیت ارسال شد' });
+                form.reset();
+                const lastSent = document.getElementById('notification-last-sent');
+                if (lastSent) lastSent.textContent = `Sent: ${new Date().toLocaleTimeString()}`;
+                await refreshNotificationFeed();
+            } catch (err) {
+                console.error('Failed to send notification', err);
+                createToast({ type: 'error', message: err.message || 'ارسال اعلان ناموفق بود' });
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4 mr-2"></i>Send Notification';
+                }
+            }
+        }
+
+        async function refreshNotificationFeed() {
+            const container = document.getElementById('notification-feed');
+            const countChip = document.getElementById('notification-feed-count');
+            if (!container) return;
+
+            container.innerHTML = `
+                <div class="flex items-center justify-center text-gray-500 py-10">
+                    <i data-lucide="loader" class="w-5 h-5 mr-2 animate-spin"></i>
+                    Loading notifications...
+                </div>
+            `;
+            lucide.createIcons();
+
+            try {
+                const { data, error } = await supabaseAdmin
+                    .from('notifications')
+                    .select('id,title,content,type,priority,is_visible,is_read,created_at,action_url')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-gray-500 py-12">
+                            <i data-lucide="bell" class="w-8 h-8 mx-auto mb-3"></i>
+                            هیچ اعلانی وجود ندارد.
+                        </div>
+                    `;
+                    countChip && (countChip.textContent = '0 entries');
+                    lucide.createIcons();
+                    return;
+                }
+
+                container.innerHTML = data.map((item) => `
+                    <div class="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">${item.title || 'Announcement'}</h3>
+                                <p class="text-sm text-gray-600 mt-1">${item.content || ''}</p>
+                                <div class="flex flex-wrap gap-2 text-xs text-gray-500 mt-3">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">${item.type}</span>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full ${item.priority === 'high' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}">
+                                        Priority: ${item.priority || 'normal'}
+                                    </span>
+                                    <span>${formatNotificationTimestamp(item.created_at)}</span>
+                                    ${item.action_url ? `<a href="${item.action_url}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">Open link</a>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-right text-xs text-gray-500">
+                                <button class="text-blue-600 hover:text-blue-800 block" onclick="toggleNotificationVisibility('${item.id}', ${item.is_visible})">
+                                    ${item.is_visible ? 'Hide' : 'Show'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                if (countChip) countChip.textContent = `${data.length} entries`;
+                lucide.createIcons();
+            } catch (err) {
+                console.error('Failed to load notification feed', err);
+                container.innerHTML = `
+                    <div class="text-center text-red-500 py-12">
+                        خطا در بارگذاری اعلان‌ها: ${err.message || 'Unknown error'}
+                    </div>
+                `;
+            }
+        }
+
+        async function toggleNotificationVisibility(id, currentlyVisible) {
+            try {
+                const { error } = await supabaseAdmin
+                    .from('notifications')
+                    .update({ is_visible: !currentlyVisible })
+                    .eq('id', id);
+                if (error) throw error;
+                createToast({ type: 'success', message: !currentlyVisible ? 'اعلان نمایان شد' : 'اعلان مخفی شد' });
+                await refreshNotificationFeed();
+            } catch (err) {
+                console.error('Failed to toggle notification visibility', err);
+                createToast({ type: 'error', message: err.message || 'به‌روزرسانی اعلان ناموفق بود' });
+            }
+        }
+
+        window.refreshNotificationFeed = window.refreshNotificationFeed || refreshNotificationFeed;
+        window.toggleNotificationVisibility = window.toggleNotificationVisibility || toggleNotificationVisibility;
         
         // Modal functions
         window.showAddCourseModal = window.showAddCourseModal || function() {
