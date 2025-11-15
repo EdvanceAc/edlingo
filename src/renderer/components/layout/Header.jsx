@@ -219,7 +219,7 @@ const Header = ({ onToggleSidebar }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-sm">Notifications</h3>
-                    <p className="text-xs text-muted-foreground">پیگیر تمریناتت هستیم</p>
+                    <p className="text-xs text-muted-foreground">We keep an eye on your practice</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <span
