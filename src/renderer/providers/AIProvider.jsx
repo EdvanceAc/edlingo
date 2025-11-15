@@ -169,7 +169,13 @@ export const AIProvider = ({ children }) => {
       }
 
       // Build contextual memory: load existing, append current user message, keep last 10 turns (20 messages)
-      const MEMORY_WINDOW = 20;
+      // Configurable memory window; defaults to ConversationMemory.DEFAULT_MAX_MESSAGES
+      const MEMORY_WINDOW = Number(
+        localStorage.getItem('edlingo.memoryWindow') ||
+        localStorage.getItem('edlingo.chat.memoryWindow') ||
+        ConversationMemory?.DEFAULT_MAX_MESSAGES ||
+        20
+      );
       const prior = cmGet(sessionId, MEMORY_WINDOW);
       // If local memory is empty (first load on this device), fall back to in-memory provider history
       const providerHist = (conversationHistory || []).filter(h => !h.sessionId || h.sessionId === sessionId);

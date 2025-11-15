@@ -5,6 +5,7 @@ import { useAudio } from '../providers/AudioProvider';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAI } from '../providers/AIProvider';
 import supabaseService from "../services/supabaseService.js";
+import { ConversationMemory, loadHistory as cmLoad, clearHistory as cmClear } from '../utils/conversationMemory';
 
 const EnhancedChat = () => {
   const [messages, setMessages] = useState([
@@ -55,6 +56,14 @@ const EnhancedChat = () => {
   const [sessionsError, setSessionsError] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [memoryWindow, setMemoryWindow] = useState(() => {
+    try {
+      const fromLS = localStorage.getItem('edlingo.memoryWindow') || localStorage.getItem('edlingo.chat.memoryWindow');
+      return Number(fromLS || (ConversationMemory?.DEFAULT_MAX_MESSAGES || 20));
+    } catch {
+      return ConversationMemory?.DEFAULT_MAX_MESSAGES || 20;
+    }
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -67,6 +76,12 @@ const EnhancedChat = () => {
     try { const saved = localStorage.getItem('chatSidebarCollapsed'); if (saved !== null) setIsSidebarCollapsed(saved === 'true'); } catch (_) {}
   }, []);
   useEffect(() => { try { localStorage.setItem('chatSidebarCollapsed', String(isSidebarCollapsed)); } catch (_) {} }, [isSidebarCollapsed]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('edlingo.memoryWindow', String(memoryWindow));
+      localStorage.setItem('edlingo.chat.memoryWindow', String(memoryWindow));
+    } catch (_) {}
+  }, [memoryWindow]);
   useEffect(() => {
     return () => {
       if (messageChannelRef.current) {
@@ -151,7 +166,40 @@ const EnhancedChat = () => {
           });
           messageChannelRef.current = ch;
         }
-      } catch (e) { console.warn('Failed to load session messages:', e?.message || e); }
+      } catch (e) {
+        console.warn('Failed to load session messages:', e?.message || e);
+        // Fallback to local memory when server fetch fails
+        try {
+          const local = cmLoad(session.id);
+          if (Array.isArray(local) && local.length > 0) {
+            const mappedLocal = local.map((m, idx) => ({
+              id: Date.now() + idx,
+              type: m.role === 'user' ? 'user' : 'ai',
+              content: m.content || '',
+              timestamp: new Date(m.timestamp || Date.now())
+            }));
+            setMessages(mappedLocal);
+          }
+        } catch (_) {}
+      }
+    } else {
+      // Offline/local fallback
+      try {
+        const local = cmLoad(session.id);
+        if (Array.isArray(local) && local.length > 0) {
+          const mappedLocal = local.map((m, idx) => ({
+            id: Date.now() + idx,
+            type: m.role === 'user' ? 'user' : 'ai',
+            content: m.content || '',
+            timestamp: new Date(m.timestamp || Date.now())
+          }));
+          setMessages(mappedLocal);
+        } else {
+          setMessages([{ id: Date.now(), type: 'ai', content: 'New enhanced chat started. What would you like to practice?', timestamp: new Date() }]);
+        }
+      } catch {
+        setMessages([{ id: Date.now(), type: 'ai', content: 'New enhanced chat started. What would you like to practice?', timestamp: new Date() }]);
+      }
     }
   };
 
@@ -282,7 +330,7 @@ const EnhancedChat = () => {
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-500">{new Date(s.last_message_at).toLocaleDateString()}</span>
                         <button onClick={(e) => { e.stopPropagation(); const t = window.prompt('Enter chat name', s.title || 'New Chat'); if (!t) return; supabaseService.renameEnhancedSession(s.id, t).then(r => { if (r?.success) setSessions(prev => prev.map(x => x.id === s.id ? { ...x, title: t } : x)); }); }} className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700" title="Rename"><Pencil className="w-3.5 h-3.5" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); const ok = window.confirm('Delete this chat?'); if (!ok) return; supabaseService.deleteEnhancedSession(s.id).then(r => { if (r?.success) setSessions(prev => prev.filter(x => x.id !== s.id)); }); }} className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); const ok = window.confirm('Delete this chat?'); if (!ok) return; supabaseService.deleteEnhancedSession(s.id).then(r => { if (r?.success) { try { cmClear(s.id); } catch (_) {} setSessions(prev => prev.filter(x => x.id !== s.id)); } }); }} className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                   </button>
@@ -320,6 +368,20 @@ const EnhancedChat = () => {
               <div className="flex items-center space-x-1 px-2 py-1 bg-white/70 backdrop-blur-sm rounded-full border border-slate-200">
                 <Sparkles className="w-3 h-3 text-blue-500" />
                 <span className="text-xs font-medium text-slate-700">Gemini</span>
+              </div>
+              <div className="flex items-center space-x-2 px-2 py-1 bg-white/70 backdrop-blur-sm rounded-full border border-slate-200">
+                <span className="text-xs text-slate-700">Memory</span>
+                <select
+                  value={memoryWindow}
+                  onChange={(e) => setMemoryWindow(Number(e.target.value))}
+                  className="text-xs bg-transparent outline-none text-slate-800"
+                  title="Active context window (messages)"
+                >
+                  <option value={4}>4</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={30}>30</option>
+                </select>
               </div>
               <div className="flex items-center space-x-2">
                 <div className={`w-2 h-2 rounded-full ${aiStatus === 'ready' ? 'bg-green-500' : aiStatus === 'initializing' ? 'bg-yellow-500 animate-pulse' : aiStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'}`} />
@@ -477,7 +539,7 @@ const EnhancedChat = () => {
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); const ok = window.confirm('Delete this chat?'); if (!ok) return; supabaseService.deleteEnhancedSession(s.id).then(r => { if (r?.success) setSessions(prev => prev.filter(x => x.id !== s.id)); if (selectedSessionId === s.id) { setSelectedSessionId(null); setMessages([{ id: Date.now(), type: 'ai', content: 'New enhanced chat started. What would you like to practice?', timestamp: new Date() }]); } }); }}
+                            onClick={(e) => { e.stopPropagation(); const ok = window.confirm('Delete this chat?'); if (!ok) return; supabaseService.deleteEnhancedSession(s.id).then(r => { if (r?.success) { try { cmClear(s.id); } catch (_) {} setSessions(prev => prev.filter(x => x.id !== s.id)); if (selectedSessionId === s.id) { setSelectedSessionId(null); setMessages([{ id: Date.now(), type: 'ai', content: 'New enhanced chat started. What would you like to practice?', timestamp: new Date() }]); } } }); }}
                             className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-600"
                             title="Delete"
                           >
