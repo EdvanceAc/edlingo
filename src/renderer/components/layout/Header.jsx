@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Sun, 
   Moon, 
   Bell, 
+  BellRing,
   Search, 
   User, 
   Settings,
@@ -20,16 +21,26 @@ import Button from '../ui/Button';
 import { useTheme } from '../../providers/ThemeProvider';
 import { useProgress } from '../../providers/ProgressProvider';
 import { useAudio } from '../../providers/AudioProvider';
-import { useAuth } from '../../contexts/AuthContext';
 import DatabaseStatus from '../DatabaseStatus';
 import { AppConfig } from '../../../config/AppConfig';
 import MobileMenu from './MobileMenu';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext.jsx';
+import formatRelativeTime from '../../utils/time.js';
 
 const Header = ({ onToggleSidebar }) => {
   const { theme, toggleTheme } = useTheme();
   const { level, totalXP, streak } = useProgress();
   const { isPlaying } = useAudio();
   const { signOut } = useAuth();
+  const {
+    notifications: notificationFeed,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    isLoading: notificationsLoading,
+    connectionState
+  } = useNotifications();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -40,30 +51,14 @@ const Header = ({ onToggleSidebar }) => {
   // Detect browser (non-Electron) mode to control desktop-only UI differences
   const isBrowserMode = typeof window !== 'undefined' && (!window.electronAPI || window.isBrowserMode);
 
-  // Mock notifications
-  const notifications = [
-    {
-      id: 1,
-      title: 'Daily Goal Achieved!',
-      message: 'You\'ve completed your 30-minute daily goal.',
-      time: '2 minutes ago',
-      type: 'success'
-    },
-    {
-      id: 2,
-      title: 'New Achievement',
-      message: 'You\'ve unlocked "Week Warrior" achievement!',
-      time: '1 hour ago',
-      type: 'achievement'
-    },
-    {
-      id: 3,
-      title: 'Lesson Reminder',
-      message: 'Don\'t forget to practice pronunciation today.',
-      time: '3 hours ago',
-      type: 'reminder'
-    }
-  ];
+  const recentNotifications = useMemo(
+    () => notificationFeed.slice(0, 5),
+    [notificationFeed]
+  );
+
+  const realtimeHealthy = ['subscribed', 'connected', 'open', 'ready'].includes(
+    (connectionState || '').toLowerCase()
+  );
 
   const handleWindowControl = async (action) => {
     try {
@@ -200,14 +195,14 @@ const Header = ({ onToggleSidebar }) => {
             className="p-2 rounded-lg bg-white/5 ring-1 ring-white/10 text-white hover:bg-white/15 transition-colors relative"
             title="Notifications"
           >
-            <Bell className="w-5 h-5" />
-            {notifications.length > 0 && (
+            {unreadCount > 0 ? <BellRing className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+            {unreadCount > 0 && (
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center"
+                className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center"
               >
-                {notifications.length}
+                {unreadCount > 9 ? '9+' : unreadCount}
               </motion.div>
             )}
           </button>
@@ -221,29 +216,93 @@ const Header = ({ onToggleSidebar }) => {
               className="absolute right-0 top-full mt-2 w-80 bg-popover border border-border rounded-lg shadow-lg z-50"
             >
               <div className="p-4 border-b border-border">
-                <h3 className="font-semibold text-sm">Notifications</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-sm">Notifications</h3>
+                    <p className="text-xs text-muted-foreground">پیگیر تمریناتت هستیم</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        realtimeHealthy ? 'bg-emerald-400' : 'bg-yellow-400 animate-pulse'
+                      }`}
+                    />
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {realtimeHealthy ? 'live' : 'syncing'}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="max-h-64 overflow-y-auto">
-                {notifications.map((notification) => (
-                  <div key={notification.id} className="p-4 border-b border-border last:border-b-0 hover:bg-accent/50 transition-colors">
-                    <div className="flex items-start space-x-3">
-                      <div className={`w-2 h-2 rounded-full mt-2 ${
-                        notification.type === 'success' ? 'bg-green-500' :
-                        notification.type === 'achievement' ? 'bg-yellow-500' :
-                        'bg-blue-500'
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{notification.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{notification.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
-                      </div>
-                    </div>
+                {notificationsLoading ? (
+                  <div className="p-4 text-xs text-muted-foreground">Loading notifications...</div>
+                ) : recentNotifications.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-muted-foreground">
+                    No notifications yet. Keep learning and we’ll keep you posted ✨
                   </div>
-                ))}
+                ) : (
+                  recentNotifications.map((notification) => (
+                    <button
+                      key={notification.id}
+                      className={`w-full text-left p-4 border-b border-border last:border-b-0 hover:bg-accent/50 transition-colors ${
+                        notification.isRead ? 'opacity-70' : ''
+                      }`}
+                      onClick={() => {
+                        markAsRead(notification.id);
+                        if (notification.actionUrl) {
+                          navigate(notification.actionUrl);
+                          setShowNotifications(false);
+                        }
+                      }}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div
+                          className={`w-2 h-2 rounded-full mt-2 ${
+                            notification.type === 'success'
+                              ? 'bg-green-500'
+                              : notification.type === 'achievement'
+                                ? 'bg-yellow-500'
+                                : notification.type === 'reminder'
+                                  ? 'bg-blue-500'
+                                  : 'bg-purple-500'
+                          }`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">{notification.title}</p>
+                            <span className="text-[10px] text-muted-foreground ml-2">
+                              {formatRelativeTime(notification.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {notification.message}
+                          </p>
+                          {notification.priority === 'high' && (
+                            <span className="text-[10px] text-red-500 font-semibold uppercase mt-2 inline-block">
+                              مهم
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
-              <div className="p-2 border-t border-border">
-                <button className="w-full text-sm text-center py-2 hover:bg-accent rounded transition-colors">
-                  View All Notifications
+              <div className="p-2 border-t border-border flex items-center justify-between">
+                <button
+                  className="text-xs text-muted-foreground hover:text-foreground transition"
+                  onClick={() => markAllAsRead()}
+                >
+                  Mark all as read
+                </button>
+                <button
+                  className="text-sm text-primary hover:underline"
+                  onClick={() => {
+                    navigate('/courses');
+                    setShowNotifications(false);
+                  }}
+                >
+                  View all
                 </button>
               </div>
             </motion.div>

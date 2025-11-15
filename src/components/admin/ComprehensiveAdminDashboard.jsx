@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
@@ -36,13 +36,16 @@ import {
   AlertTriangle,
   CheckCircle,
   Info,
-  Send
+  Send,
+  Percent
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../renderer/components/ui/Card';
 import { Progress } from '../../renderer/components/ui/Progress';
 import { Badge } from '../../renderer/components/ui/Badge';
 import Button from '../../renderer/components/ui/Button';
 import { supabase } from '../../renderer/config/supabaseConfig';
+import supabaseService from '../../renderer/services/supabaseService.js';
+import formatRelativeTime from '../../renderer/utils/time.js';
 
 const ComprehensiveAdminDashboard = () => {
   useEffect(() => {
@@ -110,6 +113,189 @@ const ComprehensiveAdminDashboard = () => {
   
   // Notifications State
   const [notifications, setNotifications] = useState([]);
+  const [notificationFeed, setNotificationFeed] = useState([]);
+  const [notificationRealtimeStatus, setNotificationRealtimeStatus] = useState('idle');
+  const [isNotificationFeedLoading, setIsNotificationFeedLoading] = useState(false);
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
+  const [notificationForm, setNotificationForm] = useState({
+    title: '',
+    message: '',
+    type: 'info',
+    priority: 'normal',
+    audience: 'all',
+    targetIdentifiers: '',
+    courseIds: '',
+    actionUrl: '',
+    isVisible: true
+  });
+
+  const fetchAdminNotifications = useCallback(async () => {
+    try {
+      setIsNotificationFeedLoading(true);
+      const { data, error } = await supabase
+        .from('notifications')
+        .select(`
+          id,
+          title,
+          content,
+          type,
+          priority,
+          is_visible,
+          is_read,
+          created_at,
+          user_id,
+          action_url
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      setNotificationFeed(data || []);
+    } catch (error) {
+      console.error('Admin notifications load error:', error);
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: 'Failed to load notification feed.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
+    } finally {
+      setIsNotificationFeedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === 'notifications') {
+      fetchAdminNotifications();
+      const channel = supabaseService.subscribeToNotificationFeed(
+        () => fetchAdminNotifications(),
+        (status) => setNotificationRealtimeStatus(status?.toLowerCase?.() || status || 'idle')
+      );
+      return () => channel?.unsubscribe?.();
+    }
+  }, [activeSection, fetchAdminNotifications]);
+
+  const handleAdminNotificationSend = async () => {
+    if (!notificationForm.message.trim()) {
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: 'Message body is required.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
+      return;
+    }
+    if (notificationForm.audience === 'user' && !notificationForm.targetIdentifiers.trim()) {
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: 'Provide at least one username, email, or user id.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
+      return;
+    }
+    if (notificationForm.audience === 'course' && !notificationForm.courseIds.trim()) {
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: 'Provide at least one course id for course-specific notifications.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
+      return;
+    }
+
+    try {
+      setIsSendingNotification(true);
+      const targetIdentifiers = notificationForm.targetIdentifiers
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const courseIds = notificationForm.courseIds
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+      const result = await supabaseService.adminDispatchNotification({
+        title: notificationForm.title,
+        content: notificationForm.message,
+        type: notificationForm.type,
+        priority: notificationForm.priority,
+        audience: notificationForm.audience,
+        targetIdentifiers,
+        courseIds,
+        actionUrl: notificationForm.actionUrl,
+        metadata: {},
+        isVisible: notificationForm.isVisible
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send notification');
+      }
+
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'success',
+        message: 'Notification sent successfully.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
+
+      setNotificationForm({
+        title: '',
+        message: '',
+        type: 'info',
+        priority: 'normal',
+        audience: 'all',
+        targetIdentifiers: '',
+        courseIds: '',
+        actionUrl: '',
+        isVisible: true
+      });
+
+      fetchAdminNotifications();
+    } catch (error) {
+      console.error('Send notification error:', error);
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: error.message || 'Failed to send notification.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
+    } finally {
+      setIsSendingNotification(false);
+    }
+  };
+
+  const handleNotificationVisibilityToggle = async (record) => {
+    try {
+      const nextValue = !record.is_visible;
+      const result = await supabaseService.toggleNotificationVisibility(record.id, nextValue);
+      if (!result.success) throw new Error(result.error || 'Failed to update notification');
+      setNotificationFeed(prev =>
+        prev.map((item) => (item.id === record.id ? { ...item, is_visible: nextValue } : item))
+      );
+    } catch (error) {
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: 'error',
+        message: error.message || 'Unable to update notification visibility.',
+        timestamp: new Date().toISOString()
+      }, ...prev]);
+    }
+  };
+  const [notificationFeed, setNotificationFeed] = useState([]);
+  const [notificationRealtimeStatus, setNotificationRealtimeStatus] = useState('idle');
+  const [isNotificationFeedLoading, setIsNotificationFeedLoading] = useState(false);
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
+  const [notificationForm, setNotificationForm] = useState({
+    title: '',
+    message: '',
+    type: 'info',
+    priority: 'normal',
+    audience: 'all',
+    targetIdentifiers: '',
+    courseIds: '',
+    actionUrl: '',
+    isVisible: true
+  });
 
   // Navigation sections
   const navigationSections = [
@@ -148,6 +334,12 @@ const ComprehensiveAdminDashboard = () => {
       name: 'User Management',
       description: 'Manage users and roles',
       icon: Shield
+    },
+    {
+      id: 'notifications',
+      name: 'Notifications',
+      description: 'Send announcements & reminders',
+      icon: Bell
     },
     {
       id: 'advanced-analytics',
@@ -996,6 +1188,237 @@ const ComprehensiveAdminDashboard = () => {
     </div>
   );
 
+  const NotificationManagement = () => {
+    const resolveRecipient = (item) => {
+      if (!item.user_id) return 'Broadcast';
+      return `${item.user_id.slice(0, 8)}…`;
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-3xl font-bold">Notification Control Center</h2>
+            <p className="text-muted-foreground">
+              Compose targeted announcements and deliver them instantly.
+            </p>
+          </div>
+          <Badge variant={notificationRealtimeStatus === 'subscribed' ? 'secondary' : 'outline'}>
+            Realtime: {notificationRealtimeStatus}
+          </Badge>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Notification</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Title</label>
+                <input
+                  type="text"
+                  value={notificationForm.title}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Short title (optional)"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Type</label>
+                <select
+                  value={notificationForm.type}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="info">Info</option>
+                  <option value="success">Success</option>
+                  <option value="reminder">Reminder</option>
+                  <option value="achievement">Achievement</option>
+                  <option value="discount">Discount</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Priority</label>
+                <select
+                  value={notificationForm.priority}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, priority: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Audience</label>
+                <select
+                  value={notificationForm.audience}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, audience: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All learners</option>
+                  <option value="user">Specific learners</option>
+                  <option value="course">Course enrollees</option>
+                </select>
+              </div>
+            </div>
+
+            {notificationForm.audience === 'user' && (
+              <div>
+                <label className="text-sm font-medium mb-1 block">User identifiers</label>
+                <input
+                  type="text"
+                  value={notificationForm.targetIdentifiers}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, targetIdentifiers: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="username, email or user id (comma separated)"
+                />
+              </div>
+            )}
+
+            {notificationForm.audience === 'course' && (
+              <div>
+                <label className="text-sm font-medium mb-1 block">Course IDs</label>
+                <input
+                  type="text"
+                  value={notificationForm.courseIds}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, courseIds: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="course-id-1, course-id-2"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">Message</label>
+              <textarea
+                rows={4}
+                value={notificationForm.message}
+                onChange={(e) => setNotificationForm(prev => ({ ...prev, message: e.target.value }))}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="What would you like to tell learners?"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Action URL (optional)</label>
+                <input
+                  type="text"
+                  value={notificationForm.actionUrl}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, actionUrl: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://example.com/lesson"
+                />
+              </div>
+              <label className="text-sm font-medium mb-1 block">
+                <span className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={notificationForm.isVisible}
+                    onChange={(e) => setNotificationForm(prev => ({ ...prev, isVisible: e.target.checked }))}
+                  />
+                  Show immediately
+                </span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setNotificationForm({
+                  title: '',
+                  message: '',
+                  type: 'info',
+                  priority: 'normal',
+                  audience: 'all',
+                  targetIdentifiers: '',
+                  courseIds: '',
+                  actionUrl: '',
+                  isVisible: true
+                })}
+                disabled={isSendingNotification}
+              >
+                Reset
+              </Button>
+              <Button onClick={handleAdminNotificationSend} disabled={isSendingNotification}>
+                {isSendingNotification ? 'Sending...' : 'Send Notification'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Recent Deliveries</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchAdminNotifications}
+                disabled={isNotificationFeedLoading}
+              >
+                {isNotificationFeedLoading ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {notificationFeed.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No notifications have been sent yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted-foreground uppercase">
+                      <th className="py-2 pr-4">Title</th>
+                      <th className="py-2 pr-4">Recipient</th>
+                      <th className="py-2 pr-4">Type</th>
+                      <th className="py-2 pr-4">Priority</th>
+                      <th className="py-2 pr-4">Created</th>
+                      <th className="py-2 pr-4 text-right">Visibility</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notificationFeed.map((item) => (
+                      <tr key={item.id} className="border-b last:border-none">
+                        <td className="py-2 pr-4">
+                          <p className="font-medium">{item.title || 'Announcement'}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{item.content}</p>
+                        </td>
+                        <td className="py-2 pr-4">{resolveRecipient(item)}</td>
+                        <td className="py-2 pr-4 capitalize">{item.type}</td>
+                        <td className="py-2 pr-4">
+                          <Badge variant={item.priority === 'high' ? 'destructive' : 'secondary'}>
+                            {item.priority}
+                          </Badge>
+                        </td>
+                        <td className="py-2 pr-4 text-xs text-muted-foreground">
+                          {formatRelativeTime(item.created_at)}
+                        </td>
+                        <td className="py-2 pr-0 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleNotificationVisibilityToggle(item)}
+                          >
+                            {item.is_visible ? 'Hide' : 'Show'}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   // Advanced Analytics Component
   const AdvancedAnalytics = () => (
     <div className="space-y-6">
@@ -1429,6 +1852,8 @@ const ComprehensiveAdminDashboard = () => {
         return <GamificationManagement />;
       case 'user-management':
         return <UserManagement />;
+      case 'notifications':
+        return <NotificationManagement />;
       case 'advanced-analytics':
         return <AdvancedAnalytics />;
       case 'ai-integration':

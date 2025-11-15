@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Menu, Flame, Zap, Settings, User, Bell, Sun, Moon, Volume2, VolumeX, MessageSquare, ClipboardCheck } from 'lucide-react';
 import { useProgress } from '../../providers/ProgressProvider';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../providers/ThemeProvider';
-import supabaseService from '../../services/supabaseService';
 import { useAudio } from '../../providers/AudioProvider';
+import { useNotifications } from '../../contexts/NotificationContext.jsx';
+import formatRelativeTime from '../../utils/time.js';
 
 export default function MobileMenu({ onClose }) {
   const { getProgressStats } = useProgress();
@@ -14,37 +15,9 @@ export default function MobileMenu({ onClose }) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { isPlaying } = useAudio();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading: notificationsLoading } = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const result = await supabaseService.getNotifications(5);
-        if (mounted && result?.success) {
-          setNotifications(Array.isArray(result.data) ? result.data : []);
-        } else {
-          // Fallback mock notifications
-          setNotifications([
-            { id: 'm1', title: 'Daily Goal Achieved!', message: 'You completed 30 minutes.', isRead: false, type: 'success', timestamp: new Date() },
-            { id: 'm2', title: 'New Badge', message: 'Week Warrior unlocked!', isRead: false, type: 'achievement', timestamp: new Date() },
-            { id: 'm3', title: 'Reminder', message: 'Practice pronunciation today.', isRead: true, type: 'reminder', timestamp: new Date() },
-          ]);
-        }
-      } catch (e) {
-        setNotifications([
-          { id: 'm1', title: 'Daily Goal Achieved!', message: 'You completed 30 minutes.', isRead: false, type: 'success', timestamp: new Date() },
-          { id: 'm2', title: 'New Badge', message: 'Week Warrior unlocked!', isRead: false, type: 'achievement', timestamp: new Date() },
-          { id: 'm3', title: 'Reminder', message: 'Practice pronunciation today.', isRead: true, type: 'reminder', timestamp: new Date() },
-        ]);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const progressPercent = Math.max(0, Math.min(100, Math.round(stats?.progressToNextLevel || 0)));
 
@@ -221,27 +194,54 @@ export default function MobileMenu({ onClose }) {
                 <button className="text-xs text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100" onClick={() => setNotifOpen(false)}>Close</button>
               </div>
               <div className="max-h-56 overflow-y-auto">
-                {notifications.length === 0 ? (
+                {notificationsLoading ? (
+                  <div className="p-4 text-xs text-gray-500 dark:text-gray-300">Loading notifications...</div>
+                ) : notifications.length === 0 ? (
                   <div className="p-4 text-xs text-gray-500 dark:text-gray-300">No notifications</div>
                 ) : (
                   notifications.map((n) => (
-                    <div key={n.id} className={`p-4 border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${n.isRead ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'}`}>
+                    <button
+                      key={n.id}
+                      className={`w-full text-left p-4 border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${n.isRead ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'}`}
+                      onClick={() => {
+                        markAsRead(n.id);
+                        if (n.actionUrl) {
+                          onClose?.();
+                          navigate(n.actionUrl);
+                        }
+                      }}
+                    >
                       <div className="flex items-start gap-3">
                         <div className={`w-2 h-2 rounded-full mt-2 ${
-                          n.type === 'success' ? 'bg-green-500' : n.type === 'achievement' ? 'bg-yellow-500' : 'bg-blue-500'
+                          n.type === 'success' ? 'bg-green-500' : n.type === 'achievement' ? 'bg-yellow-500' : n.type === 'reminder' ? 'bg-blue-500' : 'bg-purple-500'
                         }`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{n.title}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{n.message}</p>
-                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{new Date(n.timestamp).toLocaleTimeString()}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{n.message}</p>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                            {formatRelativeTime(n.createdAt)}
+                          </p>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
               <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-800">
-                <button className="w-full text-xs font-medium text-gray-700 dark:text-gray-200 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">View all</button>
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    className="text-[11px] font-medium text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                    onClick={() => markAllAsRead()}
+                  >
+                    Mark all read
+                  </button>
+                  <button
+                    className="text-xs font-medium text-indigo-600 dark:text-indigo-300"
+                    onClick={() => { onClose?.(); navigate('/courses'); }}
+                  >
+                    View all
+                  </button>
+                </div>
               </div>
             </div>
           </div>

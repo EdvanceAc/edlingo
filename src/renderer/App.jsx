@@ -40,6 +40,7 @@ import { AudioProvider } from './providers/AudioProvider';
 import { ProgressProvider } from './providers/ProgressProvider';
 import { AIProvider } from './providers/AIProvider';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext.jsx';
 
 // Database
 import { AppConfig } from '../config/AppConfig.js';
@@ -139,18 +140,19 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AudioProvider>
-          <ProgressProvider>
-            <AIProvider>
-            <Router
-              future={{
-                v7_startTransition: true,
-                v7_relativeSplatPath: true
-              }}
-            >
-              <AppLayout>
-                <AnimatePresence mode="wait">
-                  <Routes>
+        <NotificationProvider>
+          <AudioProvider>
+            <ProgressProvider>
+              <AIProvider>
+                <Router
+                  future={{
+                    v7_startTransition: true,
+                    v7_relativeSplatPath: true
+                  }}
+                >
+                  <AppLayout>
+                    <AnimatePresence mode="wait">
+                      <Routes>
                     {/* Authentication Routes */}
                     <Route 
                       path="/auth/login" 
@@ -424,9 +426,10 @@ function App() {
                 </AnimatePresence>
               </AppLayout>
             </Router>
-            </AIProvider>
-          </ProgressProvider>
-        </AudioProvider>
+              </AIProvider>
+            </ProgressProvider>
+          </AudioProvider>
+        </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   );

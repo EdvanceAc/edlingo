@@ -24,11 +24,11 @@ if (!getEnv('VITE_SUPABASE_ANON_KEY')) {
   console.warn('VITE_SUPABASE_ANON_KEY is not set. Falling back to embedded anon key.');
 }
 
-// Create Supabase client with realtime disabled to avoid Cloudflare websocket issues
+// Create Supabase client (realtime enabled for notification streaming)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
     params: {
-      eventsPerSecond: 0 // Disable realtime events
+      eventsPerSecond: 3
     }
   }
 });

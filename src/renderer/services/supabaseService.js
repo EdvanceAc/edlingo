@@ -1703,15 +1703,184 @@ class SupabaseService {
       if (!user) return { success: true, data: [] };
       const { data, error } = await this.client
         .from('notifications')
-        .select('*')
+        .select('id,title,content,type,created_at,is_read,is_visible,priority,action_url,metadata')
         .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      const normalized = (data || [])
+        .filter((row) => row.is_visible !== false)
+        .map((row) => ({
+          ...row,
+          title: row.title || 'Notification',
+          metadata: row.metadata || {}
+        }));
+      return { success: true, data: normalized };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: [] };
+      console.error('Get notifications error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async markNotificationRead(notificationId, isRead = true) {
+    if (!notificationId) return { success: false, error: 'Notification id is required' };
+    try {
+      const { error } = await this.client
+        .from('notifications')
+        .update({ is_read: !!isRead })
+        .eq('id', notificationId);
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Mark notification read error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async markNotificationsRead(notificationIds = []) {
+    if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return { success: true };
+    }
+    try {
+      const { error } = await this.client
+        .from('notifications')
+        .update({ is_read: true })
+        .in('id', notificationIds);
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Bulk mark notifications read error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async toggleNotificationVisibility(notificationId, isVisible = true) {
+    if (!notificationId) return { success: false, error: 'Notification id is required' };
+    try {
+      const { data, error } = await this.client
+        .from('notifications')
+        .update({ is_visible: !!isVisible })
+        .eq('id', notificationId)
+        .select('id,is_visible')
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Toggle notification visibility error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  subscribeToNotifications(userId, handler, statusCallback) {
+    try {
+      if (!userId || typeof this.client.channel !== 'function') {
+        return null;
+      }
+      const channel = this.client
+        .channel(`notifications:user:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`
+          },
+          handler
+        );
+      channel.subscribe((status) => statusCallback?.(status));
+      return channel;
+    } catch (error) {
+      console.error('Notification subscription error:', error);
+      return null;
+    }
+  }
+
+  subscribeToNotificationFeed(handler, statusCallback, filter = null) {
+    try {
+      if (typeof this.client.channel !== 'function') {
+        return null;
+      }
+      const channel = this.client
+        .channel(`notifications:admin:${filter || 'all'}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            ...(filter ? { filter } : {})
+          },
+          handler
+        );
+      channel.subscribe((status) => statusCallback?.(status));
+      return channel;
+    } catch (error) {
+      console.error('Admin notification feed subscription error:', error);
+      return null;
+    }
+  }
+
+  async getAdminNotifications(limit = 50) {
+    try {
+      const { data, error } = await this.client
+        .from('notifications')
+        .select(`
+          id,
+          user_id,
+          title,
+          content,
+          type,
+          priority,
+          is_read,
+          is_visible,
+          created_at,
+          action_url,
+          metadata,
+          user_profiles(full_name,email,username)
+        `)
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
       return { success: true, data: data || [] };
     } catch (error) {
-      if (error.code === '42P01') return { success: true, data: [] };
-      console.error('Get notifications error:', error);
+      console.error('Admin get notifications error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async adminDispatchNotification({
+    title,
+    content,
+    type = 'info',
+    priority = 'normal',
+    audience = 'all',
+    targetIdentifiers = [],
+    courseIds = [],
+    actionUrl = null,
+    metadata = {},
+    isVisible = true
+  } = {}) {
+    try {
+      const metadataPayload = metadata && typeof metadata === 'object' ? metadata : {};
+      const payload = {
+        p_title: title,
+        p_content: content,
+        p_type: type,
+        p_priority: priority,
+        p_audience: audience,
+        p_target_identifiers: Array.isArray(targetIdentifiers) && targetIdentifiers.length ? targetIdentifiers : null,
+        p_course_ids: Array.isArray(courseIds) && courseIds.length ? courseIds : null,
+        p_action_url: actionUrl || null,
+        p_metadata: metadataPayload,
+        p_is_visible: isVisible
+      };
+      const { data, error } = await this.client.rpc('admin_dispatch_notification', payload);
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Admin dispatch notification error:', error);
       return { success: false, error: error.message };
     }
   }

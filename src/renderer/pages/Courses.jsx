@@ -29,11 +29,19 @@ import { supabase } from '../config/supabaseConfig';
 import supabaseService from '../services/supabaseService';
 import { useNavigate } from 'react-router-dom';
 import CourseProgressCard from '../components/Course/CourseProgressCard';
+import { useNotifications } from '../contexts/NotificationContext.jsx';
+import formatRelativeTime from '../utils/time.js';
 
 const Courses = () => {
   const navigate = useNavigate();
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    isLoading: notificationsLoading
+  } = useNotifications();
   const [courses, setCourses] = useState([]);
-  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState('all'); // 'all' | 'A1' | ...
@@ -67,7 +75,6 @@ const Courses = () => {
 
   useEffect(() => {
     loadCourses();
-    loadNotifications();
     // Attempt to load persisted wishlist from server
     (async () => {
       const res = await supabaseService.getWishlistCourseIds();
@@ -115,46 +122,6 @@ const Courses = () => {
       setCourses(getMockCourses());
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadNotifications = async () => {
-    try {
-      // Resolve the current user's profile id (user_profiles.id) if possible
-      let currentProfileId = null;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // user_profiles primary key is auth user id in our schema
-          currentProfileId = user.id;
-        }
-      } catch (_) {}
-
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('id,type,content,created_at,is_read')
-        .eq('user_id', currentProfileId || '')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (error) {
-        console.warn('Notifications not available, using mock data:', error.message);
-        setNotifications(getMockNotifications());
-      } else {
-        const transformed = (data || []).map(n => ({
-          id: n.id,
-          type: n.type,
-          title: 'Notification',
-          message: n.content,
-          icon: '🔔',
-          timestamp: n.created_at ? new Date(n.created_at) : new Date(),
-          isRead: n.is_read === true
-        }));
-        setNotifications(transformed.length > 0 ? transformed : getMockNotifications());
-      }
-    } catch (error) {
-      console.error('Error loading notifications:', error);
-      setNotifications(getMockNotifications());
     }
   };
 
@@ -223,36 +190,6 @@ const Courses = () => {
       xp: 0,
       level: 'B1',
       estimatedTime: '4 weeks'
-    }
-  ];
-
-  const getMockNotifications = () => [
-    {
-      id: 1,
-      type: 'course',
-      title: 'New Course Available!',
-      message: 'Advanced Conversation Skills course is now available',
-      icon: '🎉',
-      timestamp: new Date(Date.now() - 1000 * 60 * 30),
-      isRead: false
-    },
-    {
-      id: 2,
-      type: 'discount',
-      title: '50% Off Premium!',
-      message: 'Limited time offer - Upgrade to Premium and save 50%',
-      icon: '🏷️',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      isRead: false
-    },
-    {
-      id: 3,
-      type: 'achievement',
-      title: 'Streak Milestone!',
-      message: 'Congratulations on your 7-day learning streak!',
-      icon: '🔥',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-      isRead: true
     }
   ];
 
@@ -416,75 +353,112 @@ const Courses = () => {
     );
   };
 
-  const NotificationPanel = () => (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mb-6"
-    >
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center space-x-2">
-              <Bell className="w-5 h-5 text-blue-600" />
-              <span>Notifications</span>
-              {notifications.filter(n => !n.isRead).length > 0 && (
-                <Badge variant="destructive" className="text-xs">
-                  {notifications.filter(n => !n.isRead).length}
-                </Badge>
-              )}
-            </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              {showNotifications ? 'Hide' : 'Show'}
-            </Button>
-          </div>
-        </CardHeader>
-        
-        {showNotifications && (
-          <CardContent className="pt-0">
-            <div className="space-y-3">
-              {notifications.slice(0, 3).map((notification, index) => (
-                <motion.div
-                  key={notification.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`flex items-start space-x-3 p-3 rounded-lg transition-colors ${
-                    notification.isRead ? 'bg-muted/30' : 'bg-white dark:bg-gray-800 shadow-sm'
-                  }`}
+  const NotificationPanel = () => {
+    const resolveIcon = (type) => {
+      switch (type) {
+        case 'discount':
+          return '🏷️';
+        case 'achievement':
+          return '🏆';
+        case 'reminder':
+          return '⏰';
+        case 'course':
+          return '📘';
+        default:
+          return '🔔';
+      }
+    };
+
+    const previewNotifications = notifications.slice(0, 3);
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center space-x-2">
+                <Bell className="w-5 h-5 text-blue-600" />
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="text-xs">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => markAllAsRead()}>
+                  Mark all read
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowNotifications(!showNotifications)}
                 >
-                  <span className="text-2xl">{notification.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`font-medium text-sm ${
-                      notification.isRead ? 'text-muted-foreground' : 'text-foreground'
-                    }`}>
-                      {notification.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {notification.timestamp.toLocaleDateString()}
-                    </p>
-                  </div>
-                  {notification.type === 'discount' && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Percent className="w-3 h-3 mr-1" />
-                      Offer
-                    </Badge>
-                  )}
-                </motion.div>
-              ))}
+                  {showNotifications ? 'Hide' : 'Show'}
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        )}
-      </Card>
-    </motion.div>
-  );
+          </CardHeader>
+          
+          {showNotifications && (
+            <CardContent className="pt-0">
+              <div className="space-y-3">
+                {notificationsLoading ? (
+                  <div className="text-sm text-muted-foreground px-3 py-2">Loading notifications...</div>
+                ) : previewNotifications.length === 0 ? (
+                  <div className="text-sm text-muted-foreground px-3 py-2">No notifications yet.</div>
+                ) : (
+                  previewNotifications.map((notification, index) => (
+                    <motion.button
+                      type="button"
+                      key={notification.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`w-full flex items-start space-x-3 p-3 rounded-lg transition-colors ${
+                        notification.isRead ? 'bg-muted/30' : 'bg-white dark:bg-gray-800 shadow-sm'
+                      }`}
+                      onClick={() => {
+                        markAsRead(notification.id);
+                        if (notification.actionUrl) {
+                          navigate(notification.actionUrl);
+                        }
+                      }}
+                    >
+                      <span className="text-2xl">{resolveIcon(notification.type)}</span>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className={`font-medium text-sm ${
+                          notification.isRead ? 'text-muted-foreground' : 'text-foreground'
+                        }`}>
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {notification.message}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatRelativeTime(notification.createdAt)}
+                        </p>
+                      </div>
+                      {notification.type === 'discount' && (
+                        <Badge variant="secondary" className="text-xs">
+                          <Percent className="w-3 h-3 mr-1" />
+                          Offer
+                        </Badge>
+                      )}
+                    </motion.button>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      </motion.div>
+    );
+  };
 
   const VocabularyPreview = () => {
     const sampleWords = [
