@@ -10,6 +10,112 @@ class SupabaseService {
     this.client = supabase;
     this.isConnected = false;
     this.init();
+
+    // Precompiled regex for username policy (Instagram/Telegram-like)
+    // Allowed: a-z 0-9 . _ ; 3–32 chars; cannot start/end with . or _; no consecutive .. or __ or ._
+    this.USERNAME_REGEX = /^(?![._])(?!.*[._]{2})[a-z0-9._]{3,32}(?<![._])$/;
+  }
+
+  // ---------- Username helpers ----------
+  sanitizeToHandle(input) {
+    if (!input || typeof input !== 'string') return '';
+    let s = input.trim().toLowerCase();
+
+    // Replace Persian/Arabic digits with Latin
+    const digitMap = { '۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9' };
+    s = s.replace(/[۰-۹]/g, (d) => digitMap[d] || d);
+
+    // Basic transliteration: remove diacritics
+    try {
+      s = s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    } catch (_) {}
+
+    // Convert spaces and hyphens to dots
+    s = s.replace(/[\s-]+/g, '.');
+
+    // Remove all disallowed characters
+    s = s.replace(/[^a-z0-9._]/g, '');
+
+    // Collapse consecutive dots/underscores
+    s = s.replace(/[._]{2,}/g, '.');
+
+    // Trim leading/trailing dot/underscore
+    s = s.replace(/^[._]+|[._]+$/g, '');
+
+    // Enforce length
+    if (s.length < 3) return s; // we'll pad later
+    if (s.length > 32) s = s.slice(0, 32);
+    return s;
+  }
+
+  generateUsernameBase({ name, email, fallback = 'user' } = {}) {
+    const fromName = this.sanitizeToHandle(name || '');
+    if (fromName && fromName.length >= 3) return fromName;
+    const fromEmail = this.sanitizeToHandle(String(email || '').split('@')[0] || '');
+    if (fromEmail && fromEmail.length >= 3) return fromEmail;
+    return fallback;
+  }
+
+  async ensureUserHasUsername() {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      // Fetch current username quickly
+      const existing = await this.client
+        .from('user_profiles')
+        .select('id,username,full_name,email')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const current = existing?.data?.username;
+      if (current && typeof current === 'string' && this.USERNAME_REGEX.test(current)) {
+        return { success: true, username: current };
+      }
+
+      // Build a strong base
+      const base = this.generateUsernameBase({
+        name: existing?.data?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name,
+        email: existing?.data?.email || user?.email
+      }) || 'user';
+
+      // Ensure min length
+      const pad = (str) => (str.length >= 3 ? str : (str + 'user')).slice(0, Math.max(3, str.length));
+      const b = pad(base);
+
+      // Try multiple variants
+      const candidates = [];
+      candidates.push(b);
+      // use parts of uuid to avoid collisions
+      const uid = (user.id || '').replace(/-/g, '');
+      if (uid.length >= 4) candidates.push(`${b}.${uid.slice(0, 4)}`);
+      if (uid.length >= 6) candidates.push(`${b}.${uid.slice(-6)}`);
+      // numeric suffixes
+      for (let i = 0; i < 8; i++) {
+        const rnd = Math.floor(Math.random() * 9000) + 1000;
+        candidates.push(`${b}.${rnd}`);
+      }
+
+      // Validate and check availability
+      for (const c of candidates) {
+        const handle = c.slice(0, 32).replace(/[._]{2,}/g, '.').replace(/^[._]+|[._]+$/g, '');
+        if (!this.USERNAME_REGEX.test(handle)) continue;
+        const { success, available } = await this.checkUsernameAvailable(handle);
+        if (success && available) {
+          // Persist
+          const saved = await this.updateUserProfile({ username: handle });
+          if (saved.success) return { success: true, username: handle };
+        }
+      }
+
+      // Final fallback
+      const fallback = `${b}.${Math.random().toString(36).slice(2, 8)}`.slice(0, 32);
+      const saved = await this.updateUserProfile({ username: fallback });
+      if (saved.success) return { success: true, username: fallback };
+      return { success: false, error: 'Failed to assign username' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   }
 
   // Resolve or create the current user's user_profiles.id (may differ from auth uid)
@@ -259,6 +365,17 @@ class SupabaseService {
           .order('created_at', { ascending: true })
           .limit(1);
         data = Array.isArray(res.data) ? res.data[0] : res.data;
+      }
+
+      // If username missing, attempt to auto-generate and refetch once
+      if (!data?.username) {
+        await this.ensureUserHasUsername();
+        const refetch = await this.client
+          .from('user_profiles')
+          .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (!refetch.error) data = refetch.data || data;
       }
 
       return { success: true, data: data || null };
