@@ -390,9 +390,10 @@ class SupabaseService {
       const { data: { user } } = await this.client.auth.getUser();
       if (!user) return { success: false, error: 'No authenticated user' };
 
-      // Normalize username: empty string => null, trim spaces
-      let normalizedUsername = undefined;
-      if (Object.prototype.hasOwnProperty.call(updates, 'username')) {
+      // Normalize username ONLY if provided: empty string => null, trim spaces
+      let normalizedUsername;
+      const hasUsername = Object.prototype.hasOwnProperty.call(updates, 'username');
+      if (hasUsername) {
         if (typeof updates.username === 'string') {
           const t = updates.username.trim();
           normalizedUsername = t.length ? t : null;
@@ -425,17 +426,25 @@ class SupabaseService {
         } catch (_) {}
       }
 
-      const payload = {
-        full_name: updates.full_name ?? null,
-        // username handled below
-        target_language: updates.target_language ?? null,
-        native_language: updates.native_language ?? null,
-        placement_level: updates.placement_level ?? null,
-        avatar_url: updates.avatar_url ?? null,
-        updated_at: new Date().toISOString()
-      };
-      if (normalizedUsername !== undefined) {
+      // Build payload ONLY with provided fields to avoid nulling existing values
+      const payload = { updated_at: new Date().toISOString() };
+      if (Object.prototype.hasOwnProperty.call(updates, 'full_name')) {
+        payload.full_name = updates.full_name ?? null;
+      }
+      if (hasUsername) {
         payload.username = normalizedUsername;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, 'target_language')) {
+        payload.target_language = updates.target_language ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, 'native_language')) {
+        payload.native_language = updates.native_language ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, 'placement_level')) {
+        payload.placement_level = updates.placement_level ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, 'avatar_url')) {
+        payload.avatar_url = updates.avatar_url ?? null;
       }
 
       // Prefer UPSERT to avoid representation issues and ensure row exists
