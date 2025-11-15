@@ -397,7 +397,19 @@ const EnhancedChat = () => {
         <div className="ios-composer">
           <div className="ios-input-wrap">
             <div className="ios-input-field">
-            <button onClick={() => { if (isRecording) { stopRecording(); } else { startRecording().catch(err => console.error('Failed to start recording:', err)); } }} className={`p-3 rounded-full transition-all duration-200 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-white/60 ring-1 ring-white/60 backdrop-blur-sm text-gray-900 hover:bg-white/70 shadow-sm'}`} title={isRecording ? 'Stop recording' : 'Start voice input'}>{isRecording ? (<MicOff className="w-5 h-5" />) : (<Mic className="w-5 h-5" />)}</button>
+            <button
+              onClick={() => {
+                if (isRecording) {
+                  stopRecording();
+                } else {
+                  startRecording().catch(err => console.error('Failed to start recording:', err));
+                }
+              }}
+              className={`ios-voice-button ${isRecording ? 'bg-red-500 text-white animate-pulse' : ''}`}
+              title={isRecording ? 'Stop recording' : 'Start voice input'}
+            >
+              {isRecording ? (<MicOff className="w-5 h-5" />) : (<Mic className="w-5 h-5" />)}
+            </button>
               <textarea ref={inputRef} value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder="Type your message here..." className="ios-textarea" rows={1} style={{ minHeight: '44px', maxHeight: '140px', height: 'auto' }} onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'; }} />
               <button onClick={() => handleSendMessage()} disabled={!inputMessage.trim() || isLoading} className="ios-send-button" title="Send message"><Send className="w-5 h-5" /></button>
             </div>
