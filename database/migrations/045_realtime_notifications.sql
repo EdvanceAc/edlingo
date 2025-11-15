@@ -45,7 +45,7 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'notifications'
-      AND polname = 'Users can view own notifications'
+      AND policyname = 'Users can view own notifications'
   ) THEN
     DROP POLICY "Users can view own notifications" ON public.notifications;
   END IF;
@@ -54,7 +54,7 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'notifications'
-      AND polname = 'Users can insert own notifications'
+      AND policyname = 'Users can insert own notifications'
   ) THEN
     DROP POLICY "Users can insert own notifications" ON public.notifications;
   END IF;
@@ -63,7 +63,7 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'notifications'
-      AND polname = 'Users can update own notifications'
+      AND policyname = 'Users can update own notifications'
   ) THEN
     DROP POLICY "Users can update own notifications" ON public.notifications;
   END IF;
@@ -80,25 +80,34 @@ CREATE POLICY "Users can update own notifications" ON public.notifications
 
 DROP POLICY IF EXISTS "Admins can manage notifications" ON public.notifications;
 
-CREATE POLICY "Admins can manage notifications" ON public.notifications
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1
-      FROM public.user_roles
-      WHERE user_roles.user_id = auth.uid()
-        AND user_roles.role IN ('admin', 'super_admin')
-        AND user_roles.is_active = true
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM public.user_roles
-      WHERE user_roles.user_id = auth.uid()
-        AND user_roles.role IN ('admin', 'super_admin')
-        AND user_roles.is_active = true
-    )
-  );
+DO $$
+BEGIN
+  IF to_regclass('public.user_roles') IS NOT NULL THEN
+    EXECUTE $policy$
+      CREATE POLICY "Admins can manage notifications" ON public.notifications
+        FOR ALL USING (
+          EXISTS (
+            SELECT 1
+            FROM public.user_roles
+            WHERE user_roles.user_id = auth.uid()
+              AND user_roles.role IN ('admin', 'super_admin')
+              AND user_roles.is_active = true
+          )
+        )
+        WITH CHECK (
+          EXISTS (
+            SELECT 1
+            FROM public.user_roles
+            WHERE user_roles.user_id = auth.uid()
+              AND user_roles.role IN ('admin', 'super_admin')
+              AND user_roles.is_active = true
+          )
+        );
+    $policy$;
+  ELSE
+    RAISE NOTICE 'user_roles table not found, skipping admin notification policy';
+  END IF;
+END $$;
 
 -- Admin broadcast helper (security definer to bypass user-only RLS)
 CREATE OR REPLACE FUNCTION public.admin_dispatch_notification(
