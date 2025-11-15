@@ -163,6 +163,20 @@ class SupabaseStorageService {
         metadata: meta,
       };
 
+      // Simulated progress (Supabase fetch upload lacks native progress events).
+      // We advance smoothly up to 90% while awaiting the upload promise.
+      let timer = null;
+      let start = Date.now();
+      if (typeof onProgress === 'function') {
+        try { onProgress(0); } catch (_) {}
+        const targetMs = Math.min(6000, Math.max(1500, Math.round((file.size || 1) / 20000))); // crude heuristic
+        timer = setInterval(() => {
+          const elapsed = Date.now() - start;
+          const pct = Math.min(90, Math.floor((elapsed / targetMs) * 90));
+          try { onProgress(pct); } catch (_) {}
+        }, 120);
+      }
+
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(fileName, file, uploadOptions);
@@ -176,6 +190,14 @@ class SupabaseStorageService {
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(fileName);
+
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      if (typeof onProgress === 'function') {
+        try { onProgress(100); } catch (_) {}
+      }
 
       return {
         id: data.path,
@@ -193,6 +215,8 @@ class SupabaseStorageService {
         uploadedAt: new Date().toISOString()
       };
     } catch (error) {
+      // Ensure we finish progress if we can
+      try { if (typeof onProgress === 'function') onProgress(0); } catch (_) {}
       console.error('File upload error:', error);
       throw error;
     }

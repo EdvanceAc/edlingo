@@ -510,7 +510,7 @@ class SupabaseService {
     }
   }
 
-  async uploadAvatar(file) {
+  async uploadAvatar(file, onProgress = null) {
     try {
       if (!file) return { success: false, error: 'No file provided' };
 
@@ -521,7 +521,8 @@ class SupabaseService {
         file,
         'shared-resources', // Reuse existing public bucket to avoid missing-bucket failures
         `avatars/${user.id}`,
-        { contentType: file.type }
+        { contentType: file.type },
+        typeof onProgress === 'function' ? onProgress : null
       );
 
       // Persist URL on profile

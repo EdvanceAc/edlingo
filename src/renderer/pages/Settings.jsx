@@ -22,6 +22,9 @@ const Settings = () => {
   const [usernameStatus, setUsernameStatus] = useState('idle'); // idle | checking | available | taken | invalid
   const [isUsernameEditing, setIsUsernameEditing] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarProgress, setAvatarProgress] = useState(0);
+  const [avatarError, setAvatarError] = useState(null);
   const [profile, setProfile] = useState({
     full_name: '',
     email: '',
@@ -221,17 +224,32 @@ const Settings = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      setProfileSaving(true);
-      const res = await supabaseService.uploadAvatar(file);
+      setAvatarError(null);
+      // Basic client-side validation
+      const MAX_MB = 5;
+      if (!/^image\//.test(file.type)) {
+        setAvatarError('Please select an image file');
+        return;
+      }
+      if (file.size > MAX_MB * 1024 * 1024) {
+        setAvatarError(`Max file size is ${MAX_MB}MB`);
+        return;
+      }
+      setAvatarUploading(true);
+      setAvatarProgress(0);
+      const res = await supabaseService.uploadAvatar(file, (p) => {
+        const val = Math.min(100, Math.max(0, Math.round(p)));
+        setAvatarProgress(val);
+      });
       if (res.success && res.data?.url) {
         setProfile(prev => ({ ...prev, avatar_url: res.data.url }));
       } else if (!res.success) {
         throw new Error(res.error);
       }
     } catch (e) {
-      setProfileError(e?.message || 'Failed to upload avatar');
+      setAvatarError(e?.message || 'Failed to upload avatar');
     } finally {
-      setProfileSaving(false);
+      setAvatarUploading(false);
     }
   };
 
@@ -266,15 +284,22 @@ const Settings = () => {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-lg">🧑‍🎓</div>
                     )}
+                    {avatarUploading && (
+                      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+                        <div className="w-6 h-6 rounded-full border-2 border-white/70 border-t-transparent animate-spin mb-1" />
+                        <div className="text-xs">{avatarProgress}%</div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
                     <div className="text-sm text-gray-700 dark:text-gray-300">{profile.email || '—'}</div>
                   </div>
                   <div>
-                    <label className="cursor-pointer text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-                      Upload Avatar
-                      <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" />
+                    <label className={`cursor-pointer text-sm px-3 py-2 rounded-lg ${avatarUploading ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'} transition-colors`}>
+                      {avatarUploading ? `Uploading ${avatarProgress}%` : 'Change Avatar'}
+                      <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" disabled={avatarUploading} />
                     </label>
+                    {avatarError && <div className="text-xs text-red-600 mt-1">{avatarError}</div>}
                   </div>
                 </div>
 
