@@ -4145,14 +4145,14 @@
             try {
                 const { error } = await supabaseAdmin.rpc('admin_dispatch_notification', payload);
                 if (error) throw error;
-                createToast({ type: 'success', message: 'اعلان با موفقیت ارسال شد' });
+                createToast({ type: 'success', message: 'Notification sent successfully' });
                 form.reset();
                 const lastSent = document.getElementById('notification-last-sent');
                 if (lastSent) lastSent.textContent = `Sent: ${new Date().toLocaleTimeString()}`;
                 await refreshNotificationFeed();
             } catch (err) {
                 console.error('Failed to send notification', err);
-                createToast({ type: 'error', message: err.message || 'ارسال اعلان ناموفق بود' });
+                createToast({ type: 'error', message: err.message || 'Failed to send notification' });
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -4224,7 +4224,7 @@
                 console.error('Failed to load notification feed', err);
                 container.innerHTML = `
                     <div class="text-center text-red-500 py-12">
-                        خطا در بارگذاری اعلان‌ها: ${err.message || 'Unknown error'}
+                        Failed to load notifications: ${err.message || 'Unknown error'}
                     </div>
                 `;
             }
@@ -4237,11 +4237,11 @@
                     .update({ is_visible: !currentlyVisible })
                     .eq('id', id);
                 if (error) throw error;
-                createToast({ type: 'success', message: !currentlyVisible ? 'اعلان نمایان شد' : 'اعلان مخفی شد' });
+                createToast({ type: 'success', message: !currentlyVisible ? 'Notification is now visible' : 'Notification is hidden' });
                 await refreshNotificationFeed();
             } catch (err) {
                 console.error('Failed to toggle notification visibility', err);
-                createToast({ type: 'error', message: err.message || 'به‌روزرسانی اعلان ناموفق بود' });
+                createToast({ type: 'error', message: err.message || 'Failed to update notification visibility' });
             }
         }
 

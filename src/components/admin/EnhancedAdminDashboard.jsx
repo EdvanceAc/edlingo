@@ -1130,7 +1130,7 @@ const EnhancedAdminDashboard = () => {
                 {[
                   { title: 'ایجاد دوره جدید', icon: Plus, action: () => setActiveSection('course-management') },
                   { title: 'مشاهده آمار', icon: BarChart3, action: () => setActiveSection('student-analytics') },
-                  { title: 'ارسال اعلان', icon: Bell, action: () => setActiveSection('notifications') }
+                { title: 'Send Notification', icon: Bell, action: () => setActiveSection('notifications') }
                 ].map((action, index) => {
                   const Icon = action.icon;
                   return (
