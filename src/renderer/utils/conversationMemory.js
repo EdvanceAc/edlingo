@@ -4,7 +4,7 @@
 
 const STORAGE_PREFIX = 'edlingo.chat.history.';
 // Keep up to 20 messages (~10 turns) per session by default
-const DEFAULT_MAX_MESSAGES = 20;
+const DEFAULT_MAX_MESSAGES = 30;
 
 function getStorageKey(sessionId) {
   return `${STORAGE_PREFIX}${sessionId}`;

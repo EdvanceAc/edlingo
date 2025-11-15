@@ -171,8 +171,11 @@ export const AIProvider = ({ children }) => {
       // Build contextual memory: load existing, append current user message, keep last 10 turns (20 messages)
       const MEMORY_WINDOW = 20;
       const prior = cmGet(sessionId, MEMORY_WINDOW);
+      // If local memory is empty (first load on this device), fall back to in-memory provider history
+      const providerHist = (conversationHistory || []).filter(h => !h.sessionId || h.sessionId === sessionId);
+      const baseContext = prior.length > 0 ? prior : providerHist.slice(-MEMORY_WINDOW);
       cmAdd(sessionId, { role: 'user', content: message });
-      const contextForModel = cmGet(sessionId, MEMORY_WINDOW);
+      const contextForModel = (baseContext.length > 0 ? baseContext : []).concat([{ role: 'user', content: message }]).slice(-MEMORY_WINDOW);
 
       const result = await aiService.generateLanguageLearningResponse(message, {
         targetLanguage: options.targetLanguage || 'English',
@@ -315,6 +318,15 @@ export const AIProvider = ({ children }) => {
       sessionId: m.session_id
     }));
     setConversationHistory(mapped);
+    try {
+      const sid = currentSessionId || (messages && messages[0]?.session_id) || null;
+      if (sid) {
+        // Persist to local storage so future loads (after logout) have context immediately
+        cmSave(sid, mapped.map(({ role, content, timestamp }) => ({ role, content, timestamp })));
+      }
+    } catch {
+      // ignore storage errors
+    }
   };
 
   const configureGemini = async (apiKey) => {
