@@ -9,6 +9,7 @@ const ProgressContext = createContext({
   totalXP: 0,
   level: 1,
   achievements: [],
+  cefrLevel: 'A1',
   updateProgress: () => {},
   addXP: () => {},
   completeLesson: () => {},
@@ -51,7 +52,8 @@ const INITIAL_PROGRESS = {
     grammar: { xp: 0, level: 1, progress: 0 },
     pronunciation: { xp: 0, level: 1, progress: 0 },
     conversation: { xp: 0, level: 1, progress: 0 },
-  }
+  },
+  cefrLevel: 'A1',
 };
 
 const ACHIEVEMENTS = [
@@ -76,6 +78,22 @@ export function ProgressProvider({ children }) {
   useEffect(() => {
     const fetchProgress = async () => {
       if (!user?.id) return;
+
+      const getPlacementLevel = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('placement_level')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (error && error.code !== 'PGRST116') throw error;
+          return data?.placement_level || null;
+        } catch (placementError) {
+          console.warn('Failed to fetch placement level:', placementError);
+          return null;
+        }
+      };
+
       try {
         // Ensure we have an authenticated session before hitting RLS-protected tables
         const { data: { session } } = await supabase.auth.getSession();
@@ -96,8 +114,13 @@ export function ProgressProvider({ children }) {
            .limit(1);
         
         if (error) throw error;
+        const placementLevel = await getPlacementLevel();
         if (Array.isArray(data) && data.length > 0) {
-          setUserProgress(prev => ({ ...prev, ...mapToJS(data[0]) }));
+          setUserProgress(prev => ({
+            ...prev,
+            ...mapToJS(data[0]),
+            cefrLevel: placementLevel || prev.cefrLevel || INITIAL_PROGRESS.cefrLevel
+          }));
         } else {
           // Get user's preferred language from profile
           let userLanguage = 'en'; // Default fallback
@@ -118,7 +141,8 @@ export function ProgressProvider({ children }) {
           const initialData = { 
             ...INITIAL_PROGRESS, 
             user_id: user.id,
-            language: userLanguage
+            language: userLanguage,
+            cefrLevel: placementLevel || INITIAL_PROGRESS.cefrLevel
           };
           const dbData = mapToDB(initialData);
           const { error: upsertError } = await supabase
@@ -638,6 +662,7 @@ export function ProgressProvider({ children }) {
     totalXP: userProgress.totalXP,
     level: userProgress.level,
     achievements: userProgress.achievements,
+    cefrLevel: userProgress.cefrLevel,
     updateProgress,
     addXP,
     completeLesson,

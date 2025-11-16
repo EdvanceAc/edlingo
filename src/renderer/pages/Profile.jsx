@@ -108,7 +108,7 @@ const Profile = () => {
       }
     };
     loadProfileAndSessions();
-  }, [user?.id, userProgress?.language]);
+  }, [user?.id, userProgress?.language, userProgress?.cefrLevel]);
 
   const onChange = (e) => {
     const { name, value } = e.target;

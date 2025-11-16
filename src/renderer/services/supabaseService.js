@@ -544,6 +544,63 @@ class SupabaseService {
     }
   }
 
+  /**
+   * Persist the latest assessment placement for the authenticated user
+   */
+  async recordAssessmentPlacement({
+    cefrLevel,
+    overallScore = null,
+    sessionId = null,
+    skillBreakdown = null,
+    targetLanguage = null
+  } = {}) {
+    try {
+      const normalizedLevel = typeof cefrLevel === 'string' ? cefrLevel.trim().toUpperCase() : null;
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      const timestamp = new Date().toISOString();
+      const profilePayload = {
+        id: user.id,
+        placement_level: normalizedLevel,
+        learning_level: normalizedLevel,
+        assessment_completed: true,
+        initial_assessment_date: timestamp,
+        updated_at: timestamp
+      };
+      if (targetLanguage) profilePayload.target_language = targetLanguage;
+
+      const { error: profileError } = await this.client
+        .from('user_profiles')
+        .upsert(profilePayload, { onConflict: 'id' });
+      if (profileError) throw profileError;
+
+      // Store a lightweight snapshot for future analytics if table exists
+      try {
+        await this.client
+          .from('assessment_snapshots')
+          .insert({
+            user_id: user.id,
+            session_id: sessionId,
+            cefr_level: normalizedLevel,
+            overall_score: overallScore,
+            skill_breakdown: skillBreakdown,
+            created_at: timestamp
+          });
+      } catch (snapshotErr) {
+        // Table may not exist in all deployments; log and continue silently
+        if (snapshotErr?.code !== '42P01') {
+          console.warn('Optional assessment_snapshots insert failed:', snapshotErr.message || snapshotErr);
+        }
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('recordAssessmentPlacement error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // User Progress Management
   async saveUserProgress(userId, progressData) {
     try {

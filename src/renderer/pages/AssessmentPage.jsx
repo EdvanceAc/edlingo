@@ -8,6 +8,7 @@ import { Card } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { CheckCircle, ArrowLeft, RotateCcw } from 'lucide-react';
 import { useTheme } from '../providers/ThemeProvider';
+import { useProgress } from '../providers/ProgressProvider';
 
 const AssessmentPage = () => {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ const AssessmentPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const { theme } = useTheme();
+  const { updateProgress } = useProgress();
 
   useEffect(() => {
     if (!user) {
@@ -171,20 +173,21 @@ const AssessmentPage = () => {
 
   const handleAssessmentComplete = async (results) => {
     try {
-      // Update user profile with assessment results
-      const { error } = await supabaseService.client
-        .from('user_profiles')
-        .update({
-          assessment_completed: true,
-          initial_assessment_date: new Date().toISOString(),
-          placement_level: results.cefrLevel,
-          learning_level: results.cefrLevel
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        console.error('Error updating user profile:', error);
+      const record = await supabaseService.recordAssessmentPlacement({
+        cefrLevel: results.cefrLevel,
+        overallScore: results.overallScore,
+        sessionId: results.sessionId,
+        skillBreakdown: results.skillBreakdown,
+        targetLanguage: userProfile?.target_language
+      });
+      if (!record.success) {
+        console.warn('Failed to record assessment placement:', record.error);
       }
+
+      // Update in-memory progress so other features can consume immediately
+      updateProgress({
+        cefrLevel: results.cefrLevel
+      });
 
       // Navigate to dashboard
       navigate('/dashboard', { 
