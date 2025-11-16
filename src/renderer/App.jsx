@@ -363,7 +363,7 @@ function App() {
                       <Route 
                         path="/assessment" 
                         element={
-                          <ProtectedRoute>
+                          <ProtectedRoute allowWithoutAssessment>
                             <motion.div
                               key="assessment"
                               initial={{ opacity: 0, y: 20 }}
@@ -379,7 +379,7 @@ function App() {
                       <Route 
                         path="/assessment-test" 
                         element={
-                          <ProtectedRoute>
+                          <ProtectedRoute allowWithoutAssessment>
                             <motion.div
                               key="assessment-test"
                               initial={{ opacity: 0, y: 20 }}
