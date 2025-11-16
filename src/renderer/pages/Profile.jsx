@@ -2,9 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../config/supabaseConfig.js';
 import supabaseService from '../services/supabaseService.js';
-import supabaseStorageService from '../services/supabaseStorageService.js';
 
 const StatCard = ({ title, value, accent }) => (
   <div className="flex-1 rounded-2xl p-6 bg-white/60 dark:bg-gray-800/50 backdrop-blur ring-1 ring-white/60 dark:ring-white/10 shadow-sm">
@@ -42,15 +40,22 @@ const SectionCard = ({ title, children }) => (
   </div>
 );
 
+const USERNAME_REGEX = /^(?![._])(?!.*[._]{2})[a-z0-9._]{6,32}(?<![._])$/;
+
 const Profile = () => {
   const { user } = useAuth();
   const { level, totalXP, streak, userProgress } = useProgress();
 
-  const [profileId, setProfileId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [sessions, setSessions] = useState([]);
-  const [error, setError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
+  const [avatarError, setAvatarError] = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarProgress, setAvatarProgress] = useState(0);
+  const [usernameStatus, setUsernameStatus] = useState('idle'); // idle | checking | available | taken | invalid
+  const [isUsernameEditing, setIsUsernameEditing] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState('');
 
   const [form, setForm] = useState({
     full_name: '',
@@ -66,39 +71,15 @@ const Profile = () => {
   const dailyProgress = useMemo(() => userProgress?.daily_progress ?? 0, [userProgress]);
 
   useEffect(() => {
-    const load = async () => {
+    const loadProfileAndSessions = async () => {
       try {
-        setLoading(true);
-        setError(null);
-
-        // Resolve current user's profile id or create if missing
-        const id = await supabaseService.getOrCreateUserProfileId();
-        setProfileId(id);
-
-        let row = null;
-        if (id) {
-          const { data, error } = await supabase
-            .from('user_profiles')
-            .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level,initial_assessment_date,last_active_at,created_at')
-            .eq('id', id)
-            .limit(1);
-          if (error && error.code !== 'PGRST116') throw error;
-          row = Array.isArray(data) ? data[0] : data;
+        setProfileLoading(true);
+        setProfileError(null);
+        const result = await supabaseService.getUserProfile();
+        const row = result.success ? result.data : null;
+        if (!result.success && result.error) {
+          setProfileError(result.error);
         }
-
-        // Fallback by user_id if needed
-        if (!row && user?.id) {
-          const { data, error } = await supabase
-            .from('user_profiles')
-            .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level,initial_assessment_date,last_active_at,created_at')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: true })
-            .limit(1);
-          if (error && error.code !== 'PGRST116') throw error;
-          row = Array.isArray(data) ? data[0] : data;
-          if (row?.id) setProfileId(row.id);
-        }
-
         setForm(prev => ({
           ...prev,
           full_name: row?.full_name || user?.user_metadata?.name || user?.user_metadata?.full_name || '',
@@ -109,51 +90,131 @@ const Profile = () => {
           placement_level: row?.placement_level || '',
           avatar_url: row?.avatar_url || ''
         }));
-
-        // Recent sessions
-        if (user?.id) {
-          const { success, data } = await supabaseService.getUserSessions(user.id, 5);
-          if (success) setSessions(data);
-        }
+        setUsernameDraft((row?.username || '').toString());
+        setIsUsernameEditing(false);
+        setUsernameStatus('idle');
       } catch (err) {
         console.warn('Profile load error:', err);
-        setError(err?.message || 'Failed to load profile');
+        setProfileError(err?.message || 'Failed to load profile');
       } finally {
-        setLoading(false);
+        setProfileLoading(false);
+      }
+
+      if (user?.id) {
+        const { success, data } = await supabaseService.getUserSessions(user.id, 5);
+        if (success) {
+          setSessions(data || []);
+        }
       }
     };
-    load();
-  }, [user?.id]);
+    loadProfileAndSessions();
+  }, [user?.id, userProgress?.language]);
 
   const onChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const startEditUsername = () => {
+    setUsernameDraft((form.username || '').toString());
+    setIsUsernameEditing(true);
+    setUsernameStatus('idle');
+    setProfileError(null);
+  };
+
+  const cancelEditUsername = () => {
+    setUsernameDraft((form.username || '').toString());
+    setIsUsernameEditing(false);
+    setUsernameStatus('idle');
+  };
+
+  const onUsernameInput = (e) => {
+    const raw = (e.target.value || '').toLowerCase();
+    const cleaned = raw
+      .replace(/[^a-z0-9._]/g, '')
+      .replace(/[._]{2,}/g, '.')
+      .replace(/^[._]+|[._]+$/g, '');
+    setUsernameDraft(cleaned);
+  };
+
+  useEffect(() => {
+    if (!isUsernameEditing) return undefined;
+    const u = (usernameDraft || '').trim();
+    if (!u) {
+      setUsernameStatus('idle');
+      return undefined;
+    }
+    if (!USERNAME_REGEX.test(u)) {
+      setUsernameStatus('invalid');
+      return undefined;
+    }
+    setUsernameStatus('checking');
+    const timer = setTimeout(async () => {
+      const { success, available } = await supabaseService.checkUsernameAvailable(u);
+      if (success) {
+        setUsernameStatus(available ? 'available' : 'taken');
+      } else {
+        setUsernameStatus('idle');
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [usernameDraft, isUsernameEditing]);
+
+  const handleSaveUsername = async () => {
+    try {
+      setProfileSaving(true);
+      setProfileError(null);
+      let candidate = (usernameDraft || '').trim().toLowerCase();
+      if (!candidate) {
+        setProfileError('Username cannot be empty');
+        return;
+      }
+      while (candidate.length < 6) {
+        candidate += Math.floor(Math.random() * 10).toString();
+      }
+      if (!USERNAME_REGEX.test(candidate)) {
+        setProfileError('Username format is invalid');
+        return;
+      }
+      if (usernameStatus === 'taken') {
+        setProfileError('Username is already taken');
+        return;
+      }
+      const payload = { username: candidate };
+      const res = await supabaseService.updateUserProfile(payload);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to save username');
+      }
+      setForm(prev => ({ ...prev, username: candidate }));
+      setUsernameDraft(candidate);
+      setIsUsernameEditing(false);
+      setUsernameStatus('idle');
+    } catch (err) {
+      setProfileError(err?.message || 'Failed to save username');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   const saveProfile = async () => {
     try {
-      setSaving(true);
-      setError(null);
+      setProfileSaving(true);
+      setProfileError(null);
       const payload = {
         full_name: form.full_name || null,
-        username: form.username || null,
         target_language: form.target_language || null,
         native_language: form.native_language || null,
         placement_level: form.placement_level || null,
-        avatar_url: form.avatar_url || null,
-        updated_at: new Date().toISOString()
+        avatar_url: form.avatar_url || null
       };
-
-      let query = supabase.from('user_profiles').update(payload);
-      if (profileId) query = query.eq('id', profileId);
-      else if (user?.id) query = query.eq('user_id', user.id);
-
-      const { error } = await query.select().single();
-      if (error) throw error;
+      const result = await supabaseService.updateUserProfile(payload);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save profile');
+      }
     } catch (err) {
-      setError(err?.message || 'Failed to save profile');
+      setProfileError(err?.message || 'Failed to save profile');
     } finally {
-      setSaving(false);
+      setProfileSaving(false);
     }
   };
 
@@ -161,23 +222,32 @@ const Profile = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      setSaving(true);
-      const result = await supabaseStorageService.uploadFile(
-        file,
-        'shared-resources',
-        'avatars',
-        { contentType: file.type }
-      );
-      setForm(prev => ({ ...prev, avatar_url: result.url }));
-      // Auto-save avatar URL
-      await supabase
-        .from('user_profiles')
-        .update({ avatar_url: result.url, updated_at: new Date().toISOString() })
-        .eq(profileId ? 'id' : 'user_id', profileId || user.id);
+      setAvatarError(null);
+      const MAX_MB = 5;
+      if (!/^image\//.test(file.type)) {
+        setAvatarError('Please select an image file');
+        return;
+      }
+      if (file.size > MAX_MB * 1024 * 1024) {
+        setAvatarError(`Max file size is ${MAX_MB}MB`);
+        return;
+      }
+      setAvatarUploading(true);
+      setAvatarProgress(0);
+      const res = await supabaseService.uploadAvatar(file, (progress) => {
+        const val = Math.min(100, Math.max(0, Math.round(progress)));
+        setAvatarProgress(val);
+      });
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to upload avatar');
+      }
+      if (res.data?.url) {
+        setForm(prev => ({ ...prev, avatar_url: res.data.url }));
+      }
     } catch (err) {
-      setError(err?.message || 'Failed to upload avatar');
+      setAvatarError(err?.message || 'Failed to upload avatar');
     } finally {
-      setSaving(false);
+      setAvatarUploading(false);
     }
   };
 
@@ -195,7 +265,7 @@ const Profile = () => {
           Profile
         </h1>
 
-        {loading ? (
+        {profileLoading ? (
           <div className="text-sm text-gray-600 dark:text-gray-300">Loading...</div>
         ) : (
           <div className="space-y-6 relative">
@@ -207,16 +277,25 @@ const Profile = () => {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-xl">🧑‍🎓</div>
                 )}
+                {avatarUploading && (
+                  <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+                    <div className="w-8 h-8 rounded-full border-2 border-white/70 border-t-transparent animate-spin mb-1" />
+                    <div className="text-xs">{avatarProgress}%</div>
+                  </div>
+                )}
               </div>
               <div className="flex-1">
                 <div className="text-xl font-semibold">{form.full_name || 'User'}</div>
                 <div className="text-sm text-gray-600 dark:text-gray-300">{form.email}</div>
               </div>
               <div>
-                <label className="cursor-pointer text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-                  Upload Avatar
-                  <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" />
+                <label
+                  className={`cursor-pointer text-sm px-3 py-2 rounded-lg ${avatarUploading ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'} transition-colors`}
+                >
+                  {avatarUploading ? `Uploading ${avatarProgress}%` : 'Change Avatar'}
+                  <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" disabled={avatarUploading} />
                 </label>
+                {avatarError && <div className="text-xs text-red-600 mt-1">{avatarError}</div>}
               </div>
             </div>
 
@@ -254,7 +333,58 @@ const Profile = () => {
                 </div>
                 <div>
                   <Label>Username</Label>
-                  <Input name="username" value={form.username} onChange={onChange} placeholder="username" />
+                  <div className="relative">
+                    <Input
+                      name="username"
+                      value={isUsernameEditing ? usernameDraft : (form.username || '')}
+                      onChange={isUsernameEditing ? onUsernameInput : () => {}}
+                      placeholder="username"
+                      disabled={!isUsernameEditing}
+                      maxLength={32}
+                      aria-invalid={usernameStatus === 'taken' || usernameStatus === 'invalid'}
+                      className={`${!isUsernameEditing ? 'text-gray-400 cursor-not-allowed' : ''} ${
+                        usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'ring-red-200 focus:ring-red-500' : ''
+                      }`}
+                    />
+                    {isUsernameEditing && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs">
+                        {usernameStatus === 'checking' && <span className="text-gray-500">Checking...</span>}
+                        {usernameStatus === 'available' && <span className="text-green-600">Available</span>}
+                        {usernameStatus === 'taken' && <span className="text-red-600">Taken</span>}
+                        {usernameStatus === 'invalid' && <span className="text-red-600">Invalid</span>}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                    Use 6-32 characters: a-z, 0-9, dot or underscore. Can't start/end with . or _
+                  </p>
+                  {!isUsernameEditing ? (
+                    <button
+                      type="button"
+                      onClick={startEditUsername}
+                      className="mt-2 px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm transition-colors"
+                    >
+                      Edit Username
+                    </button>
+                  ) : (
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveUsername}
+                        disabled={profileSaving}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm transition-colors disabled:opacity-70"
+                      >
+                        {profileSaving ? 'Saving...' : 'Save Username'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEditUsername}
+                        className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label>Target Language</Label>
@@ -281,11 +411,11 @@ const Profile = () => {
                 <button
                   onClick={saveProfile}
                   className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                  disabled={saving}
+                  disabled={profileSaving}
                 >
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {profileSaving ? 'Saving...' : 'Save Changes'}
                 </button>
-                {error && <span className="text-sm text-red-600">{error}</span>}
+                {profileError && <span className="text-sm text-red-600">{profileError}</span>}
               </div>
             </SectionCard>
 
