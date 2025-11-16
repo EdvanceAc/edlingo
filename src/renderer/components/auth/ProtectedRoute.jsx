@@ -36,7 +36,9 @@ const ProtectedRoute = ({ children, allowWithoutAssessment = false }) => {
           return;
         }
 
-        const completed = Boolean(result.data?.assessment_completed) || Boolean(result.data?.placement_level);
+        const completed = Boolean(result.data?.assessment_completed) 
+          || Boolean(result.data?.placement_level)
+          || Boolean(result.data?.learning_level);
         setAssessmentStatus({ loading: false, completed });
       } catch (error) {
         console.warn('Assessment check failed, allowing access:', error);

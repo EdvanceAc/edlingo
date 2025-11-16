@@ -301,7 +301,7 @@ const AssessmentPage = () => {
               
               <div className="space-y-3">
                 <Button 
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/courses')}
                   className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white hover:from-indigo-700 hover:to-fuchsia-700 shadow-xl"
                 >
                   Continue Learning

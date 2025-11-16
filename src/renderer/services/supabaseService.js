@@ -350,7 +350,7 @@ class SupabaseService {
       // Try primary key (id === auth.uid())
       let { data, error } = await this.client
         .from('user_profiles')
-        .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level')
+        .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level,learning_level,assessment_completed,initial_assessment_date')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -360,7 +360,7 @@ class SupabaseService {
         // Fallback by user_id relationship if schema differs
         const res = await this.client
           .from('user_profiles')
-          .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level')
+          .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level,learning_level,assessment_completed,initial_assessment_date')
           .eq('user_id', user.id)
           .order('created_at', { ascending: true })
           .limit(1);
@@ -372,7 +372,7 @@ class SupabaseService {
         await this.ensureUserHasUsername();
         const refetch = await this.client
           .from('user_profiles')
-          .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level')
+          .select('id,email,full_name,username,avatar_url,target_language,native_language,placement_level,learning_level,assessment_completed,initial_assessment_date')
           .eq('id', user.id)
           .maybeSingle();
         if (!refetch.error) data = refetch.data || data;
