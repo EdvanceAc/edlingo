@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAuth } from '../contexts/AuthContext';
 import supabaseService from '../services/supabaseService.js';
@@ -45,6 +46,7 @@ const USERNAME_REGEX = /^(?![._])(?!.*[._]{2})[a-z0-9._]{6,32}(?<![._])$/;
 const Profile = () => {
   const { user } = useAuth();
   const { level, totalXP, streak, userProgress } = useProgress();
+  const navigate = useNavigate();
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -56,6 +58,7 @@ const Profile = () => {
   const [usernameStatus, setUsernameStatus] = useState('idle'); // idle | checking | available | taken | invalid
   const [isUsernameEditing, setIsUsernameEditing] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState('');
+  const [assessmentDate, setAssessmentDate] = useState(null);
 
   const [form, setForm] = useState({
     full_name: '',
@@ -93,6 +96,7 @@ const Profile = () => {
         setUsernameDraft((row?.username || '').toString());
         setIsUsernameEditing(false);
         setUsernameStatus('idle');
+        setAssessmentDate(row?.initial_assessment_date || null);
       } catch (err) {
         console.warn('Profile load error:', err);
         setProfileError(err?.message || 'Failed to load profile');
@@ -204,7 +208,6 @@ const Profile = () => {
         full_name: form.full_name || null,
         target_language: form.target_language || null,
         native_language: form.native_language || null,
-        placement_level: form.placement_level || null,
         avatar_url: form.avatar_url || null
       };
       const result = await supabaseService.updateUserProfile(payload);
@@ -306,6 +309,33 @@ const Profile = () => {
               <StatCard title="Active Streak" value={`${streak} days`} accent="bg-gradient-to-r from-emerald-700 to-teal-700" />
             </div>
 
+            {/* Placement level */}
+            <SectionCard title="Placement Level">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">CEFR placement</div>
+                  <div className="text-2xl font-semibold mt-1">
+                    {form.placement_level || 'Not assessed yet'}
+                  </div>
+                  {assessmentDate && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Assessed on {new Date(assessmentDate).toLocaleDateString()}
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                    Placement is determined by the official assessment. Retake the assessment whenever you want to refresh your level.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/assessment')}
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white hover:from-indigo-700 hover:to-fuchsia-700 transition-colors"
+                >
+                  {form.placement_level ? 'Retake Assessment' : 'Take Assessment'}
+                </button>
+              </div>
+            </SectionCard>
+
             {/* Daily goal */}
             <SectionCard title="Daily Goal">
               <div className="flex items-center gap-4">
@@ -397,14 +427,6 @@ const Profile = () => {
                 <div>
                   <Label>Native Language</Label>
                   <Input name="native_language" value={form.native_language} onChange={onChange} placeholder="e.g., Persian" />
-                </div>
-                <div>
-                  <Label>Placement Level (CEFR)</Label>
-                  <Select name="placement_level" value={form.placement_level} onChange={onChange}>
-                    {['','A1','A2','B1','B2','C1','C2'].map(l => (
-                      <option key={l} value={l}>{l || '-'}</option>
-                    ))}
-                  </Select>
                 </div>
               </div>
               <div className="mt-4 flex items-center gap-3">
