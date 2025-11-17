@@ -303,6 +303,10 @@
                     <i data-lucide="folder" class="w-5 h-5"></i>
                     <span>Files</span>
                 </button>
+                <button id="support-tab" class="lux-tab flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showTab('support')">
+                    <i data-lucide="life-buoy" class="w-5 h-5"></i>
+                    <span>Support</span>
+                </button>
                 <button id="notifications-tab" class="lux-tab flex items-center space-x-2 px-3 py-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" onclick="showTab('notifications')">
                     <i data-lucide="bell" class="w-5 h-5"></i>
                     <span>Notifications</span>
@@ -365,6 +369,8 @@
                 </div>
             </div>
         </div>
+
+        
 
         <!-- Quick Actions -->
         <div class="bg-white glass-card gradient-border mb-8">
@@ -449,6 +455,48 @@
                 </div>
             </div>
         </div>
+        </div>
+
+        <!-- Support Tab -->
+        <div id="support-content" class="tab-content hidden">
+            <div class="bg-white glass-card gradient-border mb-8">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="p-2 rounded-full bg-blue-50 text-blue-600 mr-3">
+                            <i data-lucide="life-buoy" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold section-title">Support Center</h2>
+                            <p class="text-xs lux-muted">View tickets and reply in realtime</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Ticket list -->
+                        <div class="md:col-span-1 border rounded-lg overflow-hidden">
+                            <div class="px-4 py-3 border-b font-medium">Tickets</div>
+                            <div id="support-ticket-list" class="max-h-[60vh] overflow-auto">
+                                <div class="p-4 text-sm text-gray-500">Loading tickets...</div>
+                            </div>
+                        </div>
+                        <!-- Thread -->
+                        <div class="md:col-span-2 border rounded-lg flex flex-col min-h-[60vh]">
+                            <div id="support-thread-header" class="px-4 py-3 border-b font-medium">Select a ticket</div>
+                            <div id="support-message-list" class="flex-1 overflow-auto p-4 space-y-3">
+                                <div class="text-sm text-gray-500">No ticket selected.</div>
+                            </div>
+                            <div class="border-t p-3">
+                                <div class="flex items-end gap-2">
+                                    <textarea id="support-reply-text" rows="2" class="flex-1 border rounded-md p-2" placeholder="Type a reply..."></textarea>
+                                    <button id="support-reply-send" class="px-4 py-2 rounded-md bg-blue-600 text-white disabled:opacity-60">Send</button>
+                                </div>
+                                <div id="support-reply-hint" class="text-[11px] text-gray-500 mt-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Users Tab -->
@@ -4063,6 +4111,8 @@
                 loadQuestions();
             } else if (tabName === 'notifications') {
                 initNotificationsTab();
+            } else if (tabName === 'support') {
+                initSupportTab();
             }
         }
         
@@ -4084,6 +4134,193 @@
                 return date.toLocaleString();
             } catch (_) {
                 return value || '';
+            }
+        }
+
+        /* =========================
+         * Support Tickets (Admin)
+         * ========================= */
+        let supportInit = false;
+        let supportTicketsCh = null;
+        let supportMsgsCh = null;
+        let supportCurrentTicket = null;
+        let supportCurrentUserId = null;
+
+        async function initSupportTab() {
+            try {
+                if (!supportInit) {
+                    const u = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+                    supportCurrentUserId = (u && u.data && u.data.user && u.data.user.id) ? u.data.user.id : null;
+                    await supportLoadTickets();
+
+                    if (!supportTicketsCh) {
+                        supportTicketsCh = supabase
+                            .channel('admin_support_tickets')
+                            .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, () => {
+                                supportLoadTickets();
+                            })
+                            .subscribe();
+                    }
+
+                    const sendBtn = document.getElementById('support-reply-send');
+                    if (sendBtn && !sendBtn.dataset.bound) {
+                        sendBtn.addEventListener('click', supportSendReply);
+                        sendBtn.dataset.bound = '1';
+                    }
+                    supportInit = true;
+                } else {
+                    await supportLoadTickets();
+                }
+            } catch (err) {
+                console.error('initSupportTab error:', err);
+                const list = document.getElementById('support-ticket-list');
+                if (list) list.innerHTML = `<div class="p-4 text-sm text-red-600">Failed to load tickets: ${ (err && err.message) ? err.message : err }</div>`;
+            }
+        }
+
+        async function supportLoadTickets() {
+            const list = document.getElementById('support-ticket-list');
+            if (!list) return;
+            list.innerHTML = `<div class="p-4 text-sm text-gray-500">Loading tickets…</div>`;
+            try {
+                const { data, error } = await supabase
+                    .from('support_tickets')
+                    .select('id,subject,user_id,priority,status,last_message_at,unread_by_admin')
+                    .order('last_message_at', { ascending: false })
+                    .limit(200);
+                if (error) throw error;
+
+                const tickets = data || [];
+                if (!tickets.length) {
+                    list.innerHTML = `<div class="p-4 text-sm text-gray-500">No tickets found.</div>`;
+                    return;
+                }
+
+                const frag = document.createDocumentFragment();
+                tickets.forEach(t => {
+                    const row = document.createElement('button');
+                    row.className = 'w-full text-left px-4 py-3 border-b hover:bg-gray-50';
+                    const last = t.last_message_at ? new Date(t.last_message_at).toLocaleString() : '';
+                    const badgeClass = t.unread_by_admin ? 'text-red-600' : 'text-gray-400';
+                    row.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="font-medium truncate">${supportEscape(t.subject || '(no subject)')}</div>
+                            <span class="text-xs ${badgeClass}">${supportEscape(t.status || '')}</span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">${last}</div>
+                    `;
+                    row.addEventListener('click', () => supportOpenTicket(t));
+                    frag.appendChild(row);
+                });
+
+                list.innerHTML = '';
+                list.appendChild(frag);
+            } catch (err) {
+                console.error('supportLoadTickets error:', err);
+                list.innerHTML = `<div class="p-4 text-sm text-red-600">Failed to load tickets.</div>`;
+            }
+        }
+
+        async function supportOpenTicket(ticket) {
+            supportCurrentTicket = ticket;
+
+            const header = document.getElementById('support-thread-header');
+            if (header) {
+                const subject = supportEscape(ticket.subject || '(no subject)');
+                const st = supportEscape(ticket.status || '');
+                header.textContent = `${subject} • ${st}`;
+            }
+
+            // Unsubscribe previous
+            if (supportMsgsCh) {
+                try { supportMsgsCh.unsubscribe(); } catch (_) {}
+                supportMsgsCh = null;
+            }
+
+            await supportLoadMessages(ticket.id);
+
+            // Realtime for messages of this ticket
+            supportMsgsCh = supabase
+                .channel(`support_ticket_${ticket.id}`)
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `ticket_id=eq.${ticket.id}` }, (payload) => {
+                    const msg = payload && payload.new;
+                    if (msg) supportAppendMessage(msg);
+                })
+                .subscribe();
+        }
+
+        async function supportLoadMessages(ticketId) {
+            const box = document.getElementById('support-message-list');
+            if (!box) return;
+            box.innerHTML = `<div class="text-sm text-gray-500">Loading messages…</div>`;
+            try {
+                const { data, error } = await supabase
+                    .from('support_messages')
+                    .select('id,ticket_id,sender_id,sender_role,content,created_at')
+                    .eq('ticket_id', ticketId)
+                    .order('created_at', { ascending: true });
+                if (error) throw error;
+                box.innerHTML = '';
+                (data || []).forEach(m => supportAppendMessage(m));
+            } catch (err) {
+                console.error('supportLoadMessages error:', err);
+                box.innerHTML = `<div class="text-sm text-red-600">Failed to load messages.</div>`;
+            }
+        }
+
+        function supportAppendMessage(m) {
+            const box = document.getElementById('support-message-list');
+            if (!box) return;
+            const mine = m.sender_role === 'admin';
+            const wrap = document.createElement('div');
+            wrap.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[85%] rounded-lg px-3 py-2 text-sm ${mine ? 'bg-emerald-50 text-emerald-900' : 'bg-gray-100 text-gray-900'}`;
+            const who = mine ? 'Admin' : 'User';
+            const when = m.created_at ? new Date(m.created_at).toLocaleString() : '';
+            bubble.innerHTML = `<div class="text-xs opacity-70 mb-1">${who}</div><div class="whitespace-pre-wrap break-words">${supportEscape(m.content || '')}</div><div class="text-[10px] opacity-60 mt-1">${when}</div>`;
+            wrap.appendChild(bubble);
+            box.appendChild(wrap);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function supportSendReply() {
+            const input = document.getElementById('support-reply-text');
+            const hint = document.getElementById('support-reply-hint');
+            if (!supportCurrentTicket || !input) return;
+            const text = (input.value || '').trim();
+            if (!text) return;
+
+            try {
+                const u = await supabase.auth.getUser();
+                const uid = (u && u.data && u.data.user && u.data.user.id) ? u.data.user.id : null;
+                const payload = {
+                    ticket_id: supportCurrentTicket.id,
+                    sender_id: uid,
+                    sender_role: 'admin',
+                    content: text
+                };
+                const client = supabaseAdmin || supabase;
+                const { error } = await client.from('support_messages').insert(payload);
+                if (error) throw error;
+                input.value = '';
+                if (hint) { hint.textContent = 'Sent'; setTimeout(() => hint.textContent = '', 1200); }
+            } catch (err) {
+                console.error('supportSendReply error:', err);
+                if (hint) hint.textContent = 'Failed to send message';
+            }
+        }
+
+        function supportEscape(s) {
+            try {
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            } catch (_) {
+                return '';
             }
         }
 

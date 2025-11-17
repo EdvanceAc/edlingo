@@ -29,6 +29,7 @@ import {
   Calendar,
   Globe,
   Lightbulb,
+  LifeBuoy,
   Shield,
   Bell,
   Save,
@@ -46,6 +47,8 @@ import Button from '../../renderer/components/ui/Button';
 import { supabase } from '../../renderer/config/supabaseConfig';
 import supabaseService from '../../renderer/services/supabaseService.js';
 import formatRelativeTime from '../../renderer/utils/time.js';
+import AdminSupport from '../../renderer/pages/AdminSupport.jsx';
+import AdminSettings from './AdminSettings.tsx';
 
 const ComprehensiveAdminDashboard = () => {
   useEffect(() => {
@@ -325,6 +328,12 @@ const ComprehensiveAdminDashboard = () => {
       name: 'Notifications',
       description: 'Send announcements & reminders',
       icon: Bell
+    },
+    {
+      id: 'support',
+      name: 'Support',
+      description: 'Manage user tickets',
+      icon: LifeBuoy
     },
     {
       id: 'advanced-analytics',
@@ -1839,6 +1848,8 @@ const ComprehensiveAdminDashboard = () => {
         return <UserManagement />;
       case 'notifications':
         return <NotificationManagement />;
+      case 'support':
+        return <AdminSupport />;
       case 'advanced-analytics':
         return <AdvancedAnalytics />;
       case 'ai-integration':
@@ -1878,50 +1889,61 @@ const ComprehensiveAdminDashboard = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar Navigation */}
-          <aside className="w-64 flex-shrink-0">
-            <nav className="space-y-2">
-              {navigationSections.map((section) => {
-                const Icon = section.icon;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full text-left p-3 rounded-lg transition-colors ${
-                      activeSection === section.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5" />
-                      <div>
-                        <div className="font-medium">{section.name}</div>
-                        <div className="text-xs opacity-70">{section.description}</div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </nav>
-          </aside>
+        {/* Top Tabs (compact, scrollable on small screens) */}
+        <nav className="flex items-center gap-6 overflow-x-auto border-b border-border mb-6">
+          {[
+            { id: 'overview', label: 'Overview', icon: BarChart3 },
+            { id: 'user-management', label: 'Users', icon: Users },
+            { id: 'course-management', label: 'Courses', icon: BookOpen },
+            { id: 'cefr', label: 'CEFR Assessments', icon: FileText },
+            { id: 'files', label: 'Files', icon: FileText },
+            { id: 'support', label: 'Support', icon: LifeBuoy },
+            { id: 'notifications', label: 'Notifications', icon: Bell }
+          ].map((tab) => {
+            const Icon = tab.icon || BarChart3;
+            return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSection(tab.id)}
+              className={`px-2 pb-3 -mb-px text-sm font-medium border-b-2 transition-colors ${
+                activeSection === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </span>
+            </button>
+          )})}
+        </nav>
 
-          {/* Main Content */}
-          <main className="flex-1">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeSection}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                {renderActiveSection()}
-              </motion.div>
-            </AnimatePresence>
-          </main>
-        </div>
+        {/* Main Content */}
+        <main>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSection}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeSection === 'files' ? (
+                <AdminSettings />
+              ) : activeSection === 'cefr' ? (
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-bold">CEFR Assessments</h2>
+                  <p className="text-muted-foreground">
+                    Manage CEFR assessment questions and results. This section can be expanded further; for now it is a placeholder.
+                  </p>
+                </div>
+              ) : (
+                renderActiveSection()
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
 
       {/* Course Editor Modal */}
