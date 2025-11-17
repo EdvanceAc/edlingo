@@ -9,6 +9,7 @@ import {
   Search, 
   User, 
   Settings,
+  LifeBuoy,
   LogOut,
   Minimize2,
   Maximize2,
@@ -346,6 +347,13 @@ const Header = ({ onToggleSidebar }) => {
                 >
                   <Settings className="w-4 h-4" />
                   <span>Settings</span>
+                </button>
+                <button
+                  className="w-full flex items-center space-x-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                  onClick={() => { setShowUserMenu(false); navigate('/support'); }}
+                >
+                  <LifeBuoy className="w-4 h-4" />
+                  <span>Support</span>
                 </button>
                 <div className="border-t border-border my-2" />
                 <button

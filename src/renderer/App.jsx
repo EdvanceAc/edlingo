@@ -19,6 +19,7 @@ import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 import ComingSoon from './pages/ComingSoon';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminSupport from './pages/AdminSupport';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import AuthCallback from './pages/AuthCallback';
@@ -26,6 +27,7 @@ import AssessmentPage from './pages/AssessmentPage';
 import AssessmentTest from './pages/AssessmentTest';
 import Courses from './pages/Courses';
 import SupabaseGeminiTest from './components/SupabaseGeminiTest';
+import Support from './pages/Support';
 
 // Course Components
 import CourseDetailsPage from '../components/Course/CourseDetailsPage';
@@ -212,6 +214,20 @@ function App() {
                          </motion.div>
                        } 
                      />
+                     <Route 
+                       path="/admin/support" 
+                       element={
+                         <motion.div
+                           key="admin-support"
+                           initial={{ opacity: 0, y: 20 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           exit={{ opacity: 0, y: -20 }}
+                           transition={{ duration: 0.3 }}
+                         >
+                           <AdminSupport />
+                         </motion.div>
+                       } 
+                     />
                       <Route 
                         path="/" 
                         element={
@@ -356,6 +372,22 @@ function App() {
                               transition={{ duration: 0.3 }}
                             >
                               <Settings />
+                            </motion.div>
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/support" 
+                        element={
+                          <ProtectedRoute>
+                            <motion.div
+                              key="support"
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -20 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <Support />
                             </motion.div>
                           </ProtectedRoute>
                         } 

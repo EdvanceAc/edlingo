@@ -2463,6 +2463,165 @@ class SupabaseService {
       }
     }
   }
+
+  // ---------------- Support Tickets -----------------
+  async createSupportTicket({ subject, message, category = null, priority = 'normal' } = {}) {
+    try {
+      if (!this.isConnected) return { success: false, error: 'Database not connected' };
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+
+      const { data: ticket, error: tErr } = await this.client
+        .from('support_tickets')
+        .insert({ user_id: user.id, subject, category, priority })
+        .select()
+        .single();
+      if (tErr) throw tErr;
+
+      if (message && message.trim().length > 0) {
+        await this.client.from('support_messages').insert({
+          ticket_id: ticket.id,
+          sender_id: user.id,
+          sender_role: 'user',
+          content: message.trim()
+        });
+      }
+
+      return { success: true, data: ticket };
+    } catch (error) {
+      console.error('createSupportTicket error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async listMySupportTickets({ status = null, limit = 50 } = {}) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: true, data: [] };
+      let q = this.client
+        .from('support_tickets')
+        .select('id,subject,category,priority,status,unread_by_user,unread_by_admin,last_message_at,created_at,updated_at')
+        .eq('user_id', user.id)
+        .order('last_message_at', { ascending: false })
+        .limit(limit);
+      if (status) q = q.eq('status', status);
+      const { data, error } = await q;
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: [] };
+      console.error('listMySupportTickets error:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  async getSupportMessages(ticketId) {
+    try {
+      const { data, error } = await this.client
+        .from('support_messages')
+        .select('id,ticket_id,sender_id,sender_role,content,attachments,created_at')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      if (error.code === '42P01') return { success: true, data: [] };
+      console.error('getSupportMessages error:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  async addSupportMessage(ticketId, content, { asAdmin = false } = {}) {
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      if (!user) return { success: false, error: 'No authenticated user' };
+      const payload = {
+        ticket_id: ticketId,
+        sender_id: user.id,
+        sender_role: asAdmin ? 'admin' : 'user',
+        content: String(content || '').trim()
+      };
+      if (!payload.content) return { success: false, error: 'Message is empty' };
+      const { data, error } = await this.client
+        .from('support_messages')
+        .insert(payload)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('addSupportMessage error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateSupportTicket(ticketId, updates = {}) {
+    try {
+      const { data, error } = await this.client
+        .from('support_tickets')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', ticketId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('updateSupportTicket error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async markTicketRead(ticketId, by = 'user') {
+    try {
+      await this.client.rpc('mark_ticket_read', { p_ticket_id: ticketId, p_by: by });
+      return { success: true };
+    } catch (error) {
+      try {
+        await this.updateSupportTicket(ticketId, by === 'user' ? { unread_by_user: false } : { unread_by_admin: false });
+        return { success: true };
+      } catch (err) {
+        console.error('markTicketRead error:', err);
+        return { success: false, error: err.message };
+      }
+    }
+  }
+
+  async adminListAllTickets({ status = null, limit = 200 } = {}) {
+    try {
+      let q = this.client
+        .from('support_tickets')
+        .select('id,subject,category,priority,status,unread_by_user,unread_by_admin,last_message_at,created_at,updated_at,user_id, user_profiles(full_name,email,username)')
+        .order('last_message_at', { ascending: false })
+        .limit(limit);
+      if (status) q = q.eq('status', status);
+      const { data, error } = await q;
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('adminListAllTickets error:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  subscribeToSupportMessages(ticketId, onInsert) {
+    if (!this.isConnected || !ticketId) return null;
+    const channel = this.client
+      .channel(`support_ticket_${ticketId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `ticket_id=eq.${ticketId}` }, (payload) => {
+        try { onInsert && onInsert(payload?.new || payload?.record || null); } catch (_) {}
+      })
+      .subscribe();
+    return channel;
+  }
+
+  subscribeToMyTickets(userId, handler, events = '*') {
+    if (!this.isConnected || !userId) return null;
+    const channel = this.client
+      .channel(`support_tickets_user_${userId}`)
+      .on('postgres_changes', { event: events, schema: 'public', table: 'support_tickets', filter: `user_id=eq.${userId}` }, handler)
+      .subscribe();
+    return channel;
+  }
 }
 
 // Create and export singleton instance
