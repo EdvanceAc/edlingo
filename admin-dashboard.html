@@ -471,17 +471,65 @@
                         </div>
                     </div>
                 </div>
-                <div class="p-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Ticket list -->
-                        <div class="md:col-span-1 border rounded-lg overflow-hidden">
-                            <div class="px-4 py-3 border-b font-medium">Tickets</div>
+
+                <!-- Stats -->
+                <div class="px-6 pt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-medium text-slate-600 dark:text-slate-400">Open Tickets</h3>
+                                <i data-lucide="ticket" class="w-5 h-5 text-green-500"></i>
+                            </div>
+                            <p id="support-count-open" class="text-3xl font-bold text-slate-900 dark:text-white mt-2">0</p>
+                        </div>
+                        <div class="bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-medium text-slate-600 dark:text-slate-400">Pending Tickets</h3>
+                                <i data-lucide="hourglass" class="w-5 h-5 text-amber-500"></i>
+                            </div>
+                            <p id="support-count-pending" class="text-3xl font-bold text-slate-900 dark:text-white mt-2">0</p>
+                        </div>
+                        <div class="bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-medium text-slate-600 dark:text-slate-400">Closed Tickets</h3>
+                                <i data-lucide="x-circle" class="w-5 h-5 text-red-500"></i>
+                            </div>
+                            <p id="support-count-closed" class="text-3xl font-bold text-slate-900 dark:text-white mt-2">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6">
+                    <div class="grid grid-cols-12 h-full gap-4">
+                        <!-- Left: Tickets + Filters -->
+                        <div class="col-span-12 lg:col-span-4 border rounded-lg overflow-hidden">
+                            <div class="p-4 border-b">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-semibold">Tickets</h3>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="relative">
+                                        <i data-lucide="users" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        <button class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-left text-sm flex items-center justify-between">
+                                            <span>All Agents</span>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 opacity-70"></i>
+                                        </button>
+                                    </div>
+                                    <div class="relative">
+                                        <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        <select id="support-users-filter" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm">
+                                            <option value="all">All Users</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                             <div id="support-ticket-list" class="max-h-[60vh] overflow-auto">
                                 <div class="p-4 text-sm text-gray-500">Loading tickets...</div>
                             </div>
                         </div>
-                        <!-- Thread -->
-                        <div class="md:col-span-2 border rounded-lg flex flex-col min-h-[60vh]">
+
+                        <!-- Right: Thread -->
+                        <div class="col-span-12 lg:col-span-8 border rounded-lg flex flex-col min-h-[60vh]">
                             <div id="support-thread-header" class="px-4 py-3 border-b font-medium flex items-center justify-between">
                                 <span>Select a ticket</span>
                                 <div id="support-thread-actions" class="hidden items-center gap-2">
@@ -492,10 +540,10 @@
                             <div id="support-message-list" class="flex-1 overflow-auto p-4 space-y-3">
                                 <div class="text-sm text-gray-500">No ticket selected.</div>
                             </div>
-                            <div class="border-t p-3">
-                                <div class="flex items-end gap-2">
-                                    <textarea id="support-reply-text" rows="2" class="flex-1 border rounded-md p-2" placeholder="Type a reply..."></textarea>
-                                    <button id="support-reply-send" class="px-4 py-2 rounded-md bg-blue-600 text-white disabled:opacity-60">Send</button>
+                            <div class="p-4 border-t bg-slate-50">
+                                <div class="relative">
+                                    <textarea id="support-reply-text" rows="3" class="w-full p-3 pr-28 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 resize-none" placeholder="Type a reply..."></textarea>
+                                    <button id="support-reply-send" class="absolute right-3 bottom-3 bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition duration-150 disabled:opacity-60">Send</button>
                                 </div>
                                 <div id="support-reply-hint" class="text-[11px] text-gray-500 mt-1"></div>
                             </div>
@@ -4174,6 +4222,13 @@
                         sendBtn.addEventListener('click', supportSendReply);
                         sendBtn.dataset.bound = '1';
                     }
+
+                    // Bind user filter
+                    const userFilter = document.getElementById('support-users-filter');
+                    if (userFilter && !userFilter.dataset.bound) {
+                        userFilter.addEventListener('change', () => supportLoadTickets());
+                        userFilter.dataset.bound = '1';
+                    }
                     supportInit = true;
                 } else {
                     await supportLoadTickets();
@@ -4199,17 +4254,48 @@
                 if (error) throw error;
 
                 const tickets = data || [];
-                if (!tickets.length) {
+
+                // Update stats
+                try {
+                    const openCount = tickets.filter(t => t.status === 'open').length;
+                    const pendingCount = tickets.filter(t => t.status === 'waiting_admin' || t.status === 'waiting_user').length;
+                    const closedCount = tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
+                    const elOpen = document.getElementById('support-count-open');
+                    const elPending = document.getElementById('support-count-pending');
+                    const elClosed = document.getElementById('support-count-closed');
+                    if (elOpen) elOpen.textContent = String(openCount);
+                    if (elPending) elPending.textContent = String(pendingCount);
+                    if (elClosed) elClosed.textContent = String(closedCount);
+                } catch (_) {}
+
+                // Populate user filter
+                try {
+                    const sel = document.getElementById('support-users-filter');
+                    if (sel) {
+                        const current = sel.value || 'all';
+                        const uniqueUsers = Array.from(new Set((tickets || []).map(t => t.user_id).filter(Boolean)));
+                        sel.innerHTML = '<option value="all">All Users</option>' + uniqueUsers.map(u => `<option value="${u}">${String(u).slice(0,8)}…</option>`).join('');
+                        if ([...sel.options].some(o => o.value === current)) sel.value = current;
+                    }
+                } catch (_) {}
+
+                const selectedUser = (document.getElementById('support-users-filter') && document.getElementById('support-users-filter').value) || 'all';
+                const visible = selectedUser === 'all' ? tickets : tickets.filter(t => String(t.user_id) === String(selectedUser));
+
+                if (!visible.length) {
                     list.innerHTML = `<div class="p-4 text-sm text-gray-500">No tickets found.</div>`;
                     return;
                 }
 
                 const frag = document.createDocumentFragment();
-                tickets.forEach(t => {
+                visible.forEach(t => {
                     const row = document.createElement('button');
-                    row.className = 'w-full text-left px-4 py-3 border-b hover:bg-gray-50';
+                    row.className = 'w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 transition-colors';
                     const last = t.last_message_at ? new Date(t.last_message_at).toLocaleString() : '';
-                    const badgeClass = t.unread_by_admin ? 'text-red-600' : 'text-gray-400';
+                    let badgeClass = 'text-slate-500';
+                    if (t.status === 'open') badgeClass = 'text-red-500';
+                    else if (t.status === 'waiting_admin' || t.status === 'waiting_user') badgeClass = 'text-amber-600';
+                    else badgeClass = 'text-slate-500';
                     row.innerHTML = `
                         <div class="flex items-center justify-between">
                             <div class="font-medium truncate">${supportEscape(t.subject || '(no subject)')}</div>
