@@ -198,7 +198,7 @@ const Support = () => {
 
                 <div className="flex-1 overflow-auto p-4 space-y-3">
                   {messages.map((m) => (
-                    <div key={m.id} className={`flex ${m.sender_id === userId ? 'justify-end' : 'justify-start'}`}>
+                    <div key={m.id} className={`flex ${m.sender_role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[85%] sm:max-w-[70%] rounded-lg px-3 py-2 text-sm ${m.sender_role === 'admin' ? 'bg-emerald-50 text-emerald-900' : 'bg-muted text-foreground'}`}>
                         <div className="text-xs opacity-70 mb-1">{m.sender_role === 'admin' ? 'Support' : 'You'}</div>
                         <div className="whitespace-pre-wrap break-words">{m.content}</div>

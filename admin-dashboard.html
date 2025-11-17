@@ -4149,8 +4149,6 @@
         async function initSupportTab() {
             try {
                 if (!supportInit) {
-                    // Ensure session for admin so RLS INSERT passes
-                    await ensureAdminSession();
                     const u = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
                     supportCurrentUserId = (u && u.data && u.data.user && u.data.user.id) ? u.data.user.id : null;
                     await supportLoadTickets();
@@ -4297,30 +4295,20 @@
             if (!text) return;
 
             try {
-                // Make sure admin is logged in so RLS admin policy passes
-                const ensuredUser = await ensureAdminSession();
-                if (!ensuredUser) {
-                    if (hint) hint.textContent = 'Not authenticated as admin';
-                    return;
-                }
-                const u = await supabase.auth.getUser();
-                const uid = (u && u.data && u.data.user && u.data.user.id) ? u.data.user.id : null;
-                const payload = {
-                    ticket_id: supportCurrentTicket.id,
-                    sender_id: uid,
-                    sender_role: 'admin',
-                    content: text
-                };
-                const client = (typeof supabaseAdmin !== 'undefined' && supabaseAdmin) ? supabaseAdmin : supabase;
-                const { data, error } = await client.from('support_messages').insert(payload).select().single();
+                // Use secure RPC that runs with SECURITY DEFINER to bypass RLS safely for admins
+                const rpcClient = (typeof supabaseAdmin !== 'undefined' && supabaseAdmin) ? supabaseAdmin : supabase;
+                const { data, error } = await rpcClient.rpc('admin_add_support_message', {
+                    p_ticket_id: supportCurrentTicket.id,
+                    p_content: text
+                });
                 if (error) throw error;
-                // Optimistic update (in addition to realtime)
                 if (data) supportAppendMessage(data);
                 input.value = '';
                 if (hint) { hint.textContent = 'Sent'; setTimeout(() => hint.textContent = '', 1200); }
             } catch (err) {
                 console.error('supportSendReply error:', err);
-                if (hint) hint.textContent = 'Failed to send message';
+                const msg = (err && (err.message || err.error_description)) || 'Failed to send message';
+                if (hint) hint.textContent = msg;
             }
         }
 
