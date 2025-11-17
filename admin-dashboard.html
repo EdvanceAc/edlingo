@@ -508,6 +508,10 @@
                                     <h3 class="text-lg font-semibold">Tickets</h3>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
+                                    <div class="relative col-span-2">
+                                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        <input id="support-search" class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm" placeholder="Search tickets..." type="text">
+                                    </div>
                                     <div class="relative">
                                         <i data-lucide="users" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
                                         <button class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-left text-sm flex items-center justify-between">
@@ -519,6 +523,15 @@
                                         <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
                                         <select id="support-users-filter" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm">
                                             <option value="all">All Users</option>
+                                        </select>
+                                    </div>
+                                    <div class="relative col-span-2">
+                                        <i data-lucide="filter" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        <select id="support-status-filter" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm">
+                                            <option value="all">All Statuses</option>
+                                            <option value="open">Open</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="closed">Closed</option>
                                         </select>
                                     </div>
                                 </div>
@@ -4200,6 +4213,8 @@
         let supportCurrentTicket = null;
         let supportCurrentUserId = null;
         let supportSeenMessageIds = new Set();
+        let supportSearchTerm = '';
+        let supportSearchDebounce = null;
 
         async function initSupportTab() {
             try {
@@ -4228,6 +4243,22 @@
                     if (userFilter && !userFilter.dataset.bound) {
                         userFilter.addEventListener('change', () => supportLoadTickets());
                         userFilter.dataset.bound = '1';
+                    }
+                    // Bind status filter
+                    const statusFilter = document.getElementById('support-status-filter');
+                    if (statusFilter && !statusFilter.dataset.bound) {
+                        statusFilter.addEventListener('change', () => supportLoadTickets());
+                        statusFilter.dataset.bound = '1';
+                    }
+                    // Bind search
+                    const searchInput = document.getElementById('support-search');
+                    if (searchInput && !searchInput.dataset.bound) {
+                        searchInput.addEventListener('input', (e) => {
+                            supportSearchTerm = (e.target.value || '').trim().toLowerCase();
+                            if (supportSearchDebounce) clearTimeout(supportSearchDebounce);
+                            supportSearchDebounce = setTimeout(() => supportLoadTickets(), 200);
+                        });
+                        searchInput.dataset.bound = '1';
                     }
                     supportInit = true;
                 } else {
@@ -4280,7 +4311,26 @@
                 } catch (_) {}
 
                 const selectedUser = (document.getElementById('support-users-filter') && document.getElementById('support-users-filter').value) || 'all';
-                const visible = selectedUser === 'all' ? tickets : tickets.filter(t => String(t.user_id) === String(selectedUser));
+                const statusSel = (document.getElementById('support-status-filter') && document.getElementById('support-status-filter').value) || 'all';
+                const term = (typeof supportSearchTerm === 'string' ? supportSearchTerm : '').trim();
+
+                function matchesStatus(t, filter) {
+                    if (filter === 'all') return true;
+                    if (filter === 'open') return t.status === 'open';
+                    if (filter === 'pending') return t.status === 'waiting_admin' || t.status === 'waiting_user';
+                    if (filter === 'closed') return t.status === 'closed' || t.status === 'resolved';
+                    return true;
+                }
+
+                const visible = tickets.filter(t => {
+                    if (selectedUser !== 'all' && String(t.user_id) !== String(selectedUser)) return false;
+                    if (!matchesStatus(t, statusSel)) return false;
+                    if (term) {
+                        const text = `${t.subject || ''} ${t.id || ''}`.toLowerCase();
+                        if (!text.includes(term)) return false;
+                    }
+                    return true;
+                });
 
                 if (!visible.length) {
                     list.innerHTML = `<div class="p-4 text-sm text-gray-500">No tickets found.</div>`;
@@ -4404,7 +4454,7 @@
             const wrap = document.createElement('div');
             wrap.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
             const bubble = document.createElement('div');
-            bubble.className = `max-w-[85%] rounded-lg px-3 py-2 text-sm ${mine ? 'bg-emerald-50 text-emerald-900' : 'bg-gray-100 text-gray-900'}`;
+            bubble.className = `max-w-[85%] rounded-xl px-4 py-3 text-sm ${mine ? 'bg-indigo-50 text-slate-900' : 'bg-slate-100 text-slate-900'}`;
             const who = mine ? 'Admin' : 'User';
             const when = m.created_at ? new Date(m.created_at).toLocaleString() : '';
             bubble.innerHTML = `<div class="text-xs opacity-70 mb-1">${who}</div><div class="whitespace-pre-wrap break-words">${supportEscape(m.content || '')}</div><div class="text-[10px] opacity-60 mt-1">${when}</div>`;
