@@ -4145,6 +4145,7 @@
         let supportMsgsCh = null;
         let supportCurrentTicket = null;
         let supportCurrentUserId = null;
+        let supportSeenMessageIds = new Set();
 
         async function initSupportTab() {
             try {
@@ -4224,6 +4225,7 @@
 
         async function supportOpenTicket(ticket) {
             supportCurrentTicket = ticket;
+            supportSeenMessageIds = new Set();
 
             const header = document.getElementById('support-thread-header');
             if (header) {
@@ -4274,6 +4276,7 @@
         function supportAppendMessage(m) {
             const box = document.getElementById('support-message-list');
             if (!box) return;
+            if (m && m.id && supportSeenMessageIds.has(m.id)) return;
             const mine = m.sender_role === 'admin';
             const wrap = document.createElement('div');
             wrap.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
@@ -4285,6 +4288,7 @@
             wrap.appendChild(bubble);
             box.appendChild(wrap);
             box.scrollTop = box.scrollHeight;
+            if (m && m.id) supportSeenMessageIds.add(m.id);
         }
 
         async function supportSendReply() {
@@ -4302,7 +4306,7 @@
                     p_content: text
                 });
                 if (error) throw error;
-                if (data) supportAppendMessage(data);
+                // Do not append here; realtime subscription will append exactly once
                 input.value = '';
                 if (hint) { hint.textContent = 'Sent'; setTimeout(() => hint.textContent = '', 1200); }
             } catch (err) {
