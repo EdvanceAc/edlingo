@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Menu, Flame, Zap, Settings, User, Bell, Sun, Moon, Volume2, VolumeX, MessageSquare, ClipboardCheck } from 'lucide-react';
+import { Menu, Flame, Zap, Settings, User, Bell, Sun, Moon, Volume2, VolumeX, MessageSquare, ClipboardCheck, LifeBuoy } from 'lucide-react';
 import { useProgress } from '../../providers/ProgressProvider';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../providers/ThemeProvider';
@@ -250,6 +250,15 @@ export default function MobileMenu({ onClose }) {
         {/* Actions */}
         <div className="mt-2 pb-6">
           <div className="px-2">
+            <button
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              onClick={() => { onClose?.(); navigate('/support'); }}
+            >
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/40 ring-1 ring-gray-200 dark:ring-gray-700 flex items-center justify-center">
+                <LifeBuoy className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+              </div>
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-200">Support</div>
+            </button>
             <button
               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               onClick={() => { onClose?.(); navigate('/settings'); }}

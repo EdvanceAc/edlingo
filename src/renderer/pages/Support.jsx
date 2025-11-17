@@ -125,9 +125,9 @@ const Support = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 h-full">
+      <div className="max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 h-full">
         {showList && (
-          <div className="md:col-span-1 card overflow-hidden flex flex-col">
+          <div className="md:col-span-1 card overflow-hidden flex flex-col ring-1 ring-border/60">
             <div className="p-4 border-b border-border/60 flex items-center justify-between">
               <span className="font-semibold">My Tickets</span>
             </div>
@@ -135,7 +135,10 @@ const Support = () => {
               {loading ? (
                 <div className="p-6 text-sm text-muted-foreground">Loading…</div>
               ) : tickets.length === 0 ? (
-                <div className="p-6 text-sm text-muted-foreground">No tickets yet.</div>
+                <div className="p-6 text-sm text-muted-foreground">
+                  <div>No tickets yet.</div>
+                  <button className="mt-3 btn btn-primary" onClick={() => setCreating(true)}>Create your first ticket</button>
+                </div>
               ) : (
                 tickets.map(t => (
                   <button
@@ -161,7 +164,7 @@ const Support = () => {
         )}
 
         {showThread && (
-          <div className="md:col-span-2 card flex flex-col min-h-[60vh]">
+          <div className="md:col-span-2 card flex flex-col min-h-[60vh] ring-1 ring-border/60">
             {!selectedTicket ? (
               <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm p-8">
                 Select a ticket to view the conversation.
@@ -207,7 +210,7 @@ const Support = () => {
                   <div className="flex items-end space-x-2">
                     <textarea
                       rows={2}
-                      className="flex-1 resize-none border border-border rounded-md p-2 bg-background"
+                      className="flex-1 resize-none border border-border rounded-md p-3 bg-background shadow-sm"
                       placeholder="Type your message..."
                       value={composer}
                       onChange={(e) => setComposer(e.target.value)}
@@ -231,26 +234,30 @@ const Support = () => {
       </div>
 
       {creating && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setCreating(false)} />
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-background rounded-lg w-[92%] sm:w-[520px] max-w-[92vw] border border-border shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.18 }}
+            className="relative w-[94%] sm:w-[560px] md:w-[640px] max-w-[96vw] rounded-2xl border border-border shadow-2xl bg-white dark:bg-neutral-900"
           >
             <div className="p-4 border-b border-border/60 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <LifeBuoy className="w-4 h-4 text-primary" />
                 <span className="font-semibold">New Support Ticket</span>
               </div>
-              <button className="p-2 rounded hover:bg-muted" onClick={() => setCreating(false)}>
+              <button className="p-2 rounded hover:bg-muted" onClick={() => setCreating(false)} aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form className="p-4 space-y-3" onSubmit={createTicket}>
+            <form className="p-5 space-y-4" onSubmit={createTicket}>
               <div>
                 <label className="text-sm mb-1 block">Subject</label>
                 <input
-                  className="w-full border border-border rounded-md p-2 bg-background"
+                  className="w-full border border-border rounded-md p-3 bg-white dark:bg-neutral-900 shadow-sm"
                   value={newTicket.subject}
                   onChange={(e) => setNewTicket(s => ({ ...s, subject: e.target.value }))}
                   placeholder="Briefly describe your issue"
@@ -261,16 +268,16 @@ const Support = () => {
                 <div className="flex-1">
                   <label className="text-sm mb-1 block">Category</label>
                   <input
-                    className="w-full border border-border rounded-md p-2 bg-background"
+                    className="w-full border border-border rounded-md p-3 bg-white dark:bg-neutral-900 shadow-sm"
                     value={newTicket.category}
                     onChange={(e) => setNewTicket(s => ({ ...s, category: e.target.value }))}
                     placeholder="Optional"
                   />
                 </div>
-                <div className="w-40">
+                <div className="w-44">
                   <label className="text-sm mb-1 block">Priority</label>
                   <select
-                    className="w-full border border-border rounded-md p-2 bg-background"
+                    className="w-full border border-border rounded-md p-3 bg-white dark:bg-neutral-900 shadow-sm"
                     value={newTicket.priority}
                     onChange={(e) => setNewTicket(s => ({ ...s, priority: e.target.value }))}
                   >
@@ -284,8 +291,8 @@ const Support = () => {
               <div>
                 <label className="text-sm mb-1 block">Message</label>
                 <textarea
-                  rows={4}
-                  className="w-full border border-border rounded-md p-2 bg-background resize-y"
+                  rows={5}
+                  className="w-full border border-border rounded-md p-3 bg-white dark:bg-neutral-900 resize-y shadow-sm"
                   value={newTicket.message}
                   onChange={(e) => setNewTicket(s => ({ ...s, message: e.target.value }))}
                   placeholder="Tell us what happened and how we can help"
