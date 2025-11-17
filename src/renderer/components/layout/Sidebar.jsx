@@ -48,7 +48,7 @@ const navigationItems = [
   },
   {
     name: 'Assessment',
-    href: '/assessment',
+    href: '/assessment?retake=1',
     icon: ClipboardCheck,
     description: 'Language proficiency assessment'
   },

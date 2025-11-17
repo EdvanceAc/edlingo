@@ -174,7 +174,7 @@ export default function MobileMenu({ onClose }) {
 
             {/* Assessment */}
             <button
-              onClick={() => { onClose?.(); navigate('/assessment'); }}
+              onClick={() => { onClose?.(); navigate('/assessment?retake=1'); }}
               className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-pink-500/10 to-rose-500/10 dark:from-pink-500/15 dark:to-rose-500/15 ring-1 ring-gray-200 dark:ring-gray-800 hover:bg-pink-50 dark:hover:bg-rose-900/20 transition-all"
             >
               <div className="w-10 h-10 rounded-lg bg-pink-500/20 dark:bg-pink-500/25 flex items-center justify-center">

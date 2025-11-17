@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Assessment from '../components/Assessment';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,11 +13,18 @@ import { useProgress } from '../providers/ProgressProvider';
 const AssessmentPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [userProfile, setUserProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const { theme } = useTheme();
   const { updateProgress } = useProgress();
+
+  // Determine if user explicitly wants to retake via query param
+  const searchParams = new URLSearchParams(location.search);
+  const isRetake = (searchParams.get('retake') === '1') || (searchParams.get('retake') === 'true');
+  const [didRedirect, setDidRedirect] = useState(false);
+  const fetchedUserIdRef = useRef(null);
 
   useEffect(() => {
     if (!user) {
@@ -25,8 +32,14 @@ const AssessmentPage = () => {
       return;
     }
 
+    // Prevent repeated fetches if user object reference changes but id is the same
+    if (fetchedUserIdRef.current === user.id) {
+      return;
+    }
+    fetchedUserIdRef.current = user.id;
+
     const fetchUserProfile = async () => {
-      // Guard: if Supabase is not connected (e.g., missing anon key), avoid making network calls
+      // If DB not connected, use local fallback profile
       try {
         if (!supabaseService.getConnectionStatus || !supabaseService.getConnectionStatus()) {
           const fallbackProfile = {
@@ -42,134 +55,45 @@ const AssessmentPage = () => {
           setIsLoading(false);
           return;
         }
-      } catch (statusErr) {
-        // In case of unexpected error when checking status, still proceed with fallback
-        const fallbackProfile = {
-          id: user.id,
-          email: user.email,
-          full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-          target_language: 'English',
-          native_language: 'Unknown',
-          learning_level: 'beginner',
-          assessment_completed: false
-        };
-        setUserProfile(fallbackProfile);
-        setIsLoading(false);
-        return;
+      } catch (_) {
+        // ignore, continue with best effort
       }
 
       try {
-        console.log('Fetching profile for user:', user.id, 'Email:', user.email);
-        const { data, error } = await supabaseService.client
-          .from('user_profiles')
-          .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
-          .eq('id', user.id)
-          .limit(1);
-
-        if (error) {
-          console.error('Error fetching user profile:', error);
-          setError('Failed to load user profile');
-        } else if (Array.isArray(data) && data.length > 0) {
-          setUserProfile(data[0]);
-        } else {
-          // User profile doesn't exist, try to create one using the helper function
-          console.log('User profile not found, creating new profile for user:', user.id, 'Email:', user.email);
-
-          try {
-            // Try using the helper function first
-            const { data: functionResult, error: functionError } = await supabaseService.client
-              .rpc('create_missing_user_profile', {
-                user_id: user.id,
-                user_email: user.email,
-                user_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User'
-              });
-
-            if (functionError) {
-              console.log('Helper function error:', functionError.message, 'Trying direct insert with proper auth context');
-
-              // Fallback: Create profile with proper auth context
-              const newProfile = {
-                id: user.id,
-                email: user.email,
-                full_name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-                preferred_language: 'en',
-                target_languages: '{}',
-                target_language: 'English',
-                native_language: 'Unknown',
-                learning_level: 'beginner',
-                assessment_completed: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              };
-
-              console.log('Creating profile with data:', newProfile);
-
-              // Use upsert instead of insert to handle conflicts
-              const { data: createdProfileRows, error: createError } = await supabaseService.client
-                .from('user_profiles')
-                .upsert([newProfile], { onConflict: 'id' })
-                .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level');
-
-              if (createError) {
-                console.error('Error creating user profile:', createError);
-                // Create a minimal profile for the session
-                const fallbackProfile = {
-                  id: user.id,
-                  email: user.email,
-                  full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-                  target_language: 'English',
-                  native_language: 'Unknown',
-                  learning_level: 'beginner',
-                  assessment_completed: false
-                };
-                setUserProfile(fallbackProfile);
-                console.log('Using fallback profile for session');
-              } else {
-                const createdProfile = Array.isArray(createdProfileRows) ? createdProfileRows[0] : createdProfileRows;
-                setUserProfile(createdProfile);
-              }
-            } else {
-              // Function succeeded, now fetch the created profile
-              const { data: fetchedRows, error: fetchError } = await supabaseService.client
-                .from('user_profiles')
-                .select('id,email,full_name,preferred_language,target_language,native_language,learning_level,assessment_completed,created_at,updated_at,initial_assessment_date,placement_level')
-                .eq('id', user.id)
-                .limit(1);
-
-              if (fetchError) {
-                console.error('Error fetching created profile:', fetchError);
-                setError('Profile created but failed to load');
-              } else {
-                const fetchedProfile = Array.isArray(fetchedRows) && fetchedRows.length > 0 ? fetchedRows[0] : null;
-                if (fetchedProfile) setUserProfile(fetchedProfile);
-              }
-            }
-          } catch (err) {
-            console.error('Error in profile creation process:', err);
-            // Create a minimal profile for the session
-            const fallbackProfile = {
-              id: user.id,
-              email: user.email,
-              full_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-              target_language: 'English',
-              native_language: 'Unknown',
-              learning_level: 'beginner',
-              assessment_completed: false
-            };
-            setUserProfile(fallbackProfile);
-            console.log('Using fallback profile due to creation error');
-          }
+        const res = await supabaseService.getUserProfile();
+        if (res.success && res.data) {
+          setUserProfile(res.data);
+          setIsLoading(false);
+          return;
+        }
+        // Ensure a profile row exists, then try once more
+        await supabaseService.updateUserProfile({}); // upsert minimal row
+        const retry = await supabaseService.getUserProfile();
+        if (retry.success) {
+          setUserProfile(retry.data || null);
         }
       } catch (err) {
-        console.error('Error:', err);
-        setError('An unexpected error occurred');
+        console.error('Profile load error:', err);
+        setError('Failed to load user profile');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [user, navigate]);
+  }, [user?.id, navigate]);
+
+  // If user already assessed and not explicitly retaking, redirect once to courses
+  useEffect(() => {
+    if (isLoading || didRedirect || isRetake) return;
+    const alreadyAssessed = Boolean(userProfile?.assessment_completed)
+      || Boolean(userProfile?.placement_level)
+      || Boolean(userProfile?.initial_assessment_date);
+    if (alreadyAssessed) {
+      setDidRedirect(true);
+      navigate('/courses', { replace: true });
+    }
+  }, [isLoading, didRedirect, isRetake, userProfile?.assessment_completed, userProfile?.placement_level, userProfile?.initial_assessment_date, navigate]);
 
   const handleAssessmentComplete = async (results) => {
     try {
@@ -257,7 +181,7 @@ const AssessmentPage = () => {
         <div className="max-w-2xl mx-auto">
           <Button
             variant="outline"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/')}
             className="mb-6 flex items-center space-x-2 rounded-xl bg-white dark:bg-white/10 backdrop-blur-xl ring-1 ring-indigo-200 dark:ring-white/25 hover:bg-indigo-50 dark:hover:bg-white/15 transition-colors shadow-lg"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -336,7 +260,7 @@ const AssessmentPage = () => {
       <div className="absolute top-4 left-4 z-10">
         <Button
           variant="outline"
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           className="flex items-center space-x-2 rounded-xl bg-white dark:bg-white/10 backdrop-blur-sm ring-1 ring-indigo-200 dark:ring-white/25 hover:bg-indigo-50 dark:hover:bg-white/15 shadow-md"
         >
           <ArrowLeft className="w-4 h-4" />

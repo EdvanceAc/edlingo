@@ -328,7 +328,7 @@ const Profile = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate('/assessment')}
+                  onClick={() => navigate('/assessment?retake=1')}
                   className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white hover:from-indigo-700 hover:to-fuchsia-700 transition-colors"
                 >
                   {form.placement_level ? 'Retake Assessment' : 'Take Assessment'}
