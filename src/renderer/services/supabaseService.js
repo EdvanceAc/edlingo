@@ -2479,12 +2479,10 @@ class SupabaseService {
       if (tErr) throw tErr;
 
       if (message && message.trim().length > 0) {
-        await this.client.from('support_messages').insert({
-          ticket_id: ticket.id,
-          sender_id: user.id,
-          sender_role: 'user',
-          content: message.trim()
-        });
+        const msgRes = await this.addSupportMessage(ticket.id, message.trim(), { setAsUser: true });
+        if (!msgRes?.success) {
+          console.warn('Initial support message failed:', msgRes?.error);
+        }
       }
 
       return { success: true, data: ticket };
@@ -2531,14 +2529,14 @@ class SupabaseService {
     }
   }
 
-  async addSupportMessage(ticketId, content, { asAdmin = false } = {}) {
+  async addSupportMessage(ticketId, content, { asAdmin = false, setAsUser = false } = {}) {
     try {
       const { data: { user } } = await this.client.auth.getUser();
       if (!user) return { success: false, error: 'No authenticated user' };
       const payload = {
         ticket_id: ticketId,
         sender_id: user.id,
-        sender_role: asAdmin ? 'admin' : 'user',
+        sender_role: (asAdmin && !setAsUser) ? 'admin' : 'user',
         content: String(content || '').trim()
       };
       if (!payload.content) return { success: false, error: 'Message is empty' };

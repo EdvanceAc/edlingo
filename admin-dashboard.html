@@ -4183,7 +4183,8 @@
             if (!list) return;
             list.innerHTML = `<div class="p-4 text-sm text-gray-500">Loading tickets…</div>`;
             try {
-                const { data, error } = await supabase
+                const client = (typeof supabaseAdmin !== 'undefined' && supabaseAdmin) ? supabaseAdmin : supabase;
+                const { data, error } = await client
                     .from('support_tickets')
                     .select('id,subject,user_id,priority,status,last_message_at,unread_by_admin')
                     .order('last_message_at', { ascending: false })
@@ -4240,7 +4241,8 @@
             await supportLoadMessages(ticket.id);
 
             // Realtime for messages of this ticket
-            supportMsgsCh = supabase
+            const rtClient = (typeof supabaseAdmin !== 'undefined' && supabaseAdmin) ? supabaseAdmin : supabase;
+            supportMsgsCh = rtClient
                 .channel(`support_ticket_${ticket.id}`)
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `ticket_id=eq.${ticket.id}` }, (payload) => {
                     const msg = payload && payload.new;
@@ -4254,7 +4256,8 @@
             if (!box) return;
             box.innerHTML = `<div class="text-sm text-gray-500">Loading messages…</div>`;
             try {
-                const { data, error } = await supabase
+                const client = (typeof supabaseAdmin !== 'undefined' && supabaseAdmin) ? supabaseAdmin : supabase;
+                const { data, error } = await client
                     .from('support_messages')
                     .select('id,ticket_id,sender_id,sender_role,content,created_at')
                     .eq('ticket_id', ticketId)
@@ -4300,9 +4303,11 @@
                     sender_role: 'admin',
                     content: text
                 };
-                const client = supabaseAdmin || supabase;
-                const { error } = await client.from('support_messages').insert(payload);
+                const client = (typeof supabaseAdmin !== 'undefined' && supabaseAdmin) ? supabaseAdmin : supabase;
+                const { data, error } = await client.from('support_messages').insert(payload).select().single();
                 if (error) throw error;
+                // Optimistic update (in addition to realtime)
+                if (data) supportAppendMessage(data);
                 input.value = '';
                 if (hint) { hint.textContent = 'Sent'; setTimeout(() => hint.textContent = '', 1200); }
             } catch (err) {

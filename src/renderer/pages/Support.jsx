@@ -98,6 +98,9 @@ const Support = () => {
     setSending(false);
     if (res.success) {
       setComposer('');
+      // Refresh thread to show immediately (in addition to realtime)
+      const latest = await supabaseService.getSupportMessages(selectedId);
+      if (latest.success) setMessages(latest.data);
     }
   };
 
