@@ -4257,6 +4257,17 @@
                     const isClosed = ticket.status === 'closed';
                     if (btnResolve) btnResolve.disabled = isClosed || ticket.status === 'resolved';
                     if (btnClose) btnClose.disabled = isClosed;
+
+                    // Disable composer if closed
+                    const replyBox = document.getElementById('support-reply-text');
+                    const sendBtn = document.getElementById('support-reply-send');
+                    if (replyBox) {
+                        replyBox.disabled = isClosed;
+                        replyBox.placeholder = isClosed ? 'Ticket is closed' : 'Type a reply...';
+                    }
+                    if (sendBtn) {
+                        sendBtn.disabled = isClosed;
+                    }
                 }
             }
 

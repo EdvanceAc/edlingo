@@ -210,21 +210,27 @@ const Support = () => {
                 </div>
 
                 <div className="border-t border-border/60 p-3">
+                  {selectedTicket.status === 'closed' && (
+                    <div className="text-xs text-muted-foreground mb-2">
+                      This ticket is closed. You can no longer send messages.
+                    </div>
+                  )}
                   <div className="flex items-end space-x-2">
                     <textarea
                       rows={2}
                       className="flex-1 resize-none border border-border rounded-md p-3 bg-background shadow-sm"
-                      placeholder="Type your message..."
+                      placeholder={selectedTicket.status === 'closed' ? 'Ticket is closed' : 'Type your message...'}
                       value={composer}
                       onChange={(e) => setComposer(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
+                        if (e.key === 'Enter' && !e.shiftKey && selectedTicket.status !== 'closed') {
                           e.preventDefault();
                           sendMessage();
                         }
                       }}
+                      disabled={selectedTicket.status === 'closed'}
                     />
-                    <button className="btn btn-primary" onClick={sendMessage} disabled={sending || !composer.trim()}>
+                    <button className="btn btn-primary" onClick={sendMessage} disabled={selectedTicket.status === 'closed' || sending || !composer.trim()}>
                       <Send className="w-4 h-4 mr-2" />
                       Send
                     </button>
