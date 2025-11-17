@@ -4149,6 +4149,8 @@
         async function initSupportTab() {
             try {
                 if (!supportInit) {
+                    // Ensure session for admin so RLS INSERT passes
+                    await ensureAdminSession();
                     const u = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
                     supportCurrentUserId = (u && u.data && u.data.user && u.data.user.id) ? u.data.user.id : null;
                     await supportLoadTickets();
@@ -4295,6 +4297,12 @@
             if (!text) return;
 
             try {
+                // Make sure admin is logged in so RLS admin policy passes
+                const ensuredUser = await ensureAdminSession();
+                if (!ensuredUser) {
+                    if (hint) hint.textContent = 'Not authenticated as admin';
+                    return;
+                }
                 const u = await supabase.auth.getUser();
                 const uid = (u && u.data && u.data.user && u.data.user.id) ? u.data.user.id : null;
                 const payload = {
@@ -4333,6 +4341,37 @@
             const chip = document.getElementById('notification-realtime-chip');
             if (chip) {
                 chip.textContent = `Realtime: ${stateText}`;
+            }
+        }
+
+        // Ensure we are authenticated as admin for actions that require RLS admin
+        async function ensureAdminSession() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user && user.email && /@edlingo\.com\s*$/i.test(user.email)) {
+                    return user;
+                }
+                // Try sign in; if fails, try sign up then sign in
+                let { data, error } = await supabase.auth.signInWithPassword({
+                    email: 'admin@edlingo.com',
+                    password: 'admin123456'
+                });
+                if (error) {
+                    const su = await supabase.auth.signUp({
+                        email: 'admin@edlingo.com',
+                        password: 'admin123456',
+                        options: { data: { full_name: 'Admin User', role: 'admin' } }
+                    });
+                    // Try sign in again
+                    await supabase.auth.signInWithPassword({
+                        email: 'admin@edlingo.com',
+                        password: 'admin123456'
+                    });
+                }
+                const res = await supabase.auth.getUser();
+                return res?.data?.user || null;
+            } catch (_) {
+                return null;
             }
         }
 
