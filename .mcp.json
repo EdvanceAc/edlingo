@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref",
+        "${env:SUPABASE_PROJECT_REF}",
+        "--access-token",
+        "${env:SUPABASE_ACCESS_TOKEN}",
+        "--features",
+        "database,project,debug"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${env:SUPABASE_ACCESS_TOKEN}",
+        "SUPABASE_PROJECT_REF": "${env:SUPABASE_PROJECT_REF}",
+        "SUPABASE_URL": "${env:SUPABASE_URL}",
+        "SUPABASE_ANON_KEY": "${env:SUPABASE_ANON_KEY}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${env:SUPABASE_SERVICE_ROLE_KEY}"
+      }
+    },
+    "browser-tools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-browser-automation@latest"
+      ],
+      "env": {
+        "BROWSER_HEADLESS": "true",
+        "BROWSER_TIMEOUT": "30000"
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking@latest"
+      ]
+    }
+  }
+}

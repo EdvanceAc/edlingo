@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PDF Highlights UI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="env.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #007cba; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #005a8b; }
+        
+        /* Replicate the exact PDF highlights table styling from admin dashboard */
+        .pdf-highlights { margin-top: 16px; }
+        .pdf-highlights-table { min-width: 100%; font-size: 14px; border-collapse: collapse; }
+        .pdf-highlights-table th, .pdf-highlights-table td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        .pdf-highlights-table th { background: #f9fafb; }
+        .pdf-highlights-table input { 
+            margin: 2px; 
+            padding: 5px; 
+            border: 1px solid #ccc; 
+            border-radius: 3px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .overflow-x-auto { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 5px; }
+        .bg-green-600 { background-color: #059669; }
+        .bg-green-600:hover { background-color: #047857; }
+        .text-white { color: white; }
+        .px-2 { padding-left: 8px; padding-right: 8px; }
+        .py-1 { padding-top: 4px; padding-bottom: 4px; }
+        .rounded { border-radius: 4px; }
+        .text-xs { font-size: 12px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .mb-2 { margin-bottom: 8px; }
+        .mt-2 { margin-top: 8px; }
+        .text-gray-500 { color: #6b7280; }
+        .text-gray-800 { color: #1f2937; }
+        .font-medium { font-weight: 500; }
+        .block { display: block; }
+        .text-sm { font-size: 14px; }
+        .w-40 { width: 10rem; }
+        .w-48 { width: 12rem; }
+        .w-16 { width: 4rem; }
+    </style>
+</head>
+<body>
+    <h1>Test PDF Highlights UI Population</h1>
+    
+    <div class="test-section">
+        <h2>Simulated PDF Highlights Table</h2>
+        <p>This simulates the exact PDF highlights table from the admin dashboard.</p>
+        
+        <!-- Exact copy of the PDF highlights table from admin dashboard -->
+        <div class="mt-4 pdf-highlights">
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-800">PDF Highlights</label>
+                <button type="button" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700" onclick="addPdfHighlightRow(this)">Add Row</button>
+            </div>
+            <div class="overflow-x-auto border border-gray-200 rounded">
+                <table class="min-w-full text-sm pdf-highlights-table">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-2 py-2 text-left">Word/Phrase</th>
+                            <th class="px-2 py-2 text-left">Synonyms (comma)</th>
+                            <th class="px-2 py-2 text-left">Page</th>
+                            <th class="px-2 py-2 text-left">X</th>
+                            <th class="px-2 py-2 text-left">Y</th>
+                            <th class="px-2 py-2 text-left">W</th>
+                            <th class="px-2 py-2 text-left">H</th>
+                            <th class="px-2 py-2 text-left">Image</th>
+                            <th class="px-2 py-2 text-left">Audio</th>
+                            <th class="px-2 py-2 text-left">Video</th>
+                            <th class="px-2 py-2 text-left">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">Note: X,Y,W,H are normalized (0–1) relative to the PDF page.</p>
+        </div>
+        
+        <button onclick="testFetchAndPopulate()">Fetch & Populate Highlights</button>
+        <button onclick="clearTable()">Clear Table</button>
+        <button onclick="showCurrentData()">Show Current Data</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Initialize Supabase using env.js
+        const supabaseUrl = window.ENV.SUPABASE_URL;
+        const supabaseAnonKey = window.ENV.SUPABASE_ANON_KEY;
+        const supabaseServiceKey = window.ENV.SUPABASE_SERVICE_ROLE_KEY;
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const supabaseAdmin = window.supabase.createClient(supabaseUrl, supabaseServiceKey);
+        
+        console.log('🔧 Supabase initialized');
+
+        function logResult(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : 'success'}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+            console.log(message);
+        }
+
+        function clearTable() {
+            const tbody = document.querySelector('.pdf-highlights-table tbody');
+            tbody.innerHTML = '';
+            logResult('Table cleared');
+        }
+
+        // Copy the exact functions from admin-dashboard.html
+        function addPdfHighlightRow(button) {
+            const container = button.closest('.pdf-highlights');
+            const tbody = container.querySelector('.pdf-highlights-table tbody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-2 py-1"><input type="text" class="hl-word w-40 px-2 py-1 border rounded" placeholder="word"></td>
+                <td class="px-2 py-1"><input type="text" class="hl-synonyms w-48 px-2 py-1 border rounded" placeholder="fast, quick"></td>
+                <td class="px-2 py-1"><input type="number" class="hl-page w-16 px-2 py-1 border rounded" min="1" value="1"></td>
+                <td class="px-2 py-1"><input type="number" step="0.001" class="hl-x w-16 px-2 py-1 border rounded" min="0" max="1" value="0"></td>
+                <td class="px-2 py-1"><input type="number" step="0.001" class="hl-y w-16 px-2 py-1 border rounded" min="0" max="1" value="0"></td>
+                <td class="px-2 py-1"><input type="number" step="0.001" class="hl-w w-16 px-2 py-1 border rounded" min="0" max="1" value="0.1"></td>
+                <td class="px-2 py-1"><input type="number" step="0.001" class="hl-h w-16 px-2 py-1 border rounded" min="0" max="1" value="0.03"></td>
+                <td class="px-2 py-1">
+                  <input type="file" accept="image/*" class="hl-img-file hidden" onchange="uploadHlAsset(this, 'image')">
+                  <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                  <input type="hidden" class="hl-image-url" value="">
+                </td>
+                <td class="px-2 py-1">
+                  <input type="file" accept="audio/*" class="hl-audio-file hidden" onchange="uploadHlAsset(this, 'audio')">
+                  <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                  <input type="hidden" class="hl-audio-url" value="">
+                </td>
+                <td class="px-2 py-1">
+                  <input type="file" accept="video/*" class="hl-video-file hidden" onchange="uploadHlAsset(this, 'video')">
+                  <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                  <input type="hidden" class="hl-video-url" value="">
+                </td>
+                <td class="px-2 py-1">
+                  <button type="button" class="px-2 py-1 bg-red-600 text-white rounded text-xs" onclick="this.closest('tr').remove()">Remove</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function appendPdfHighlightRowWithValues(contentItem, h = {}) {
+            try {
+                const tbody = contentItem?.querySelector('.pdf-highlights-table tbody');
+                if (!tbody) return;
+                const row = document.createElement('tr');
+                const rect = h.rect || {};
+                const refs = h.refs || {};
+                const imageUrl = Array.isArray(refs.images) && refs.images.length ? refs.images[0] : '';
+                const audioUrl = Array.isArray(refs.audio) && refs.audio.length ? refs.audio[0] : '';
+                const videoUrl = Array.isArray(refs.video) && refs.video.length ? refs.video[0] : '';
+                row.innerHTML = `
+                    <td class="px-2 py-1"><input type="text" class="hl-word w-40 px-2 py-1 border rounded" placeholder="word" value="${(h.word || '').replace(/"/g,'&quot;')}"></td>
+                    <td class="px-2 py-1"><input type="text" class="hl-synonyms w-48 px-2 py-1 border rounded" placeholder="fast, quick" value="${Array.isArray(h.synonyms) ? h.synonyms.join(', ') : (h.synonyms || '')}"></td>
+                    <td class="px-2 py-1"><input type="number" class="hl-page w-16 px-2 py-1 border rounded" min="1" value="${Number(h.page||1)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-x w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.x||0)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-y w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.y||0)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-w w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.w||0.1)}"></td>
+                    <td class="px-2 py-1"><input type="number" step="0.001" class="hl-h w-16 px-2 py-1 border rounded" min="0" max="1" value="${Number(rect.h||0.03)}"></td>
+                    <td class="px-2 py-1">
+                      <input type="file" accept="image/*" class="hl-img-file hidden" onchange="uploadHlAsset(this, 'image')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-image-url" value="${imageUrl}">
+                    </td>
+                    <td class="px-2 py-1">
+                      <input type="file" accept="audio/*" class="hl-audio-file hidden" onchange="uploadHlAsset(this, 'audio')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-audio-url" value="${audioUrl}">
+                    </td>
+                    <td class="px-2 py-1">
+                      <input type="file" accept="video/*" class="hl-video-file hidden" onchange="uploadHlAsset(this, 'video')">
+                      <button type="button" class="px-2 py-1 bg-gray-100 border rounded text-xs" onclick="this.previousElementSibling.click()">Upload</button>
+                      <input type="hidden" class="hl-video-url" value="${videoUrl}">
+                    </td>
+                    <td class="px-2 py-1">
+                      <button type="button" class="px-2 py-1 bg-red-600 text-white rounded text-xs" onclick="this.closest('tr').remove()">Remove</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            } catch (e) {
+                console.error('appendPdfHighlightRowWithValues error:', e);
+            }
+        }
+
+        // Fetch PDF highlights from database (copy from admin-dashboard.html)
+        async function fetchPdfHighlightsFromDatabase(courseId, pdfUrl) {
+            try {
+                const client = supabaseAdmin || supabase;
+                if (!client?.from) {
+                    console.error('fetchPdfHighlightsFromDatabase: No Supabase client available');
+                    return [];
+                }
+
+                console.log('fetchPdfHighlightsFromDatabase: Fetching highlights for course:', courseId, 'PDF:', pdfUrl);
+
+                // First, find the book for this course and PDF URL
+                const { data: books, error: booksError } = await client
+                    .from('books')
+                    .select('id')
+                    .eq('course_id', courseId)
+                    .eq('pdf_url', pdfUrl)
+                    .limit(1);
+
+                if (booksError) {
+                    console.error('fetchPdfHighlightsFromDatabase: Error fetching books:', booksError.message);
+                    return [];
+                }
+
+                if (!books || books.length === 0) {
+                    console.log('fetchPdfHighlightsFromDatabase: No book found for this PDF');
+                    return [];
+                }
+
+                const bookId = books[0].id;
+                console.log('fetchPdfHighlightsFromDatabase: Found book ID:', bookId);
+
+                // Fetch highlights for this book
+                const { data: highlights, error: highlightsError } = await client
+                    .from('word_highlights')
+                    .select('id, word, synonyms, page_number, position')
+                    .eq('book_id', bookId)
+                    .order('page_number', { ascending: true });
+
+                if (highlightsError) {
+                    console.error('fetchPdfHighlightsFromDatabase: Error fetching highlights:', highlightsError.message);
+                    return [];
+                }
+
+                if (!highlights || highlights.length === 0) {
+                    console.log('fetchPdfHighlightsFromDatabase: No highlights found for this book');
+                    return [];
+                }
+
+                console.log('fetchPdfHighlightsFromDatabase: Found', highlights.length, 'highlights');
+
+                // Convert database format to the format expected by the UI
+                const formattedHighlights = highlights.map(h => {
+                    const position = h.position || {};
+                    const rect = position.rect || {};
+                    const refs = position.refs || {};
+                    
+                    return {
+                        id: h.id,
+                        word: h.word || '',
+                        synonyms: Array.isArray(h.synonyms) ? h.synonyms : [],
+                        page: h.page_number || 1,
+                        rect: {
+                            x: rect.x || 0,
+                            y: rect.y || 0,
+                            w: rect.w || rect.width || 0.1,
+                            h: rect.h || rect.height || 0.03
+                        },
+                        refs: {
+                            images: Array.isArray(refs.images) ? refs.images : [],
+                            audio: Array.isArray(refs.audio) ? refs.audio : [],
+                            video: Array.isArray(refs.video) ? refs.video : []
+                        }
+                    };
+                });
+
+                console.log('fetchPdfHighlightsFromDatabase: Formatted highlights:', formattedHighlights);
+                return formattedHighlights;
+
+            } catch (e) {
+                console.error('fetchPdfHighlightsFromDatabase: Error:', e?.message || e);
+                return [];
+            }
+        }
+
+        async function testFetchAndPopulate() {
+            logResult('Testing fetch and populate functionality...');
+            
+            try {
+                // Use the Elementry course and Seeded Book data from our previous test
+                const courseId = '56d725cc-ca41-453e-8909-7c760f2c5851';
+                const pdfUrl = 'https://example.com/sample.pdf';
+                
+                logResult('Fetching highlights from database...');
+                const highlights = await fetchPdfHighlightsFromDatabase(courseId, pdfUrl);
+                
+                if (highlights.length === 0) {
+                    logResult('No highlights found to populate', true);
+                    return;
+                }
+                
+                logResult(`Found ${highlights.length} highlights. Populating table...`);
+                
+                // Clear existing table
+                clearTable();
+                
+                // Get the content container (the pdf-highlights div)
+                const contentItem = document.querySelector('.pdf-highlights');
+                
+                // Populate each highlight
+                highlights.forEach(highlight => {
+                    appendPdfHighlightRowWithValues(contentItem, highlight);
+                });
+                
+                logResult(`✅ Successfully populated ${highlights.length} highlights!`);
+                logResult('Check the table above to see the populated data.');
+                
+            } catch (e) {
+                logResult(`❌ Error during test: ${e.message}`, true);
+            }
+        }
+
+        function showCurrentData() {
+            const container = document.querySelector('.pdf-highlights');
+            const rows = container?.querySelectorAll('.pdf-highlights-table tbody tr') || [];
+            
+            if (rows.length === 0) {
+                logResult('No data in table');
+                return;
+            }
+            
+            logResult(`Current table contains ${rows.length} row(s):`);
+            rows.forEach((tr, idx) => {
+                const word = tr.querySelector('.hl-word')?.value?.trim();
+                const synonyms = tr.querySelector('.hl-synonyms')?.value || '';
+                const page = tr.querySelector('.hl-page')?.value || '';
+                logResult(`  ${idx + 1}. "${word}" → [${synonyms}] (Page ${page})`);
+            });
+        }
+
+        // Dummy function for upload handling
+        function uploadHlAsset(input, type) {
+            console.log('Upload triggered for:', type);
+        }
+    </script>
+</body>
+</html>
+

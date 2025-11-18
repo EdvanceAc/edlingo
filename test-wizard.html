@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Creation Wizard Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">Course Creation Wizard Test</h1>
+        
+        <!-- Test Button -->
+        <button onclick="showAddCourseModal()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+            Test Course Creation Wizard
+        </button>
+        
+        <!-- Course Creation Modal -->
+        <div id="courseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between p-6 border-b">
+                    <h2 id="courseModalTitle" class="text-xl font-semibold">Create New Course</h2>
+                    <button onclick="closeCourseModal()" class="text-gray-400 hover:text-gray-600">
+                        <span class="sr-only">Close</span>
+                        ✕
+                    </button>
+                </div>
+
+                <!-- Progress Indicator -->
+                <div class="px-6 py-4 bg-gray-50 border-b">
+                    <div class="flex items-center justify-between">
+                        <div data-step="1" class="flex items-center">
+                            <div class="step-circle w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-medium">1</div>
+                            <span class="step-text ml-2 text-sm font-medium text-blue-600">Course Info</span>
+                        </div>
+                        <div data-step="2" class="flex items-center">
+                            <div class="step-circle w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-medium">2</div>
+                            <span class="step-text ml-2 text-sm text-gray-500">CEFR & Level</span>
+                        </div>
+                        <div data-step="3" class="flex items-center">
+                            <div class="step-circle w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-medium">3</div>
+                            <span class="step-text ml-2 text-sm text-gray-500">Syllabus</span>
+                        </div>
+                        <div data-step="4" class="flex items-center">
+                            <div class="step-circle w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-medium">4</div>
+                            <span class="step-text ml-2 text-sm text-gray-500">Lessons</span>
+                        </div>
+                        <div data-step="5" class="flex items-center">
+                            <div class="step-circle w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-medium">5</div>
+                            <span class="step-text ml-2 text-sm text-gray-500">Questions</span>
+                        </div>
+                        <div data-step="6" class="flex items-center">
+                            <div class="step-circle w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-medium">6</div>
+                            <span class="step-text ml-2 text-sm text-gray-500">Review</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Content -->
+                <div class="p-6 max-h-[60vh] overflow-y-auto">
+                    <!-- Step 1: Course Information -->
+                    <div id="step-1" class="wizard-step">
+                        <h3 class="text-lg font-semibold mb-4">Course Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Course Title *</label>
+                                <input type="text" id="courseTitle" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter course title">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Course Category</label>
+                                <select id="courseCategory" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="General English">General English</option>
+                                    <option value="Business English">Business English</option>
+                                    <option value="Academic English">Academic English</option>
+                                    <option value="Conversation">Conversation</option>
+                                    <option value="Grammar">Grammar</option>
+                                    <option value="Vocabulary">Vocabulary</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Course Description</label>
+                            <textarea id="courseDescription" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Describe what students will learn in this course..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: CEFR & Level -->
+                    <div id="step-2" class="wizard-step hidden">
+                        <h3 class="text-lg font-semibold mb-4">CEFR Level & Target Skills</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">CEFR Level *</label>
+                                <select id="cefrLevel" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Select CEFR Level</option>
+                                    <option value="A1">A1 - Beginner</option>
+                                    <option value="A2">A2 - Elementary</option>
+                                    <option value="B1">B1 - Intermediate</option>
+                                    <option value="B2">B2 - Upper Intermediate</option>
+                                    <option value="C1">C1 - Advanced</option>
+                                    <option value="C2">C2 - Proficient</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Target Skills *</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="targetSkills" value="listening" class="mr-2">
+                                        <span class="text-sm">Listening</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="targetSkills" value="speaking" class="mr-2">
+                                        <span class="text-sm">Speaking</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="targetSkills" value="reading" class="mr-2">
+                                        <span class="text-sm">Reading</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="targetSkills" value="writing" class="mr-2">
+                                        <span class="text-sm">Writing</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional steps would go here... -->
+                    <div id="step-3" class="wizard-step hidden">
+                        <h3 class="text-lg font-semibold mb-4">Syllabus</h3>
+                        <p>Syllabus content goes here...</p>
+                    </div>
+
+                    <div id="step-4" class="wizard-step hidden">
+                        <h3 class="text-lg font-semibold mb-4">Lessons</h3>
+                        <p>Lessons content goes here...</p>
+                    </div>
+
+                    <div id="step-5" class="wizard-step hidden">
+                        <h3 class="text-lg font-semibold mb-4">Questions</h3>
+                        <p>Questions content goes here...</p>
+                    </div>
+
+                    <div id="step-6" class="wizard-step hidden">
+                        <h3 class="text-lg font-semibold mb-4">Review</h3>
+                        <p>Review content goes here...</p>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex items-center justify-between p-6 border-t bg-gray-50">
+                    <button type="button" onclick="saveDraft()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        Save Draft
+                    </button>
+                    <div class="flex space-x-3">
+                        <button type="button" id="prevBtn" onclick="prevWizardStep()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors hidden">
+                            Previous
+                        </button>
+                        <button type="button" id="nextBtn" onclick="nextWizardStep()" class="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+                            Next
+                        </button>
+                        <button type="button" id="finishBtn" onclick="createCourseFromWizard()" class="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors hidden">
+                            Create Course
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Course Creation Wizard Functions
+        let currentWizardStep = 1;
+        const totalWizardSteps = 6;
+        let courseWizardData = {};
+
+        function showAddCourseModal() {
+            document.getElementById('courseModal').classList.remove('hidden');
+            showWizardStep(1);
+        }
+
+        function closeCourseModal() {
+            document.getElementById('courseModal').classList.add('hidden');
+            showWizardStep(1);
+        }
+
+        function showWizardStep(stepNumber) {
+            // Hide all steps
+            for (let i = 1; i <= totalWizardSteps; i++) {
+                const step = document.getElementById(`step-${i}`);
+                if (step) {
+                    step.classList.add('hidden');
+                }
+            }
+            
+            // Show current step
+            const currentStep = document.getElementById(`step-${stepNumber}`);
+            if (currentStep) {
+                currentStep.classList.remove('hidden');
+            }
+            
+            // Update progress indicator
+            updateProgressIndicator(stepNumber);
+            
+            // Update navigation buttons
+            updateNavigationButtons(stepNumber);
+            
+            currentWizardStep = stepNumber;
+        }
+
+        function updateProgressIndicator(currentStep) {
+            for (let i = 1; i <= totalWizardSteps; i++) {
+                const stepElement = document.querySelector(`[data-step="${i}"]`);
+                if (stepElement) {
+                    const circle = stepElement.querySelector('.step-circle');
+                    const text = stepElement.querySelector('.step-text');
+                    
+                    if (i < currentStep) {
+                        // Completed step
+                        circle.className = 'step-circle w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium';
+                        text.className = 'step-text ml-2 text-sm font-medium text-green-600';
+                    } else if (i === currentStep) {
+                        // Current step
+                        circle.className = 'step-circle w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-medium';
+                        text.className = 'step-text ml-2 text-sm font-medium text-blue-600';
+                    } else {
+                        // Future step
+                        circle.className = 'step-circle w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-medium';
+                        text.className = 'step-text ml-2 text-sm text-gray-500';
+                    }
+                }
+            }
+        }
+
+        function updateNavigationButtons(currentStep) {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const finishBtn = document.getElementById('finishBtn');
+            
+            // Show/hide previous button
+            if (currentStep === 1) {
+                prevBtn.classList.add('hidden');
+            } else {
+                prevBtn.classList.remove('hidden');
+            }
+            
+            // Show/hide next and finish buttons
+            if (currentStep === totalWizardSteps) {
+                nextBtn.classList.add('hidden');
+                finishBtn.classList.remove('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+                finishBtn.classList.add('hidden');
+            }
+        }
+
+        function nextWizardStep() {
+            if (currentWizardStep < totalWizardSteps) {
+                showWizardStep(currentWizardStep + 1);
+            }
+        }
+
+        function prevWizardStep() {
+            if (currentWizardStep > 1) {
+                showWizardStep(currentWizardStep - 1);
+            }
+        }
+
+        function saveDraft() {
+            alert('Draft saved successfully!');
+        }
+
+        function createCourseFromWizard() {
+            alert('Course created successfully!');
+            closeCourseModal();
+        }
+    </script>
+</body>
+</html>

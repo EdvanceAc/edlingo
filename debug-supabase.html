@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Supabase Issues</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { margin: 5px 0; padding: 5px; border-left: 3px solid #ccc; }
+        .error { border-left-color: red; background: #ffe6e6; }
+        .success { border-left-color: green; background: #e6ffe6; }
+        .info { border-left-color: blue; background: #e6f3ff; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Connection Debug</h1>
+    <button onclick="runTests()">Run Tests</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    <div id="logs"></div>
+    
+    <script>
+        const supabaseUrl = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+        
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            logsDiv.appendChild(logDiv);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        async function runTests() {
+            clearLogs();
+            log('Starting Supabase connection tests...');
+            
+            try {
+                // Test 1: Check if Supabase client can be created
+                log('Test 1: Creating Supabase client...');
+                const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+                log('✅ Supabase client created successfully', 'success');
+                
+                // Test 2: Simple fetch to Supabase REST API
+                log('Test 2: Testing direct REST API call...');
+                try {
+                    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+                        method: 'GET',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${supabaseAnonKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    log(`Response status: ${response.status} ${response.statusText}`);
+                    
+                    if (response.ok) {
+                        const data = await response.text();
+                        log('✅ REST API call successful', 'success');
+                        log(`Response length: ${data.length} characters`);
+                    } else {
+                        log(`❌ REST API call failed: ${response.status}`, 'error');
+                        const errorText = await response.text();
+                        log(`Error response: ${errorText}`, 'error');
+                    }
+                } catch (fetchError) {
+                    log(`❌ Fetch error: ${fetchError.message}`, 'error');
+                    log(`Error details: ${JSON.stringify(fetchError)}`, 'error');
+                }
+                
+                // Test 3: Try Supabase client query
+                log('Test 3: Testing Supabase client query...');
+                try {
+                    const { data, error, count } = await supabase
+                        .from('user_profiles')
+                        .select('*', { count: 'exact', head: true });
+                    
+                    if (error) {
+                        log(`❌ Supabase query error: ${error.message}`, 'error');
+                        log(`Error details: ${JSON.stringify(error)}`, 'error');
+                    } else {
+                        log(`✅ Supabase query successful. Count: ${count}`, 'success');
+                    }
+                } catch (queryError) {
+                    log(`❌ Query exception: ${queryError.message}`, 'error');
+                }
+                
+                // Test 4: Test other tables
+                const tables = ['courses', 'user_achievements', 'lessons', 'cefr_assessment_questions'];
+                for (const tableName of tables) {
+                    log(`Test 4.${tables.indexOf(tableName) + 1}: Testing ${tableName} table...`);
+                    try {
+                        const { data, error, count } = await supabase
+                            .from(tableName)
+                            .select('*', { count: 'exact', head: true });
+                        
+                        if (error) {
+                            log(`❌ ${tableName}: ${error.message}`, 'error');
+                        } else {
+                            log(`✅ ${tableName}: accessible, count: ${count}`, 'success');
+                        }
+                    } catch (tableError) {
+                        log(`❌ ${tableName} exception: ${tableError.message}`, 'error');
+                    }
+                }
+                
+                log('All tests completed!');
+                
+            } catch (mainError) {
+                log(`❌ Main test error: ${mainError.message}`, 'error');
+                console.error('Full error object:', mainError);
+            }
+        }
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 1000);
+        });
+    </script>
+</body>
+</html>

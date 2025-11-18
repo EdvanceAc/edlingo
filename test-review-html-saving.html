@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Review HTML Saving</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        #lessonsReview {
+            border: 2px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            background-color: #f8f9fa;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Review HTML Saving</h1>
+        <p>This page tests whether the review HTML is properly captured and saved to the database when creating a course.</p>
+        
+        <div class="test-section">
+            <h3>📋 Mock Review Section</h3>
+            <p>This simulates the actual review section from the admin dashboard:</p>
+            
+            <div id="lessonsReview">
+                <div class="bg-white rounded border border-gray-200 p-3">
+                    <div class="font-medium text-gray-900">Lesson 1: Introduction to Spanish</div>
+                    <div class="text-sm text-gray-600 mt-1">Basic lesson for A1 level - Introduce the lesson and outline goals.</div>
+                    <ul class="list-disc ml-5 mt-2 space-y-1">
+                        <li class="pl-2">
+                            <div class="text-sm"><span class="inline-block px-2 py-0.5 rounded bg-gray-200 text-gray-800 mr-2">TEXT</span> Welcome Text</div>
+                            <div class="text-gray-700">This is a starter material. Replace or add more as needed.</div>
+                            <div class="text-xs text-gray-500">title: Welcome Text • word_count: 11</div>
+                        </li>
+                        <li class="pl-2">
+                            <div class="text-sm"><span class="inline-block px-2 py-0.5 rounded bg-gray-200 text-gray-800 mr-2">IMAGE</span> Sample Image</div>
+                            <a class="text-blue-700 underline break-all" href="https://example.com/sample-image.png" target="_blank" rel="noopener">https://example.com/sample-image.png</a>
+                            <div class="text-xs text-gray-500">title: Sample Image • alt_text: Sample • caption: Test image</div>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="bg-white rounded border border-gray-200 p-3 mt-3">
+                    <div class="font-medium text-gray-900">Lesson 2: Basic Greetings</div>
+                    <div class="text-sm text-gray-600 mt-1">Learn common greetings and polite expressions.</div>
+                    <ul class="list-disc ml-5 mt-2 space-y-1">
+                        <li class="pl-2">
+                            <div class="text-sm"><span class="inline-block px-2 py-0.5 rounded bg-gray-200 text-gray-800 mr-2">AUDIO</span> Greeting Audio</div>
+                            <div class="text-gray-700">Audio file for pronunciation practice</div>
+                            <div class="text-xs text-gray-500">title: Greetings • duration: 30s</div>
+                        </li>
+                        <li class="pl-2">
+                            <div class="text-sm"><span class="inline-block px-2 py-0.5 rounded bg-gray-200 text-gray-800 mr-2">VIDEO</span> Greeting Video</div>
+                            <div class="text-gray-700">Demonstration video for greetings</div>
+                            <div class="text-xs text-gray-500">title: Hello Tutorial • duration: 2m</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <button class="button" onclick="testCaptureReviewHTML()">📋 Test Capture Review HTML</button>
+            <div id="capture-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>💾 Database Operations</h3>
+            <button class="button" onclick="testDatabaseConnection()">🔗 Test Database Connection</button>
+            <button class="button" onclick="createTestCourseWithReviewHTML()">📚 Create Test Course with Review HTML</button>
+            <button class="button" onclick="viewLastCreatedCourse()">👀 View Last Created Course</button>
+            <div id="database-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧹 Cleanup</h3>
+            <button class="button" onclick="cleanupTestCourses()">🗑️ Delete Test Courses</button>
+            <div id="cleanup-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0MzE4MDEsImV4cCI6MjA1MDAwNzgwMX0.nAr9uXSa9j21VFklk30PjF7pVl7R1QDkcm5lHBJKyKg';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        
+        let capturedHTML = '';
+
+        // Test capturing the review HTML
+        function testCaptureReviewHTML() {
+            const resultDiv = document.getElementById('capture-result');
+            resultDiv.innerHTML = 'Capturing review HTML...';
+            
+            try {
+                const reviewEl = document.getElementById('lessonsReview');
+                if (reviewEl) {
+                    capturedHTML = reviewEl.innerHTML;
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ Successfully captured review HTML (${capturedHTML.length} characters)</div>
+                        <details>
+                            <summary>Click to view captured HTML</summary>
+                            <pre>${capturedHTML.substring(0, 500)}${capturedHTML.length > 500 ? '...' : ''}</pre>
+                        </details>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ Could not find lessonsReview element</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error capturing HTML: ${error.message}</div>`;
+            }
+        }
+
+        // Test database connection
+        async function testDatabaseConnection() {
+            const resultDiv = document.getElementById('database-result');
+            resultDiv.innerHTML = 'Testing database connection...';
+            
+            try {
+                const { data, error } = await supabase.from('courses').select('id').limit(1);
+                if (error) throw error;
+                
+                resultDiv.innerHTML = '<div class="success">✅ Database connection successful</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Database connection failed: ${error.message}</div>`;
+            }
+        }
+
+        // Create test course with review HTML
+        async function createTestCourseWithReviewHTML() {
+            const resultDiv = document.getElementById('database-result');
+            resultDiv.innerHTML = 'Creating test course with review HTML...';
+            
+            // First capture the HTML if not already done
+            if (!capturedHTML) {
+                const reviewEl = document.getElementById('lessonsReview');
+                if (reviewEl) {
+                    capturedHTML = reviewEl.innerHTML;
+                }
+            }
+            
+            try {
+                const courseData = {
+                    title: `Test Course with Review HTML - ${new Date().toISOString()}`,
+                    description: 'Test course to verify review HTML saving functionality',
+                    category: 'test',
+                    language: 'English',
+                    cefr_level: 'A1',
+                    duration_weeks: 4,
+                    hours_per_week: 3,
+                    is_active: false,
+                    instructor_name: 'Test Instructor',
+                    instructor_email: 'test@example.com',
+                    review_html: capturedHTML
+                };
+
+                console.log('📊 Course data being saved:', courseData);
+
+                const { data, error } = await supabase
+                    .from('courses')
+                    .insert([courseData])
+                    .select();
+                
+                if (error) throw error;
+                
+                const course = data[0];
+                resultDiv.innerHTML = `
+                    <div class="success">✅ Test course created successfully!</div>
+                    <div class="info">
+                        <strong>Course ID:</strong> ${course.id}<br>
+                        <strong>Title:</strong> ${course.title}<br>
+                        <strong>Review HTML Length:</strong> ${course.review_html ? course.review_html.length : 0} characters<br>
+                        <strong>Review HTML Preview:</strong> ${course.review_html ? course.review_html.substring(0, 100) + '...' : 'None'}
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Failed to create test course: ${error.message}</div>`;
+                console.error('Course creation error:', error);
+            }
+        }
+
+        // View the last created course
+        async function viewLastCreatedCourse() {
+            const resultDiv = document.getElementById('database-result');
+            resultDiv.innerHTML = 'Fetching last created course...';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('courses')
+                    .select('*')
+                    .like('title', 'Test Course with Review HTML%')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    const course = data[0];
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ Found last created test course</div>
+                        <div class="info">
+                            <strong>ID:</strong> ${course.id}<br>
+                            <strong>Title:</strong> ${course.title}<br>
+                            <strong>Created:</strong> ${new Date(course.created_at).toLocaleString()}<br>
+                            <strong>Review HTML Length:</strong> ${course.review_html ? course.review_html.length : 0} characters
+                        </div>
+                        ${course.review_html ? `
+                        <details>
+                            <summary>📋 View Saved Review HTML</summary>
+                            <pre>${course.review_html}</pre>
+                        </details>
+                        ` : '<div class="error">⚠️ No review HTML found in database</div>'}
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<div class="info">ℹ️ No test courses found</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error fetching course: ${error.message}</div>`;
+            }
+        }
+
+        // Cleanup test courses
+        async function cleanupTestCourses() {
+            const resultDiv = document.getElementById('cleanup-result');
+            resultDiv.innerHTML = 'Cleaning up test courses...';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('courses')
+                    .delete()
+                    .like('title', 'Test Course with Review HTML%')
+                    .select();
+                
+                if (error) throw error;
+                
+                const deletedCount = data ? data.length : 0;
+                resultDiv.innerHTML = `<div class="success">✅ Deleted ${deletedCount} test course(s)</div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error during cleanup: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-run connection test on page load
+        window.addEventListener('load', function() {
+            testDatabaseConnection();
+        });
+    </script>
+</body>
+</html>

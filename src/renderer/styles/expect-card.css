@@ -1,0 +1,36 @@
+/* Expect card: high-contrast, comfortable reading in light/dark modes */
+.card-premium-expect {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%) !important; /* very light indigo */
+  border: 1.6px solid rgba(99,102,241,0.30) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 14px 30px rgba(79,70,229,0.12), 0 0 0 1px rgba(255,255,255,0.12) inset !important;
+  color: #0f172a !important; /* slate-900 */
+}
+
+.card-premium-expect h2,
+.card-premium-expect .text-2xl,
+.card-premium-expect .text-xl,
+.card-premium-expect .text-lg {
+  color: #0f172a !important; /* slate-900 */
+  font-weight: 800 !important;
+  text-shadow: none !important; /* remove heavy glow for comfort */
+}
+
+.card-premium-expect .text-sm,
+.card-premium-expect .text-xs,
+.card-premium-expect span {
+  color: #1f2937 !important; /* slate-800 */
+}
+
+/* Dark mode: deeper gradient with white text for contrast */
+.dark .card-premium-expect {
+  background: linear-gradient(135deg, #312e81 0%, #4c1d95 100%) !important; /* indigo-900 to violet-900 */
+  border-color: rgba(165,180,252,0.35) !important; /* indigo-300 */
+  color: rgba(255,255,255,0.95) !important;
+}
+.dark .card-premium-expect h2,
+.dark .card-premium-expect span,
+.dark .card-premium-expect .text-sm,
+.dark .card-premium-expect .text-xs {
+  color: #ffffff !important;
+}

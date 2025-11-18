@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnose Fetch Errors</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="/env.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>EdLingo Admin Dashboard - Fetch Error Diagnosis</h1>
+    <div id="results"></div>
+    
+    <script>
+        const SUPABASE_URL = (window.__ENV && window.__ENV.SUPABASE_URL) || '';
+        const SUPABASE_ANON_KEY = (window.__ENV && window.__ENV.SUPABASE_ANON_KEY) || '';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Admin/service role tests removed for security
+        
+        function addResult(title, content, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = `<h3>${title}</h3>${content}`;
+            results.appendChild(div);
+        }
+        
+        async function runDiagnostics() {
+            addResult('Starting Diagnostics', 'Testing the exact queries that are failing in the admin dashboard...');
+            
+            // Test 1: Recent Activity Query (exact same as admin dashboard)
+            try {
+                addResult('Test 1: Recent Activity Query', 'Testing learning_sessions with user_profiles relationship...');
+                
+                const { data: activities, error } = await supabase
+                    .from('learning_sessions')
+                    .select(`
+                        *,
+                        user_profiles(email, full_name)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) {
+                    addResult('❌ Recent Activity Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                        <p><strong>Details:</strong> ${JSON.stringify(error.details)}</p>
+                        <p><strong>Hint:</strong> ${error.hint || 'None'}</p>
+                    `, 'error');
+                } else {
+                    addResult('✅ Recent Activity Success', `
+                        <p>Found ${activities.length} learning sessions</p>
+                        <pre>${JSON.stringify(activities.slice(0, 2), null, 2)}</pre>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('❌ Network Error - Recent Activity', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                    <p>This indicates a CORS or connectivity issue</p>
+                `, 'error');
+            }
+            
+            // Test 2: User Achievements Query
+            try {
+                addResult('Test 2: User Achievements Query', 'Testing user_achievements table...');
+                
+                const { data: achievements, error } = await supabase
+                    .from('user_achievements')
+                    .select('*')
+                    .limit(10);
+                
+                if (error) {
+                    addResult('❌ User Achievements Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                        <p><strong>Details:</strong> ${JSON.stringify(error.details)}</p>
+                    `, 'error');
+                } else {
+                    addResult('✅ User Achievements Success', `
+                        <p>Found ${achievements.length} achievements</p>
+                        <pre>${JSON.stringify(achievements.slice(0, 2), null, 2)}</pre>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('❌ Network Error - User Achievements', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                `, 'error');
+            }
+            
+            // Test 3: User Profiles Query
+            try {
+                addResult('Test 3: User Profiles Query', 'Testing user_profiles table...');
+                
+                const { data: profiles, error } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .limit(10);
+                
+                if (error) {
+                    addResult('❌ User Profiles Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                    `, 'error');
+                } else {
+                    addResult('✅ User Profiles Success', `
+                        <p>Found ${profiles.length} user profiles</p>
+                        <pre>${JSON.stringify(profiles.slice(0, 2), null, 2)}</pre>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('❌ Network Error - User Profiles', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                `, 'error');
+            }
+            
+            // Test 4: Courses Query
+            try {
+                addResult('Test 4: Courses Query', 'Testing courses table...');
+                
+                const { data: courses, error } = await supabase
+                    .from('courses')
+                    .select('*')
+                    .limit(10);
+                
+                if (error) {
+                    addResult('❌ Courses Failed', `
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code}</p>
+                    `, 'error');
+                } else {
+                    addResult('✅ Courses Success', `
+                        <p>Found ${courses.length} courses</p>
+                        <pre>${JSON.stringify(courses.slice(0, 2), null, 2)}</pre>
+                    `, 'success');
+                }
+            } catch (networkError) {
+                addResult('❌ Network Error - Courses', `
+                    <p><strong>Network Error:</strong> ${networkError.message}</p>
+                `, 'error');
+            }
+            
+            // Admin/service role test intentionally removed
+            
+            addResult('Diagnosis Complete', 'All tests completed. Check results above for specific issues.');
+        }
+        
+        // Run diagnostics when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runDiagnostics, 500);
+        });
+    </script>
+</body>
+</html>

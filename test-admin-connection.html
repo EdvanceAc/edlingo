@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin Connection</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Testing Admin Dashboard Connection</h1>
+    <div id="results"></div>
+    
+    <script>
+        const SUPABASE_URL = 'https://ecglfwqylqchdyuhmtuv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZ2xmd3F5bHFjaGR5dWhtdHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4MTEyOTAsImV4cCI6MjA2NzM4NzI5MH0.RU5QRPClm4WuxVu2Q2nTe8kpKEX0YN_e-y4gH8PM5J0';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        async function testConnection() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Testing connection...</p>';
+            
+            try {
+                // Test 1: Basic connection
+                results.innerHTML += '<p>Test 1: Testing basic connection...</p>';
+                const { data: testData, error: testError } = await supabase
+                    .from('user_profiles')
+                    .select('id')
+                    .limit(1);
+                
+                if (testError) {
+                    results.innerHTML += `<p style="color: red;">❌ Basic connection failed: ${testError.message}</p>`;
+                    results.innerHTML += `<p>Error code: ${testError.code}</p>`;
+                    results.innerHTML += `<p>Error details: ${JSON.stringify(testError.details)}</p>`;
+                } else {
+                    results.innerHTML += '<p style="color: green;">✅ Basic connection successful</p>';
+                }
+                
+                // Test 2: Load recent activity
+                results.innerHTML += '<p>Test 2: Testing recent activity query...</p>';
+                const { data: activities, error: activityError } = await supabase
+                    .from('learning_sessions')
+                    .select(`
+                        *,
+                        user_profiles(email, full_name)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (activityError) {
+                    results.innerHTML += `<p style="color: red;">❌ Recent activity failed: ${activityError.message}</p>`;
+                    results.innerHTML += `<p>Error code: ${activityError.code}</p>`;
+                } else {
+                    results.innerHTML += `<p style="color: green;">✅ Recent activity successful (${activities.length} records)</p>`;
+                }
+                
+                // Test 3: Load user achievements
+                results.innerHTML += '<p>Test 3: Testing user achievements query...</p>';
+                const { data: achievements, error: achievementError } = await supabase
+                    .from('user_achievements')
+                    .select('*')
+                    .limit(10);
+                
+                if (achievementError) {
+                    results.innerHTML += `<p style="color: red;">❌ User achievements failed: ${achievementError.message}</p>`;
+                    results.innerHTML += `<p>Error code: ${achievementError.code}</p>`;
+                } else {
+                    results.innerHTML += `<p style="color: green;">✅ User achievements successful (${achievements.length} records)</p>`;
+                }
+                
+                // Test 4: Load courses
+                results.innerHTML += '<p>Test 4: Testing courses query...</p>';
+                const { data: courses, error: courseError } = await supabase
+                    .from('courses')
+                    .select('*')
+                    .limit(10);
+                
+                if (courseError) {
+                    results.innerHTML += `<p style="color: red;">❌ Courses failed: ${courseError.message}</p>`;
+                    results.innerHTML += `<p>Error code: ${courseError.code}</p>`;
+                } else {
+                    results.innerHTML += `<p style="color: green;">✅ Courses successful (${courses.length} records)</p>`;
+                }
+                
+            } catch (error) {
+                results.innerHTML += `<p style="color: red;">❌ Network error: ${error.message}</p>`;
+                results.innerHTML += `<p>This suggests a CORS or network connectivity issue</p>`;
+            }
+        }
+        
+        // Run tests when page loads
+        window.addEventListener('load', testConnection);
+    </script>
+</body>
+</html>

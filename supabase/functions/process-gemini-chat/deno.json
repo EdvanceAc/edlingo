@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "@google/generative-ai": "npm:@google/generative-ai@^0.21.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  }
+}
