@@ -34,9 +34,14 @@ export function useSupabaseLiveConversation(
   const [error, setError] = useState<string | null>(null);
 
   const playAudioFromInlineData = useCallback((audioData: any) => {
+    console.log('[LiveConvo] playAudioFromInlineData called');
     try {
-      if (!audioData || !audioData.data) return;
+      if (!audioData || !audioData.data) {
+        console.warn('[LiveConvo] No audioData or audioData.data');
+        return;
+      }
 
+      console.log('[LiveConvo] Decoding base64 audio data...');
       const binary = atob(audioData.data);
       const len = binary.length;
       const pcmBytes = new Uint8Array(len);
@@ -47,6 +52,8 @@ export function useSupabaseLiveConversation(
       const mime = audioData.mimeType || "audio/wav";
       let blobBytes: Uint8Array = pcmBytes;
       let blobType = mime;
+
+      console.log('[LiveConvo] Audio MIME type:', mime, 'Raw bytes:', len);
 
       // Gemini TTS returns raw 16-bit PCM like "audio/L16;codec=pcm;rate=24000".
       // Wrap this PCM data in a WAV container so browsers can play it reliably.
@@ -104,18 +111,28 @@ export function useSupabaseLiveConversation(
       const blobPart: BlobPart = blobBytes as any;
       const blob = new Blob([blobPart], { type: blobType });
       const url = URL.createObjectURL(blob);
+      console.log('[LiveConvo] Created audio blob URL:', url, 'type:', blobType, 'size:', blob.size);
+      
       const audio = new Audio(url);
       audio.onended = () => {
+        console.log('[LiveConvo] Audio playback ended');
         URL.revokeObjectURL(url);
       };
-      audio.onerror = () => {
+      audio.onerror = (e) => {
+        console.error('[LiveConvo] Audio playback error:', e);
         URL.revokeObjectURL(url);
       };
-      audio.play().catch((err) => {
-        console.warn("Audio playback failed in Supabase live conversation:", err);
-      });
+      
+      console.log('[LiveConvo] Starting audio playback...');
+      audio.play()
+        .then(() => {
+          console.log('[LiveConvo] Audio playback started successfully');
+        })
+        .catch((err) => {
+          console.error("[LiveConvo] Audio playback failed:", err);
+        });
     } catch (e) {
-      console.warn("Failed to play inline audio from Supabase live conversation:", e);
+      console.error("[LiveConvo] Failed to play inline audio from Supabase live conversation:", e);
     }
   }, []);
 
@@ -152,7 +169,15 @@ export function useSupabaseLiveConversation(
         if (result && result.success && result.stream) {
           let full = "";
           let hadText = false;
+          let audioPlayed = false; // Track if we've already played audio
+          
           for await (const chunk of result.stream as any) {
+            console.log('[LiveConvo] Received chunk:', {
+              hasChunk: !!chunk?.chunk,
+              hasDone: !!chunk?.done,
+              hasAudioData: !!chunk?.audioData
+            });
+            
             if (chunk?.chunk) {
               full = chunk.fullResponse || full + chunk.chunk;
               setPartialResponse(full);
@@ -160,6 +185,17 @@ export function useSupabaseLiveConversation(
                 hadText = true;
               }
             }
+            
+            // Play audio immediately as soon as it arrives (even if text is still streaming)
+            if (chunk?.audioData && !audioPlayed) {
+              console.log('[LiveConvo] Audio data received, attempting playback...', {
+                hasMimeType: !!chunk.audioData.mimeType,
+                dataLength: chunk.audioData.data?.length || 0
+              });
+              playAudioFromInlineData(chunk.audioData);
+              audioPlayed = true;
+            }
+            
             if (chunk?.done) {
               const finalText = chunk.fullResponse || full;
               if (finalText && finalText.trim()) {
@@ -171,10 +207,6 @@ export function useSupabaseLiveConversation(
                   timestamp: new Date(),
                 };
                 setMessages((prev) => [...prev, aiMessage]);
-              }
-
-              if (chunk.audioData) {
-                playAudioFromInlineData(chunk.audioData);
               }
 
               break;

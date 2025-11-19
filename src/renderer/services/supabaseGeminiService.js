@@ -614,6 +614,16 @@ class SupabaseGeminiService {
                                 done: false
                               };
                             }
+                            // Yield audio chunks even if they don't have content
+                            if (data.audioData && !data.done) {
+                              console.log('[SupabaseGeminiService] Audio data received in SSE stream (buffer cleanup)');
+                              yield {
+                                chunk: '',
+                                fullResponse,
+                                done: false,
+                                audioData: data.audioData
+                              };
+                            }
                             if (data.done) {
                               if (data.fullResponse) {
                                 fullResponse = data.fullResponse;
@@ -666,6 +676,17 @@ class SupabaseGeminiService {
                             chunk: data.content,
                             fullResponse,
                             done: false
+                          };
+                        }
+                        
+                        // Yield audio chunks even if they don't have content
+                        if (data.audioData && !data.done) {
+                          console.log('[SupabaseGeminiService] Audio data received in SSE stream');
+                          yield {
+                            chunk: '',
+                            fullResponse,
+                            done: false,
+                            audioData: data.audioData
                           };
                         }
                         

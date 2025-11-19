@@ -97,15 +97,14 @@ async function testStreaming(url, anonKey) {
         if (data.content && !data.done) {
           fullResponse += data.content;
         }
+        // Check for audioData in ANY event (not just final)
+        if (data.audioData && data.audioData.data && !sawAudio) {
+          sawAudio = true;
+          console.log('✅ Received audioData in SSE stream. mimeType =', data.audioData.mimeType, 'base64 length =', data.audioData.data.length);
+        }
         if (data.done) {
           if (data.fullResponse) {
             fullResponse = data.fullResponse;
-          }
-          if (data.audioData && data.audioData.data) {
-            sawAudio = true;
-            console.log('✅ Received audioData in final SSE event. mimeType =', data.audioData.mimeType, 'base64 length =', data.audioData.data.length);
-          } else {
-            console.log('⚠️ No audioData present in final SSE event');
           }
         }
       } catch (e) {
