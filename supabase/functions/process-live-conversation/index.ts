@@ -172,21 +172,10 @@ User's focus area: ${focus_area}`
             }
           }
 
-          // Start parallel audio generation task
-          let audioSendTask: Promise<void> | null = null
-
           for await (const chunk of result.stream) {
             const chunkText = chunk.text()
             if (chunkText) {
               fullResponse += chunkText
-              
-              // Start TTS in parallel after we have enough text (first sentence or 50 chars)
-              // This dramatically reduces perceived latency
-              if (!ttsStarted && (fullResponse.length >= 50 || /[.!?]\s/.test(fullResponse))) {
-                startTTS(fullResponse)
-                // Start sending audio in parallel (don't await yet)
-                audioSendTask = sendAudioWhenReady()
-              }
               
               // Send SSE formatted chunk
               const data = JSON.stringify({
@@ -200,16 +189,11 @@ User's focus area: ${focus_area}`
             }
           }
 
-          // If we haven't started TTS yet (very short response), start it now
-          if (!ttsStarted && fullResponse.trim().length > 0) {
+          // Now that we have the complete response, generate TTS from the full text
+          // This ensures audio plays the complete answer without cutting off
+          if (fullResponse.trim().length > 0) {
             startTTS(fullResponse)
-          }
-          
-          // Wait for audio to be sent before closing stream
-          if (audioSendTask) {
-            await audioSendTask
-          } else if (ttsPromise) {
-            // TTS was started but audio send task wasn't created, do it now
+            // Send audio as soon as TTS completes
             await sendAudioWhenReady()
           }
 
