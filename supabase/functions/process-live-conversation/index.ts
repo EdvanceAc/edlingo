@@ -60,23 +60,28 @@ serve(async (req) => {
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 256, // Allow complete short responses while encouraging brevity
       }
     })
 
     // Create system prompt for live conversation
-    const systemPrompt = `You are a helpful language learning assistant engaged in a live voice conversation. 
-Keep your responses:
-- Conversational and natural
-- Concise but informative (1-3 sentences typically)
+    const systemPrompt = `You are a helpful language learning assistant in a live voice conversation. 
+CRITICAL: Keep responses VERY SHORT (15-30 words max, 1-2 sentences).
+- Natural and conversational
 - Encouraging and supportive
-- Always address the user as a single individual; use singular "you". Do not refer to multiple persons unless the user explicitly indicates a group.
-- Focused on helping the user practice ${language}
-- Appropriate for ${user_level} level
-- Gently correct mistakes when needed
-- Ask follow-up questions to keep the conversation flowing
+- Use singular "you"
+- Help practice ${language} at ${user_level} level
+- Gently correct mistakes briefly
+- Ask short follow-up questions
 
-User's focus area: ${focus_area}`
+Focus: ${focus_area}
+
+Example good responses:
+- "That's great! How was your day?"
+- "Good job! What did you do yesterday?"
+- "Nice! Tell me more about that."
+
+Keep it brief for faster audio!`
 
     if (streaming) {
       const origin = req.headers.get('origin') || '*'
@@ -88,6 +93,7 @@ User's focus area: ${focus_area}`
       // Start streaming response
       const streamResponse = async () => {
         try {
+          console.log('[Live] Starting streaming with message:', message)
           const result = await model.generateContentStream({
             contents: [
               { role: 'user', parts: [{ text: systemPrompt }] },
@@ -96,6 +102,7 @@ User's focus area: ${focus_area}`
             ]
           })
           let fullResponse = ''
+          console.log('[Live] Stream started, waiting for chunks...')
           let ttsStarted = false
           let ttsPromise: Promise<any> | null = null
 
@@ -174,6 +181,7 @@ User's focus area: ${focus_area}`
 
           for await (const chunk of result.stream) {
             const chunkText = chunk.text()
+            console.log('[Live] Received chunk, length:', chunkText?.length || 0)
             if (chunkText) {
               fullResponse += chunkText
               
@@ -188,6 +196,7 @@ User's focus area: ${focus_area}`
               await writer.write(encoder.encode(`data: ${data}\n\n`))
             }
           }
+          console.log('[Live] Stream complete, fullResponse length:', fullResponse.length)
 
           // Now that we have the complete response, generate TTS from the full text
           // This ensures audio plays the complete answer without cutting off
