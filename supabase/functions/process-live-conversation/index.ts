@@ -61,24 +61,28 @@ serve(async (req) => {
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 256,
       }
     })
 
-    // Create system prompt for live conversation
-    const systemPrompt = `You are a helpful language learning assistant engaged in a live voice conversation. 
-Keep your responses:
-- Conversational and natural
-- Concise but informative (1-3 sentences typically)
+    // Create system prompt for live conversation (short, voice-friendly responses)
+    const systemPrompt = `You are a helpful language learning assistant in a live voice conversation. 
+CRITICAL: Keep responses VERY SHORT (15-30 words max, 1-2 sentences).
+- Natural and conversational
 - Encouraging and supportive
-- Always address the user as a single individual; use singular "you". Do not refer to multiple persons unless the user explicitly indicates a group.
-- Focused on helping the user practice ${language}
-- Appropriate for ${user_level} level
-- Gently correct mistakes when needed
-- Ask follow-up questions to keep the conversation flowing
+- Use singular "you"
+- Help practice ${language} at ${user_level} level
+- Gently correct mistakes briefly
+- Ask short follow-up questions
 
-User's focus area: ${focus_area}
-Current message: ${message}`
+Focus: ${focus_area}
+
+Example good responses:
+- "That's great! How was your day?"
+- "Good job! What did you do yesterday?"
+- "Nice! Tell me more about that."
+
+Keep it brief for faster audio!`
 
     if (streaming) {
       const origin = req.headers.get('origin') || '*'
@@ -90,15 +94,95 @@ Current message: ${message}`
       // Start streaming response
       const streamResponse = async () => {
         try {
+          console.log('[Live] Starting streaming with message:', message)
           const result = await model.generateContentStream({
             contents: [
-              { role: 'user', parts: [{ text: systemPrompt }] }
+              { role: 'user', parts: [{ text: systemPrompt }] },
+              { role: 'model', parts: [{ text: 'Understood. I will help the user practice their language skills in a supportive and conversational way.' }] },
+              { role: 'user', parts: [{ text: message }] }
             ]
           })
           let fullResponse = ''
+          console.log('[Live] Stream started, waiting for chunks...')
+          let ttsStarted = false
+          let ttsPromise: Promise<any> | null = null
+
+          // Helper to start TTS generation in parallel (for faster audio playback)
+          const startTTS = (text: string) => {
+            if (ttsStarted || !text || text.trim().length === 0) return
+            ttsStarted = true
+            
+            ttsPromise = fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    {
+                      parts: [
+                        { text }
+                      ]
+                    }
+                  ],
+                  generationConfig: {
+                    responseModalities: ['AUDIO'],
+                    speechConfig: {
+                      voiceConfig: {
+                        prebuiltVoiceConfig: {
+                          voiceName: 'Kore'
+                        }
+                      }
+                    }
+                  },
+                  model: 'gemini-2.5-flash-preview-tts'
+                })
+              }
+            ).catch(err => {
+              console.warn('Parallel TTS generation failed:', err)
+              return null
+            })
+          }
+
+          // Helper to send audio data as soon as it's ready
+          const sendAudioWhenReady = async () => {
+            if (!ttsPromise) return
+            
+            try {
+              const ttsResp = await ttsPromise
+              if (ttsResp && ttsResp.ok) {
+                const ttsJson = await ttsResp.json()
+                const parts = ttsJson?.candidates?.[0]?.content?.parts || []
+                const inline = parts.find((p: any) => p.inlineData)
+                if (inline?.inlineData?.data) {
+                  const audioData = {
+                    data: inline.inlineData.data,
+                    mimeType: inline.inlineData.mimeType || 'audio/wav'
+                  }
+                  
+                  // Send audio immediately as a separate SSE event
+                  const audioEvent = JSON.stringify({
+                    content: '',
+                    audioData: audioData,
+                    done: false,
+                    session_id: session_id
+                  })
+                  
+                  await writer.write(encoder.encode(`data: ${audioEvent}\n\n`))
+                } else {
+                  console.warn('TTS response did not contain inlineData audio')
+                }
+              } else if (ttsResp) {
+                console.warn('TTS REST call failed:', ttsResp.status, ttsResp.statusText)
+              }
+            } catch (ttsError) {
+              console.warn('TTS generation failed:', ttsError)
+            }
+          }
 
           for await (const chunk of result.stream) {
             const chunkText = chunk.text()
+            console.log('[Live] Received chunk, length:', chunkText?.length || 0)
             if (chunkText) {
               fullResponse += chunkText
               
@@ -113,53 +197,22 @@ Current message: ${message}`
               await writer.write(encoder.encode(`data: ${data}\n\n`))
             }
           }
+          console.log('[Live] Stream complete, fullResponse length:', fullResponse.length)
 
-          // Attempt Zephyr TTS generation for final response using REST API
-          let audioData: { data: string; mimeType: string } | null = null
-          try {
-            if (fullResponse && fullResponse.trim().length > 0) {
-              const ttsResp = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [
-                      { role: 'user', parts: [{ text: fullResponse }] }
-                    ],
-                    generationConfig: {
-                      responseMimeType: 'audio/wav'
-                    }
-                  })
-                }
-              )
-
-              if (ttsResp.ok) {
-                const ttsJson = await ttsResp.json()
-                const parts = ttsJson?.candidates?.[0]?.content?.parts || []
-                const inline = parts.find((p: any) => p.inlineData)
-                if (inline?.inlineData?.data) {
-                  audioData = {
-                    data: inline.inlineData.data,
-                    mimeType: inline.inlineData.mimeType || 'audio/wav'
-                  }
-                }
-              } else {
-                console.warn('Zephyr TTS REST call failed:', ttsResp.status, ttsResp.statusText)
-              }
-            }
-          } catch (ttsError) {
-            // TTS is optional; log and continue without audio
-            console.warn('Zephyr TTS generation failed:', ttsError)
+          // Now that we have the complete response, generate TTS from the full text
+          // This ensures audio plays the complete answer without cutting off
+          if (fullResponse.trim().length > 0) {
+            startTTS(fullResponse)
+            // Send audio as soon as TTS completes
+            await sendAudioWhenReady()
           }
 
-          // Send final message including optional audio data
+          // Send final message (audio already sent earlier when ready)
           const finalData = JSON.stringify({
             content: '',
             fullResponse: fullResponse,
             done: true,
-            session_id: session_id,
-            audioData
+            session_id: session_id
           })
           
           await writer.write(encoder.encode(`data: ${finalData}\n\n`))
@@ -193,7 +246,9 @@ Current message: ${message}`
       // Non-streaming response
       const result = await model.generateContent({
         contents: [
-          { role: 'user', parts: [{ text: systemPrompt }] }
+          { role: 'user', parts: [{ text: systemPrompt }] },
+          { role: 'model', parts: [{ text: 'Understood. I will help the user practice their language skills in a supportive and conversational way.' }] },
+          { role: 'user', parts: [{ text: message }] }
         ]
       })
       const response = result.response.text()
