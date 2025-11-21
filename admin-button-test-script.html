@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard Button Test Script</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #2563eb;
+        }
+        .danger-button {
+            background: #dc2626;
+        }
+        .danger-button:hover {
+            background: #b91c1c;
+        }
+        .success-button {
+            background: #059669;
+        }
+        .success-button:hover {
+            background: #047857;
+        }
+        .console-output {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-info { color: #60a5fa; }
+        .log-success { color: #34d399; }
+        .log-warning { color: #fbbf24; }
+        .log-error { color: #f87171; }
+        .timestamp {
+            color: #9ca3af;
+            font-size: 11px;
+        }
+        .clear-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Admin Dashboard Button Test Script</h1>
+            <p>This script monitors and logs all button interactions in the admin dashboard, with special focus on course creation and update functionality.</p>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Course Management Tests</h2>
+            <p>Test the main course creation and editing functionality:</p>
+            <button class="test-button" onclick="testCreateCourseButton()">Test Create Course Button</button>
+            <button class="test-button" onclick="testEditCourseButton()">Test Edit Course Button</button>
+            <button class="test-button" onclick="testCourseFormSubmission()">Test Course Form Submission</button>
+            <button class="test-button" onclick="testCourseModalFunctions()">Test Course Modal Functions</button>
+        </div>
+
+        <div class="test-section">
+            <h2>🔍 General Button Monitoring</h2>
+            <p>Monitor all button clicks across the admin dashboard:</p>
+            <button class="test-button" onclick="startButtonMonitoring()">Start Button Monitoring</button>
+            <button class="test-button danger-button" onclick="stopButtonMonitoring()">Stop Button Monitoring</button>
+            <button class="test-button" onclick="testAllAdminButtons()">Test All Admin Buttons</button>
+        </div>
+
+        <div class="test-section">
+            <h2>🛠️ Diagnostic Tools</h2>
+            <p>Additional diagnostic and testing tools:</p>
+            <button class="test-button" onclick="checkFormElements()">Check Form Elements</button>
+            <button class="test-button" onclick="checkEventListeners()">Check Event Listeners</button>
+            <button class="test-button" onclick="checkSupabaseConnection()">Check Supabase Connection</button>
+            <button class="test-button" onclick="simulateCourseCreation()">Simulate Course Creation</button>
+            <button class="test-button success-button" onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Console Output</h2>
+            <button class="clear-btn" onclick="clearConsoleOutput()">Clear Console</button>
+            <div id="consoleOutput" class="console-output">
+                <div class="log-entry log-info">
+                    <span class="timestamp">[${new Date().toLocaleTimeString()}]</span> 
+                    Admin Dashboard Button Test Script loaded successfully.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for monitoring
+        let buttonMonitoringActive = false;
+        let originalConsoleLog = console.log;
+        let originalConsoleError = console.error;
+        let originalConsoleWarn = console.warn;
+        let buttonClickListeners = [];
+
+        // Enhanced console logging
+        function logToConsole(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const consoleOutput = document.getElementById('consoleOutput');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            consoleOutput.appendChild(logEntry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            
+            // Also log to browser console
+            const logMethod = type === 'error' ? console.error : type === 'warning' ? console.warn : console.log;
+            logMethod(`[Admin Test] ${message}`);
+        }
+
+        function clearConsoleOutput() {
+            document.getElementById('consoleOutput').innerHTML = '';
+            logToConsole('Console cleared.', 'info');
+        }
+
+        // Override console methods to capture all logs
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            logToConsole(args.join(' '), 'info');
+        };
+
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            logToConsole(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            logToConsole(args.join(' '), 'warning');
+        };
+
+        // Test Create Course Button
+        function testCreateCourseButton() {
+            logToConsole('🧪 Testing Create Course Button...', 'info');
+            
+            try {
+                // Check if showAddCourseModal function exists
+                if (typeof showAddCourseModal === 'function') {
+                    logToConsole('✅ showAddCourseModal function found', 'success');
+                    
+                    // Test calling the function
+                    logToConsole('📞 Calling showAddCourseModal()...', 'info');
+                    showAddCourseModal();
+                    
+                    // Check if modal is visible
+                    setTimeout(() => {
+                        const modal = document.getElementById('courseModal');
+                        if (modal) {
+                            const isVisible = !modal.classList.contains('hidden');
+                            logToConsole(`📋 Course modal visibility: ${isVisible ? 'VISIBLE' : 'HIDDEN'}`, isVisible ? 'success' : 'warning');
+                            
+                            if (isVisible) {
+                                logToConsole('✅ Create Course button test PASSED', 'success');
+                            } else {
+                                logToConsole('⚠️ Create Course button test FAILED - Modal not visible', 'warning');
+                            }
+                        } else {
+                            logToConsole('❌ Course modal element not found', 'error');
+                        }
+                    }, 100);
+                } else {
+                    logToConsole('❌ showAddCourseModal function not found', 'error');
+                }
+                
+                // Check for Create Course buttons
+                const createButtons = document.querySelectorAll('button[onclick*="showAddCourseModal"]');
+                logToConsole(`🔍 Found ${createButtons.length} Create Course buttons`, 'info');
+                
+                createButtons.forEach((btn, index) => {
+                    logToConsole(`   Button ${index + 1}: ${btn.textContent.trim()}`, 'info');
+                });
+                
+            } catch (error) {
+                logToConsole(`❌ Error testing Create Course button: ${error.message}`, 'error');
+            }
+        }
+
+        // Test Edit Course Button
+        function testEditCourseButton() {
+            logToConsole('🧪 Testing Edit Course Button...', 'info');
+            
+            try {
+                // Check if editCourse function exists
+                if (typeof editCourse === 'function') {
+                    logToConsole('✅ editCourse function found', 'success');
+                    
+                    // Test with a test course ID
+                    logToConsole('📞 Calling editCourse with test ID...', 'info');
+                    editCourse('test-course-id');
+                    
+                    // Check if modal is visible after edit
+                    setTimeout(() => {
+                        const modal = document.getElementById('courseModal');
+                        if (modal) {
+                            const isVisible = !modal.classList.contains('hidden');
+                            logToConsole(`📋 Course modal visibility after edit: ${isVisible ? 'VISIBLE' : 'HIDDEN'}`, isVisible ? 'success' : 'warning');
+                            
+                            if (isVisible) {
+                                // Check if form is populated with test data
+                                const titleField = document.getElementById('courseTitle');
+                                if (titleField && titleField.value) {
+                                    logToConsole(`📝 Form populated with title: "${titleField.value}"`, 'success');
+                                    logToConsole('✅ Edit Course button test PASSED', 'success');
+                                } else {
+                                    logToConsole('⚠️ Form not populated with test data', 'warning');
+                                }
+                            }
+                        }
+                    }, 200);
+                } else {
+                    logToConsole('❌ editCourse function not found', 'error');
+                }
+                
+                // Check for Edit Course buttons
+                const editButtons = document.querySelectorAll('button[onclick*="editCourse"]');
+                logToConsole(`🔍 Found ${editButtons.length} Edit Course buttons`, 'info');
+                
+            } catch (error) {
+                logToConsole(`❌ Error testing Edit Course button: ${error.message}`, 'error');
+            }
+        }
+
+        // Test Course Form Submission
+        function testCourseFormSubmission() {
+            logToConsole('🧪 Testing Course Form Submission...', 'info');
+            
+            try {
+                const courseForm = document.getElementById('courseForm');
+                if (courseForm) {
+                    logToConsole('✅ Course form found', 'success');
+                    
+                    // Check for submit button
+                    const submitBtn = document.getElementById('finishBtn');
+                    if (submitBtn) {
+                        logToConsole('✅ Submit button found', 'success');
+                        logToConsole(`📝 Submit button text: "${submitBtn.textContent.trim()}"`, 'info');
+                        
+                        // Check if form has event listeners
+                        const hasSubmitListener = courseForm.onsubmit !== null;
+                        logToConsole(`🎧 Form has submit listener: ${hasSubmitListener}`, hasSubmitListener ? 'success' : 'warning');
+                        
+                        // Test form validation
+                        logToConsole('🧪 Testing form validation...', 'info');
+                        const titleField = document.getElementById('courseTitle');
+                        const descField = document.getElementById('courseDescription');
+                        
+                        if (titleField && descField) {
+                            const originalTitle = titleField.value;
+                            const originalDesc = descField.value;
+                            
+                            // Clear fields to test validation
+                            titleField.value = '';
+                            descField.value = '';
+                            
+                            // Try to submit
+                            logToConsole('📤 Attempting form submission with empty fields...', 'info');
+                            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                            courseForm.dispatchEvent(submitEvent);
+                            
+                            // Restore original values
+                            setTimeout(() => {
+                                titleField.value = originalTitle;
+                                descField.value = originalDesc;
+                            }, 100);
+                        }
+                    } else {
+                        logToConsole('❌ Submit button not found', 'error');
+                    }
+                } else {
+                    logToConsole('❌ Course form not found', 'error');
+                }
+            } catch (error) {
+                logToConsole(`❌ Error testing form submission: ${error.message}`, 'error');
+            }
+        }
+
+        // Test Course Modal Functions
+        function testCourseModalFunctions() {
+            logToConsole('🧪 Testing Course Modal Functions...', 'info');
+            
+            try {
+                // Test closeCourseModal function
+                if (typeof closeCourseModal === 'function') {
+                    logToConsole('✅ closeCourseModal function found', 'success');
+                } else {
+                    logToConsole('❌ closeCourseModal function not found', 'error');
+                }
+                
+                // Test modal elements
+                const modal = document.getElementById('courseModal');
+                const modalTitle = document.getElementById('courseModalTitle');
+                const progressBar = document.getElementById('progressBar');
+                
+                logToConsole(`📋 Course modal element: ${modal ? 'FOUND' : 'NOT FOUND'}`, modal ? 'success' : 'error');
+                logToConsole(`📝 Modal title element: ${modalTitle ? 'FOUND' : 'NOT FOUND'}`, modalTitle ? 'success' : 'error');
+                logToConsole(`📊 Progress bar element: ${progressBar ? 'FOUND' : 'NOT FOUND'}`, progressBar ? 'success' : 'error');
+                
+                // Test wizard step functions
+                if (typeof showWizardStep === 'function') {
+                    logToConsole('✅ showWizardStep function found', 'success');
+                } else {
+                    logToConsole('❌ showWizardStep function not found', 'error');
+                }
+                
+            } catch (error) {
+                logToConsole(`❌ Error testing modal functions: ${error.message}`, 'error');
+            }
+        }
+
+        // Start Button Monitoring
+        function startButtonMonitoring() {
+            if (buttonMonitoringActive) {
+                logToConsole('⚠️ Button monitoring is already active', 'warning');
+                return;
+            }
+            
+            logToConsole('🎧 Starting button monitoring...', 'info');
+            buttonMonitoringActive = true;
+            
+            // Monitor all button clicks
+            document.addEventListener('click', function(event) {
+                if (event.target.tagName === 'BUTTON' || event.target.closest('button')) {
+                    const button = event.target.tagName === 'BUTTON' ? event.target : event.target.closest('button');
+                    const buttonText = button.textContent.trim();
+                    const buttonId = button.id || 'no-id';
+                    const buttonClass = button.className || 'no-class';
+                    const buttonOnclick = button.getAttribute('onclick') || 'no-onclick';
+                    
+                    logToConsole(`🖱️ BUTTON CLICKED: "${buttonText}"`, 'info');
+                    logToConsole(`   ID: ${buttonId}`, 'info');
+                    logToConsole(`   Classes: ${buttonClass}`, 'info');
+                    logToConsole(`   Onclick: ${buttonOnclick}`, 'info');
+                    
+                    // Special handling for course buttons
+                    if (buttonText.toLowerCase().includes('create course') || buttonOnclick.includes('showAddCourseModal')) {
+                        logToConsole('🎯 CREATE COURSE BUTTON DETECTED!', 'success');
+                    }
+                    
+                    if (buttonText.toLowerCase().includes('update course') || buttonText.toLowerCase().includes('edit course')) {
+                        logToConsole('🎯 UPDATE/EDIT COURSE BUTTON DETECTED!', 'success');
+                    }
+                }
+            }, true);
+            
+            logToConsole('✅ Button monitoring started successfully', 'success');
+        }
+
+        // Stop Button Monitoring
+        function stopButtonMonitoring() {
+            if (!buttonMonitoringActive) {
+                logToConsole('⚠️ Button monitoring is not active', 'warning');
+                return;
+            }
+            
+            buttonMonitoringActive = false;
+            logToConsole('🛑 Button monitoring stopped', 'info');
+        }
+
+        // Test All Admin Buttons
+        function testAllAdminButtons() {
+            logToConsole('🧪 Testing all admin buttons...', 'info');
+            
+            const allButtons = document.querySelectorAll('button');
+            logToConsole(`🔍 Found ${allButtons.length} buttons total`, 'info');
+            
+            let courseButtons = 0;
+            let otherButtons = 0;
+            
+            allButtons.forEach((button, index) => {
+                const text = button.textContent.trim();
+                const onclick = button.getAttribute('onclick') || '';
+                
+                if (text.toLowerCase().includes('course') || onclick.includes('Course') || onclick.includes('course')) {
+                    courseButtons++;
+                    logToConsole(`   📚 Course Button ${courseButtons}: "${text}" (${onclick})`, 'success');
+                } else {
+                    otherButtons++;
+                    if (text) {
+                        logToConsole(`   🔘 Button ${index + 1}: "${text}"`, 'info');
+                    }
+                }
+            });
+            
+            logToConsole(`📊 Summary: ${courseButtons} course-related buttons, ${otherButtons} other buttons`, 'info');
+        }
+
+        // Check Form Elements
+        function checkFormElements() {
+            logToConsole('🧪 Checking form elements...', 'info');
+            
+            const requiredElements = [
+                'courseForm',
+                'courseTitle',
+                'courseDescription',
+                'cefrLevel',
+                'courseCategory',
+                'courseLanguage',
+                'courseDuration',
+                'courseHours',
+                'finishBtn'
+            ];
+            
+            requiredElements.forEach(elementId => {
+                const element = document.getElementById(elementId);
+                logToConsole(`   ${elementId}: ${element ? '✅ FOUND' : '❌ MISSING'}`, element ? 'success' : 'error');
+                
+                if (element && element.tagName === 'INPUT') {
+                    logToConsole(`      Value: "${element.value}"`, 'info');
+                }
+            });
+        }
+
+        // Check Event Listeners
+        function checkEventListeners() {
+            logToConsole('🧪 Checking event listeners...', 'info');
+            
+            const courseForm = document.getElementById('courseForm');
+            if (courseForm) {
+                logToConsole(`   Course form onsubmit: ${courseForm.onsubmit ? '✅ FOUND' : '❌ MISSING'}`, courseForm.onsubmit ? 'success' : 'error');
+                
+                // Check if addEventListener was used
+                const hasEventListener = courseForm._events || courseForm.listeners;
+                logToConsole(`   Course form event listeners: ${hasEventListener ? '✅ DETECTED' : '⚠️ UNKNOWN'}`, 'info');
+            }
+            
+            // Check global functions
+            const globalFunctions = [
+                'showAddCourseModal',
+                'closeCourseModal',
+                'editCourse',
+                'deleteCourse',
+                'showWizardStep'
+            ];
+            
+            globalFunctions.forEach(funcName => {
+                const exists = typeof window[funcName] === 'function';
+                logToConsole(`   ${funcName}: ${exists ? '✅ FOUND' : '❌ MISSING'}`, exists ? 'success' : 'error');
+            });
+        }
+
+        // Check Supabase Connection
+        function checkSupabaseConnection() {
+            logToConsole('🧪 Checking Supabase connection...', 'info');
+            
+            if (typeof supabase !== 'undefined') {
+                logToConsole('✅ Supabase client found', 'success');
+                logToConsole(`   Supabase URL: ${supabase.supabaseUrl || 'unknown'}`, 'info');
+            } else {
+                logToConsole('❌ Supabase client not found', 'error');
+            }
+        }
+
+        // Simulate Course Creation
+        function simulateCourseCreation() {
+            logToConsole('🧪 Simulating course creation...', 'info');
+            
+            try {
+                // Open the modal
+                if (typeof showAddCourseModal === 'function') {
+                    showAddCourseModal();
+                    
+                    setTimeout(() => {
+                        // Fill in test data
+                        const titleField = document.getElementById('courseTitle');
+                        const descField = document.getElementById('courseDescription');
+                        
+                        if (titleField && descField) {
+                            titleField.value = 'Test Course - ' + new Date().toLocaleTimeString();
+                            descField.value = 'This is a test course created by the diagnostic script.';
+                            
+                            logToConsole('📝 Test data filled in form', 'success');
+                            logToConsole('⚠️ Ready for manual submission test', 'warning');
+                        } else {
+                            logToConsole('❌ Could not fill form fields', 'error');
+                        }
+                    }, 500);
+                } else {
+                    logToConsole('❌ Cannot simulate - showAddCourseModal function not found', 'error');
+                }
+            } catch (error) {
+                logToConsole(`❌ Error simulating course creation: ${error.message}`, 'error');
+            }
+        }
+
+        // Run Full Diagnostic
+        function runFullDiagnostic() {
+            logToConsole('🚀 Running full diagnostic...', 'info');
+            logToConsole('=' .repeat(50), 'info');
+            
+            setTimeout(() => checkFormElements(), 100);
+            setTimeout(() => checkEventListeners(), 200);
+            setTimeout(() => checkSupabaseConnection(), 300);
+            setTimeout(() => testCreateCourseButton(), 400);
+            setTimeout(() => testEditCourseButton(), 600);
+            setTimeout(() => testCourseFormSubmission(), 800);
+            setTimeout(() => testCourseModalFunctions(), 1000);
+            setTimeout(() => testAllAdminButtons(), 1200);
+            
+            setTimeout(() => {
+                logToConsole('=' .repeat(50), 'info');
+                logToConsole('✅ Full diagnostic completed', 'success');
+            }, 1400);
+        }
+
+        // Initialize
+        logToConsole('🎯 Admin Dashboard Button Test Script ready!', 'success');
+        logToConsole('💡 Click "Run Full Diagnostic" to start comprehensive testing', 'info');
+    </script>
+</body>
+</html>

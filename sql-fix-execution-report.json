@@ -1,0 +1,96 @@
+{
+  "summary": {
+    "timestamp": "2025-09-09T18:21:27.452Z",
+    "totalFixes": 12,
+    "successfulFixes": 0,
+    "failedFixes": 12,
+    "totalTests": 4,
+    "passedTests": 3,
+    "failedTests": 1
+  },
+  "fixResults": [
+    {
+      "name": "Add lessons_completed to user_progress",
+      "success": false,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "name": "Add index for lessons_completed",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Add user_id to user_profiles",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Add difficulty_level to courses",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Add index for difficulty_level",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Add course_id to lessons",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Add content to lessons",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Add order_index to lessons",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Add indexes for lessons",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Update user_progress default values",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Update courses default difficulty",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    },
+    {
+      "name": "Update lessons default order_index",
+      "success": false,
+      "error": "Could not find the function public.query(query_text) in the schema cache"
+    }
+  ],
+  "testResults": [
+    {
+      "name": "Test user_progress with lessons_completed",
+      "success": true,
+      "count": 1
+    },
+    {
+      "name": "Test courses with difficulty_level",
+      "success": true,
+      "count": 1
+    },
+    {
+      "name": "Test lessons with new columns",
+      "success": false,
+      "error": "column lessons.course_id does not exist",
+      "count": 0
+    },
+    {
+      "name": "Test notifications table",
+      "success": true,
+      "count": 0
+    }
+  ]
+}

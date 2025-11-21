@@ -1,0 +1,351 @@
+.select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 70px;
+  & > label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--Neutral-80);
+    margin-bottom: 8px;
+  }
+}
+
+.settings-dialog {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 70px;
+
+  .connected-indicator {
+    font-style: italic;
+  }
+
+  /*.connected-indicator {
+    &:before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      display: block;
+      content: "";
+      width: 100%;
+      height: 100%;
+      background-color: var(--Neutral-5);
+      opacity: 0.85;
+    }
+    z-index: 1;
+    
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--Neutral-80);
+
+    p {
+      z-index: 1;
+    }
+  }*/
+
+  h4 {
+    margin-left: 4px;
+    margin-bottom: 10px;
+  }
+
+  button {
+    background: none;
+    border: 0;
+  }
+
+  /* clearer, high-contrast settings trigger next to Play */
+  .settings-trigger {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-size: 30px; /* larger glyph for clarity */
+    animation: none; /* remove opacity pulse for solid look */
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.22);
+    }
+
+    &:focus {
+      border: 2px solid rgba(255, 255, 255, 0.60);
+      outline: 2px solid rgba(255, 255, 255, 0.50);
+    }
+  }
+
+  /* modal styles moved to portal; see base .dialog */
+
+  /* container styles handled by base .dialog-container */
+
+  .small {
+    font-size: 80%;
+  }
+
+  /* mode-selectors styled globally for modal */
+
+  /* system textarea styled globally for modal */
+
+  /* function declarations styled globally for modal */
+}
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(68, 141, 255, 0.12), transparent 40%),
+    rgba(10, 12, 14, 0.60);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 999;
+  pointer-events: auto;
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  width: 860px;
+  max-width: calc(100% - 48px);
+  max-height: calc(100% - 48px);
+  border: 1px solid var(--Neutral-20);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--Neutral-15) 0%, var(--Neutral-10) 100%);
+}
+
+.dialog-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: var(--Neutral-90);
+  padding-bottom: 20px;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  background: transparent;
+  border-bottom: 1px solid var(--Neutral-20);
+  position: relative;
+}
+.settings-header::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(161, 228, 242, 0), rgba(161, 228, 242, 0.35), rgba(161, 228, 242, 0));
+}
+
+.settings-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--Neutral-90);
+}
+
+.close-btn {
+  border: none;
+  outline: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--Neutral-20);
+  color: var(--Neutral-80);
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.close-btn:hover {
+  background: var(--Neutral-30);
+}
+
+.connected-indicator {
+  padding: 12px 16px;
+  margin: 0 20px;
+  border-radius: 12px;
+  background: var(--Neutral-10);
+  border: 1px solid var(--Neutral-30);
+  color: var(--Neutral-80);
+}
+
+.mode-selectors {
+  padding: 12px 20px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+h3 {
+  margin: 12px 20px 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--Neutral-90);
+}
+
+.system {
+  margin: 0 20px;
+  min-height: 140px;
+  border-radius: 12px;
+  border: 1px solid var(--Neutral-30);
+  background: var(--Neutral-10);
+  color: var(--Neutral-90);
+  line-height: 1.5;
+  font-size: 14px;
+  padding: 10px;
+  resize: vertical;
+  overflow: auto;
+}
+
+h4 {
+  margin: 12px 20px 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--Neutral-85);
+}
+
+.function-declarations {
+  margin: 0 20px 20px;
+  border: 1px solid var(--Neutral-30);
+  border-radius: 12px;
+  background: var(--Neutral-10);
+}
+
+.fd-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.fd-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 14px;
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--Neutral-20);
+}
+
+.fd-row:last-child {
+  border-bottom: none;
+}
+
+.fd-row-name {
+  color: var(--Neutral-80);
+}
+
+.fd-row-args span {
+  color: var(--Neutral-80);
+  background: var(--Neutral-15);
+  border: 1px solid var(--Neutral-30);
+  border-radius: 8px;
+  padding: 4px 6px;
+  margin-right: 6px;
+  font-size: 12px;
+}
+
+.fd-row-description {
+  border: 1px solid var(--Neutral-30);
+  border-radius: 10px;
+  background: var(--Neutral-10);
+  color: var(--Neutral-90);
+  height: 36px;
+  padding: 0 8px;
+}
+
+.dialog.open { display: block; }
+
+// Inputs, selects, and textareas unified styling for readability
+.dialog select,
+.dialog input[type="text"] {
+  background: var(--Neutral-10);
+  color: var(--Neutral-90);
+  border: 1px solid var(--Neutral-30);
+  border-radius: 10px;
+  height: 36px;
+  padding: 0 10px;
+  appearance: none;
+}
+
+.dialog textarea {
+  background: var(--Neutral-10);
+  color: var(--Neutral-90);
+  border: 1px solid var(--Neutral-30);
+  border-radius: 10px;
+  height: auto;
+  min-height: 120px;
+  padding: 8px 10px;
+}
+
+.dialog input::placeholder,
+.dialog textarea::placeholder {
+  color: var(--Neutral-60);
+}
+
+.dialog select:focus,
+.dialog textarea:focus,
+.dialog input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(33, 78, 207, 0.35);
+}
+
+.close-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 78, 207, 0.35);
+}
+
+// Adjust headings for higher contrast
+h3 {
+  color: var(--Neutral-90);
+}
+
+h4 {
+  color: var(--Neutral-85);
+}
+
+// System instructions textarea: neutral surface for legibility
+.system {
+  background: var(--Neutral-10);
+  color: var(--Neutral-90);
+}
+
+// Function declarations list: clearer row and name chip
+.function-declarations .fd-row-name {
+  color: var(--Neutral-90);
+  background: var(--Neutral-15);
+  border: 1px solid var(--Neutral-30);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-weight: 600;
+}
+
+.fd-row-description {
+  border: 1px solid var(--Neutral-30);
+  background: var(--Neutral-10);
+  color: var(--Neutral-90);
+  margin-inline: 12px;
+}

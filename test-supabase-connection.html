@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="/env.js"></script>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const supabaseUrl = (window.__ENV && window.__ENV.SUPABASE_URL) || '';
+        const supabaseAnonKey = (window.__ENV && window.__ENV.SUPABASE_ANON_KEY) || '';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const resultsDiv = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const p = document.createElement('p');
+            p.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(p);
+            console.log(message);
+        }
+        
+        async function testConnection() {
+            try {
+                log('Testing Supabase connection...');
+                log(`Origin: ${location.origin}`);
+                
+                if (!supabaseUrl || !supabaseAnonKey) {
+                    log('❌ Missing SUPABASE_URL or SUPABASE_ANON_KEY in env.js', 'error');
+                    return;
+                }
+                
+                // Test 1: Basic REST API connection
+                log('Test 1: Basic REST API connection');
+                const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    }
+                });
+                
+                if (response.ok) {
+                    log('✅ Basic REST API connection successful', 'success');
+                } else {
+                    log(`❌ Basic REST API connection non-OK: ${response.status} ${response.statusText}`, 'error');
+                }
+                
+                // Test 2: Try to query a specific table with supabase-js
+                log('Test 2: Querying user_profiles count with supabase-js');
+                const { error: upError } = await supabase
+                    .from('user_profiles')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (upError) {
+                    log(`❌ Error querying user_profiles: ${upError.message}`, 'error');
+                } else {
+                    log(`✅ user_profiles table accessible`, 'success');
+                }
+                
+                // Test 3: Try other tables
+                const tables = ['courses', 'user_achievements', 'lessons'];
+                for (const table of tables) {
+                    log(`Test 3.${tables.indexOf(table) + 1}: Querying ${table} table`);
+                    const { error } = await supabase
+                        .from(table)
+                        .select('count', { count: 'exact', head: true });
+                    
+                    if (error) {
+                        log(`❌ Error querying ${table}: ${error.message}`, 'error');
+                    } else {
+                        log(`✅ ${table} table accessible`, 'success');
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Connection test failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Run test when page loads
+        window.addEventListener('load', testConnection);
+    </script>
+</body>
+</html>

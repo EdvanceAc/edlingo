@@ -1,0 +1,77 @@
+Based on your provided `changelog.md` data, while you have a strong foundation outlining features for students, teachers/admins, and developers, the sources indicate several crucial features, technical considerations, and strategic steps that are either entirely missing or require more explicit definition to complete the project as envisioned.
+
+Here's a breakdown of additional key areas you must address to complete the project, drawing from the sources:
+
+### I. Core Application Features & User Experience Enhancements
+
+*   **Initial Language Proficiency Assessment**:
+    *   Implement an **AI-driven initial assessment** for users ready to start the app, involving a **short conversation (5 to 10 minutes) and a brief writing sample (a paragraph)**.
+    *   The AI should analyze various aspects of language proficiency, including **grammar, fluency, pronunciation, and vocabulary range**.
+    *   The assessment should evaluate against **established international standards like the CFR (Common European Framework of Reference for Languages)** or **custom-defined metrics**.
+    *   The AI's scoring should aim for accuracy comparable to **IELTS scoring criteria**.
+    *   Based on this assessment, users must be **automatically placed in their appropriate proficiency level (e.g., A1, A2, B1, etc.)**.
+
+*   **Content Delivery and Learner Progression Controls**:
+    *   Implement a "**dripping system**" to unlock content sequentially. This system requires learners to **complete assignments, pass tests, and potentially engage in a minimum amount of free conversation** for each session or module before advancing to the next level or accessing more advanced materials.
+    *   **Content for higher proficiency levels must be locked** for users at lower levels to ensure they interact with suitable material.
+    *   Develop the capability to "**break down text**" by simplifying complex language (grammar and vocabulary) to suit different language proficiency levels, using CFR as a basis and custom metrics.
+
+*   **Enhanced AI Interaction for Learning**:
+    *   Utilize a **real-time AI API** to enable simultaneous speech-to-text, processing, new text generation, and text-to-speech conversion for a low-latency, interactive experience.
+    *   Incorporate **AI for error correction** in pronunciation, vocabulary, and grammar, potentially providing feedback immediately after conversation or writing.
+    *   For **absolute beginner (A1) level learners**, implement a **pattern-based approach** with a limited set of basic questions and answers (e.g., 300-400). The system should **provide examples or use "scaffolding" techniques** to help learners formulate responses and build foundational sentence structures.
+    *   Explore **adjusting the speaking speed of the AI** for different proficiency levels.
+    *   Consider using **pre-defined "catchphrases" or filler words** to bridge potential silences during voice conversations.
+    *   Implement features to **record and store conversation and error history** for review and personalized practice.
+
+*   **Visual Content Integration**:
+    *   Create a **pre-produced image database/library for a set of core vocabulary words (e.g., 3000-4000)**. When a learner searches for a word, the corresponding image from this database should be displayed, avoiding the cost and unpredictability of on-demand AI image generation.
+
+*   **Advanced AI Capabilities**:
+    *   Leverage **AI voice "cloning" technology** for personalized learning experiences (e.g., AI tutor mimicking a specific voice) and for **realistic lip-syncing with translated audio** for multilingual educational materials.
+    *   Explore using different AI models beyond OpenAI (e.g., **Gemini, DeepSeek, Grok, Anthropic's Claude**) for specific strengths in text generation, coding, and video creation, potentially for cost-effectiveness or superior performance.
+
+*   **Payment System**:
+    *   Implement **cryptocurrency payments (e.g., Bitcoin, Solana, Ethereum, USDC, USDT) via QR codes** to enable instant, direct transactions to digital wallets without intermediaries, potentially bypassing sanctions.
+    *   The platform should support **multiple payment options**, including local and foreign currencies, for broader accessibility in the future.
+    *   Consider implementing **IP-based pricing** to adjust costs based on the user's geographic location.
+
+*   **Notifications System**:
+    *   Develop a system for sending **targeted push notifications** to users about new courses, discounts, and promotions.
+
+*   **Additional Content and UI Features**:
+    *   Implement a **dark/light mode toggle** for the app.
+    *   Include a mechanism to **ban screenshotting** or ensure the screenshot is empty if taken.
+    *   Create a section where **teachers can upload PDF books** for students to read and take quizzes on.
+    *   Allow teachers to **highlight words in uploaded books and add synonyms** for students to click and view.
+    *   Offer **individual, family, and corporate subscription plans**.
+
+### II. Technical Architecture and Development Strategy
+
+*   **User Management CMS Details**:
+    *   The CMS should be **user-friendly and WordPress-like**, eliminating the need for programming for manual changes.
+    *   It should include a **visual chart of user growth**.
+    *   Provide **granular access management for enterprise users**, including specifying folder access and permissions.
+    *   Support **SSO (Single Sign-On) and enterprise logins**.
+
+*   **Overall Platform Architecture**:
+    *   Build the platform as a **web application**, potentially using **React**.
+    *   Ensure an **open and extensible architecture** to allow for future additions and modifications.
+    *   Aim for a **direct connection to the main AI source** to avoid intermediary steps and ensure faster interactions.
+    *   Consider **deploying on foreign web servers (outside of Iran)**, potentially leveraging platforms like **GitHub for deployment and version control**, to potentially bypass censorship and facilitate future international expansion.
+    *   For accessing restricted AI services (like OpenAI), consider **routing traffic through external servers (similar to a VPN)** to maintain functionality.
+    *   Ensure **code security by using private repositories on platforms like GitHub**.
+
+*   **Development Workflow and Project Management**:
+    *   Follow a **phased development approach**, prioritizing essential core functionalities first before adding more complex features.
+    *   Create **detailed specification documents** (e.g., Product Requirements, Technical Requirements, UI Requirements) and use them as context for AI tools like Cursor.
+    *   Set up **Cursor Rules (`.cursor/rules`)** to guide AI behavior, including preferred tech stack, coding style, and specific instructions.
+    *   Break down features into **smaller, manageable tasks** for iterative development.
+    *   Use **Cursor's agent mode (Cmd+K or Ctrl+K) on small code selections** (1-50 lines) with explicit, context-rich prompts.
+    *   **Reference existing code** and instruct AI to avoid rewriting methods unnecessarily.
+    *   For complex tasks, request the AI to **outline a plan or present multiple approaches** before generating code.
+    *   **Commit changes frequently** to maintain a clear version history and facilitate rollbacks.
+    *   Plan for an **initial testing phase focused on the Iranian market** before a wider rollout.
+    *   A **CRM system** is also suggested for managing marketing campaigns and affiliate commissions.
+
+By addressing these elements, you will be well on your way to completing a comprehensive AI-powered language learning platform as outlined in the sources.
