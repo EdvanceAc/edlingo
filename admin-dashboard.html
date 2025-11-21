@@ -5644,6 +5644,9 @@
                                         <button type="button" class="auto-fetch-btn px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" onclick="autoFetchPdfHighlights(this.closest('.content-item'))">
                                             <i data-lucide="download" class="w-3 h-3 inline mr-1"></i>Fetch Existing
                                         </button>
+                                        <button type="button" class="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700" onclick="togglePdfAnnotator(this.closest('.content-item'))">
+                                            <i data-lucide="highlighter" class="w-3 h-3 inline mr-1"></i>Annotate PDF
+                                        </button>
                                         <button type="button" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700" onclick="addPdfHighlightRow(this)">Add Row</button>
                                     </div>
                                 </div>
@@ -5666,6 +5669,18 @@
                                         </thead>
                                         <tbody></tbody>
                                     </table>
+                                </div>
+                                <div class="mt-3 pdf-annotator hidden">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <button type="button" class="px-2 py-1 bg-gray-200 rounded text-xs" onclick="prevPdfPage(this.closest('.content-item'))">Prev</button>
+                                        <span class="annotator-page-info text-xs"></span>
+                                        <button type="button" class="px-2 py-1 bg-gray-200 rounded text-xs" onclick="nextPdfPage(this.closest('.content-item'))">Next</button>
+                                        <span class="text-xs text-gray-500">Drag on the page to create a highlight</span>
+                                    </div>
+                                    <div class="relative inline-block border rounded p-2" style="line-height:0">
+                                        <canvas class="pdf-canvas"></canvas>
+                                        <div class="annotation-layer absolute inset-0" style="cursor: crosshair"></div>
+                                    </div>
                                 </div>
                                 <p class="mt-2 text-xs text-gray-500">Note: X,Y,W,H are normalized (0–1) relative to the PDF page.</p>
                             </div>
@@ -6309,6 +6324,211 @@
             
             // Create a simple preview modal or alert
             createToast({ type: 'info', message: `Preview: ${contentType.toUpperCase()} - ${contentTitle || 'Untitled'}` });
+        }
+        async function ensurePdfJsLoaded() {
+            if (window.pdfjsLib) return;
+            await new Promise((resolve) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.227/pdf.min.js';
+                s.onload = resolve;
+                s.onerror = resolve;
+                document.head.appendChild(s);
+            });
+            if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.227/pdf.worker.min.js';
+            }
+        }
+
+        function getPdfUrlForContentItem(contentItem) {
+            try {
+                const fileInput = contentItem.querySelector('.content-file');
+                if (fileInput && fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    const objUrl = URL.createObjectURL(file);
+                    contentItem.dataset.localPdfUrl = objUrl;
+                    return objUrl;
+                }
+                if (contentItem.dataset.pdfUrl) {
+                    return contentItem.dataset.pdfUrl;
+                }
+                const courseId = getCurrentCourseId();
+                if (courseId) {
+                    return null;
+                }
+                return null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function togglePdfAnnotator(contentItem) {
+            try {
+                const annotator = contentItem.querySelector('.pdf-annotator');
+                if (!annotator) return;
+                const hidden = annotator.classList.contains('hidden');
+                if (hidden) {
+                    annotator.classList.remove('hidden');
+                    await initPdfAnnotator(contentItem);
+                } else {
+                    annotator.classList.add('hidden');
+                }
+            } catch (e) {}
+        }
+
+        async function initPdfAnnotator(contentItem) {
+            await ensurePdfJsLoaded();
+            const annotator = contentItem.querySelector('.pdf-annotator');
+            const canvas = annotator.querySelector('.pdf-canvas');
+            const layer = annotator.querySelector('.annotation-layer');
+            const pageInfo = annotator.querySelector('.annotator-page-info');
+            let url = getPdfUrlForContentItem(contentItem);
+            if (!url) {
+                const courseId = getCurrentCourseId();
+                if (courseId) {
+                    try {
+                        const foundUrl = await findAnyPdfForCourse(courseId);
+                        if (foundUrl) {
+                            contentItem.dataset.pdfUrl = foundUrl;
+                            url = foundUrl;
+                        }
+                    } catch (e) {}
+                }
+            }
+            if (!url || !window.pdfjsLib) return;
+            try {
+                const loadingTask = window.pdfjsLib.getDocument(url);
+                const pdfDoc = await loadingTask.promise;
+                contentItem.__pdfDoc = pdfDoc;
+                contentItem.dataset.annotatorPage = '1';
+                await renderCurrentPdfPage(contentItem);
+                if (pageInfo) {
+                    pageInfo.textContent = `Page 1 of ${pdfDoc.numPages}`;
+                }
+                setupAnnotationEvents(contentItem);
+            } catch (e) {}
+        }
+
+        async function renderCurrentPdfPage(contentItem) {
+            const annotator = contentItem.querySelector('.pdf-annotator');
+            const canvas = annotator.querySelector('.pdf-canvas');
+            const pageInfo = annotator.querySelector('.annotator-page-info');
+            const pdfDoc = contentItem.__pdfDoc;
+            if (!pdfDoc) return;
+            const pageNum = Number(contentItem.dataset.annotatorPage || '1');
+            try {
+                const page = await pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.5 });
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                if (pageInfo) {
+                    pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+                }
+                drawAnnotatorHighlights(contentItem);
+            } catch (e) {}
+        }
+
+        function drawAnnotatorHighlights(contentItem) {
+            const annotator = contentItem.querySelector('.pdf-annotator');
+            const layer = annotator.querySelector('.annotation-layer');
+            layer.innerHTML = '';
+            const pageNum = Number(contentItem.dataset.annotatorPage || '1');
+            const highlights = collectPdfHighlightsFromContentItem(contentItem);
+            const pageHighlights = highlights.filter(h => Number(h.page) === pageNum);
+            const rects = pageHighlights.map(h => h.rect || {});
+            const rectToStyle = (r) => {
+                const left = `${(r.x || 0) * 100}%`;
+                const top = `${(r.y || 0) * 100}%`;
+                const width = `${(r.w || 0.1) * 100}%`;
+                const height = `${(r.h || 0.03) * 100}%`;
+                return { position: 'absolute', left, top, width, height, background: 'rgba(255,230,0,0.35)', outline: '2px solid rgba(255,200,0,0.8)' };
+            };
+            rects.forEach(r => {
+                const d = document.createElement('div');
+                const s = rectToStyle(r);
+                Object.assign(d.style, s);
+                layer.appendChild(d);
+            });
+        }
+
+        function setupAnnotationEvents(contentItem) {
+            const annotator = contentItem.querySelector('.pdf-annotator');
+            const layer = annotator.querySelector('.annotation-layer');
+            let isDown = false;
+            let startX = 0;
+            let startY = 0;
+            let box = null;
+            const getNormalizedRect = (x1, y1, x2, y2) => {
+                const rect = layer.getBoundingClientRect();
+                const lx = Math.min(x1, x2) - rect.left;
+                const ly = Math.min(y1, y2) - rect.top;
+                const w = Math.abs(x2 - x1);
+                const h = Math.abs(y2 - y1);
+                const nx = lx / rect.width;
+                const ny = ly / rect.height;
+                const nw = w / rect.width;
+                const nh = h / rect.height;
+                return { x: nx, y: ny, w: nw, h: nh };
+            };
+            layer.onmousedown = (e) => {
+                isDown = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                box = document.createElement('div');
+                box.style.position = 'absolute';
+                box.style.left = `${e.offsetX}px`;
+                box.style.top = `${e.offsetY}px`;
+                box.style.width = '0px';
+                box.style.height = '0px';
+                box.style.background = 'rgba(255,230,0,0.35)';
+                box.style.outline = '2px solid rgba(255,200,0,0.8)';
+                layer.appendChild(box);
+            };
+            layer.onmousemove = (e) => {
+                if (!isDown || !box) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                const left = dx < 0 ? e.offsetX + dx : startX - layer.getBoundingClientRect().left;
+                const top = dy < 0 ? e.offsetY + dy : startY - layer.getBoundingClientRect().top;
+                box.style.left = `${left}px`;
+                box.style.top = `${top}px`;
+                box.style.width = `${Math.abs(dx)}px`;
+                box.style.height = `${Math.abs(dy)}px`;
+            };
+            layer.onmouseup = (e) => {
+                if (!isDown || !box) return;
+                isDown = false;
+                const rect = getNormalizedRect(startX, startY, e.clientX, e.clientY);
+                const pageNum = Number(contentItem.dataset.annotatorPage || '1');
+                const word = window.prompt('Enter word or phrase for highlight');
+                if (word && word.trim().length) {
+                    const synonymsStr = window.prompt('Enter synonyms (comma separated)') || '';
+                    const synonyms = synonymsStr.split(',').map(s => s.trim()).filter(Boolean);
+                    appendPdfHighlightRowWithValues(contentItem, { word, synonyms, page: pageNum, rect });
+                    drawAnnotatorHighlights(contentItem);
+                }
+                if (box && box.parentNode) box.parentNode.removeChild(box);
+                box = null;
+            };
+        }
+
+        async function prevPdfPage(contentItem) {
+            const pdfDoc = contentItem.__pdfDoc;
+            if (!pdfDoc) return;
+            let p = Number(contentItem.dataset.annotatorPage || '1');
+            p = Math.max(1, p - 1);
+            contentItem.dataset.annotatorPage = String(p);
+            await renderCurrentPdfPage(contentItem);
+        }
+
+        async function nextPdfPage(contentItem) {
+            const pdfDoc = contentItem.__pdfDoc;
+            if (!pdfDoc) return;
+            let p = Number(contentItem.dataset.annotatorPage || '1');
+            p = Math.min(pdfDoc.numPages, p + 1);
+            contentItem.dataset.annotatorPage = String(p);
+            await renderCurrentPdfPage(contentItem);
         }
         window.previewContent = window.previewContent || previewContent;
 
