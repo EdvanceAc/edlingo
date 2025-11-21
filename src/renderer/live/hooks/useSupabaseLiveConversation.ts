@@ -208,9 +208,19 @@ export function useSupabaseLiveConversation(
                 };
                 setMessages((prev) => [...prev, aiMessage]);
               }
-
               break;
             }
+          }
+
+          // Ensure final message is appended even if the stream ends without an explicit done chunk
+          if (hadText && full && full.trim()) {
+            const aiMessage: LiveMessage = {
+              id: `${Date.now()}-ai-final`,
+              role: "assistant",
+              text: full,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, aiMessage]);
           }
 
           // If the stream completed without any text content, surface a fallback message

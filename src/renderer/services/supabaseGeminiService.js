@@ -129,15 +129,17 @@ class SupabaseGeminiService {
                             fullResponse = data.fullResponse;
                           }
                           console.log('[SupabaseGeminiService] SSE complete (process-gemini-chat); total length:', fullResponse.length);
-                          return { 
-                            fullResponse, 
-                            done: true, 
+                          yield {
+                            fullResponse,
+                            done: true,
                             audioData: data.audioData // Pass through audio data
                           };
+                          return;
                         }
                       }
                     }
-                    return { fullResponse, done: true };
+                    yield { fullResponse, done: true };
+                    return;
                   }
 
                   // Decode chunk and add to buffer (optimized processing)
@@ -168,11 +170,12 @@ class SupabaseGeminiService {
                           fullResponse = data.fullResponse;
                         }
                         console.log('[SupabaseGeminiService] SSE complete (process-gemini-chat); total length:', fullResponse.length);
-                        return { 
-                          fullResponse, 
-                          done: true, 
+                        yield {
+                          fullResponse,
+                          done: true,
                           audioData: data.audioData // Pass through audio data
                         };
+                        return;
                       }
                     }
                   }
@@ -619,11 +622,12 @@ class SupabaseGeminiService {
                                 fullResponse = data.fullResponse;
                               }
                               console.log('[SupabaseGeminiService] SSE complete (process-live-conversation); total length:', fullResponse.length);
-                              return { 
-                            fullResponse, 
-                            done: true, 
-                            audioData: data.audioData // Pass through audio data
-                          };
+                              yield {
+                                fullResponse,
+                                done: true,
+                                audioData: data.audioData // Pass through audio data
+                              };
+                              return;
                             }
                             if (data.error) {
                               throw new Error(data.error);
@@ -634,7 +638,8 @@ class SupabaseGeminiService {
                         }
                       }
                     }
-                    return { fullResponse, done: true };
+                    yield { fullResponse, done: true };
+                    return;
                   }
 
                   const chunk = decoder.decode(value, { stream: true });
@@ -668,11 +673,12 @@ class SupabaseGeminiService {
                             fullResponse = data.fullResponse;
                           }
                           console.log('[SupabaseGeminiService] SSE complete (process-live-conversation); total length:', fullResponse.length);
-                          return { 
-                            fullResponse, 
-                            done: true, 
+                          yield {
+                            fullResponse,
+                            done: true,
                             audioData: data.audioData // Pass through audio data
                           };
+                          return;
                         }
                       } catch (e) {
                         console.warn('Failed to parse streaming data:', e);
