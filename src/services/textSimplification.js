@@ -107,7 +107,8 @@ class TextSimplificationService {
         simplifiedAnalysis = computeReadability(simplifiedText);
       }
 
-      const simplifiedAnalysis = computeReadability(simplifiedText);
+      // Recalculate analysis after any adjustments
+      simplifiedAnalysis = computeReadability(simplifiedText);
       const qualityScore = this.assessSimplificationQuality(
         originalAnalysis, 
         simplifiedAnalysis, 
@@ -215,6 +216,43 @@ Requirements:
 6. Return only the simplified text without explanations
 
 Simplified text:`;
+  }
+
+  /**
+   * Generate simplified text with custom prompt
+   * @param {string} prompt - Custom prompt
+   * @returns {Promise<string>} Simplified text
+   */
+  async generateSimplifiedTextWithPrompt(prompt) {
+    const response = await fetch(this.apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert language teacher specializing in text simplification.`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI API request failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content?.trim() || '';
   }
 
   /**
@@ -389,50 +427,6 @@ Simplified text:`;
       size: this.cache.size,
       maxSize: 1000 // Could be configurable
     };
-  }
-}
-
-// Export singleton instance
-export default new TextSimplificationService();
-
-// Export class for testing
-export { TextSimplificationService };
-
-/**
-   * Generate simplified text with custom prompt
-   * @param {string} prompt - Custom prompt
-   * @returns {Promise<string>} Simplified text
-   */
-  async generateSimplifiedTextWithPrompt(prompt) {
-    const response = await fetch(this.apiEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert language teacher specializing in text simplification.`
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 1000,
-        temperature: 0.3
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`AI API request failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0]?.message?.content?.trim() || '';
   }
 }
 

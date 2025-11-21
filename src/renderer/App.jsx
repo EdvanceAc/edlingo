@@ -53,7 +53,7 @@ function AppLayout({ children }) {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isAuthRoute = location.pathname.startsWith('/auth');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   if (isAdminRoute || isAuthRoute) {
     // Admin or Auth layout without sidebar and header

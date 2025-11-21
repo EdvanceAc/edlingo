@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import LoadingScreen from './components/ui/LoadingScreen';
-import DatabaseStatus from './components/DatabaseStatus';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -34,14 +33,14 @@ import { AuthProvider } from './contexts/AuthContext';
 
 // Database
 import { AppConfig } from '../config/AppConfig.js';
-import databaseSyncService from './services/databaseSyncService.js';
+import './services/databaseSyncService.js';
 
 // Layout component that conditionally renders sidebar and header
-function AppLayout({ children }) {
+function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isAuthRoute = location.pathname.startsWith('/auth');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   if (isAdminRoute || isAuthRoute) {
     // Admin or Auth layout without sidebar and header
@@ -95,11 +94,11 @@ function App() {
         AppConfig.validate();
         
         // Load user preferences
-        const theme = await window.electronAPI?.getTheme?.() || 'light';
+        const theme = await (window as any).electronAPI?.getTheme?.() || 'light';
         document.documentElement.classList.toggle('dark', theme === 'dark');
         
         // Load user progress
-        await window.electronAPI?.loadProgress?.();
+        await (window as any).electronAPI?.loadProgress?.();
         
         // Initialize database services
         if (AppConfig.isDatabaseEnabled()) {
@@ -132,74 +131,74 @@ function App() {
         <AudioProvider>
           <ProgressProvider>
             <AIProvider>
-            <Router
-              future={{
-                v7_startTransition: true,
-                v7_relativeSplatPath: true
-              }}
-            >
-              <AppLayout>
-                <AnimatePresence mode="wait">
-                  <Routes>
-                    {/* Authentication Routes */}
-                    <Route 
-                      path="/auth/login" 
-                      element={
-                        <motion.div
-                          key="login"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Login />
-                        </motion.div>
-                      } 
-                    />
-                    <Route 
-                       path="/auth/signup" 
-                       element={
-                         <motion.div
-                           key="signup"
-                           initial={{ opacity: 0, y: 20 }}
-                           animate={{ opacity: 1, y: 0 }}
-                           exit={{ opacity: 0, y: -20 }}
-                           transition={{ duration: 0.3 }}
-                         >
-                           <SignUp />
-                         </motion.div>
-                       } 
-                     />
-                     <Route 
-                       path="/auth/callback" 
-                       element={
-                         <motion.div
-                           key="auth-callback"
-                           initial={{ opacity: 0, y: 20 }}
-                           animate={{ opacity: 1, y: 0 }}
-                           exit={{ opacity: 0, y: -20 }}
-                           transition={{ duration: 0.3 }}
-                         >
-                           <AuthCallback />
-                         </motion.div>
-                       } 
-                     />
-                     
-                     {/* Admin Dashboard Route */}
-                     <Route 
-                       path="/admin" 
-                       element={
-                         <motion.div
-                           key="admin-dashboard"
-                           initial={{ opacity: 0, y: 20 }}
-                           animate={{ opacity: 1, y: 0 }}
-                           exit={{ opacity: 0, y: -20 }}
-                           transition={{ duration: 0.3 }}
-                         >
-                           <AdminDashboard />
-                         </motion.div>
-                       } 
-                     />
+              <Router
+                future={{
+                  v7_startTransition: true,
+                  v7_relativeSplatPath: true
+                }}
+              >
+                <AppLayout>
+                  <AnimatePresence mode="wait">
+                    <Routes>
+                      {/* Authentication Routes */}
+                      <Route 
+                        path="/auth/login" 
+                        element={
+                          <motion.div
+                            key="login"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <Login />
+                          </motion.div>
+                        } 
+                      />
+                      <Route 
+                        path="/auth/signup" 
+                        element={
+                          <motion.div
+                            key="signup"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <SignUp />
+                          </motion.div>
+                        } 
+                      />
+                      <Route 
+                        path="/auth/callback" 
+                        element={
+                          <motion.div
+                            key="auth-callback"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <AuthCallback />
+                          </motion.div>
+                        } 
+                      />
+                      
+                      {/* Admin Dashboard Route */}
+                      <Route 
+                        path="/admin" 
+                        element={
+                          <motion.div
+                            key="admin-dashboard"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <AdminDashboard />
+                          </motion.div>
+                        } 
+                      />
                       <Route 
                         path="/" 
                         element={
@@ -264,8 +263,6 @@ function App() {
                           </ProtectedRoute>
                         } 
                       />
-                      <Route 
-                        
                       <Route 
                         path="/settings" 
                         element={

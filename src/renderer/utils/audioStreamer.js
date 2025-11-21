@@ -41,7 +41,7 @@ export default class AudioStreamer {
     if (!this.audioContext) return;
     try {
       this.gainNode && this.gainNode.disconnect();
-    } catch {}
+    } catch (e) { void e; }
     this.gainNode = this.audioContext.createGain();
     this.gainNode.gain.value = 1.0;
     this.gainNode.connect(this.audioContext.destination);
@@ -92,15 +92,13 @@ export default class AudioStreamer {
     try {
       source.start(startAt);
     } catch (e) {
-      // If scheduling fails (e.g., context suspended), attempt resume then start ASAP
-      try { await this.resume(); source.start(this.audioContext.currentTime + 0.01); } catch {}
+      try { await this.resume(); source.start(this.audioContext.currentTime + 0.01); } catch (err) { void err; }
     }
 
     this.scheduledTime = startAt + audioBuffer.duration;
 
     source.onended = () => {
-      // Free references
-      try { source.disconnect(); } catch {}
+      try { source.disconnect(); } catch (e) { void e; }
     };
 
     this.queue.push({ buffer: audioBuffer, source, startAt });
