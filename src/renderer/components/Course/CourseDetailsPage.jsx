@@ -25,6 +25,7 @@ import { Badge } from '../../ui/Badge';
 import Button from '../../ui/Button';
 import { Progress } from '../../ui/Progress';
 import { supabase } from '../../config/supabaseConfig';
+import CourseProgressCard from './CourseProgressCard';
 
 const defaultCourse = {
   id: 'sample',
@@ -146,6 +147,18 @@ const CourseDetailsPage = () => {
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* Course Progress Card */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <CourseProgressCard
+          streak={progress.completed}
+          totalXP={progress.xp}
+          nextLevelXP={lessons.reduce((sum, l) => sum + (l.xp || 0), 0)}
+          title={`${course.title} Progress`}
+          subtitle={`${progress.completed} of ${progress.total} lessons completed`}
+          streakLabel="lessons"
+        />
       </motion.div>
 
       {/* Content Grid */}

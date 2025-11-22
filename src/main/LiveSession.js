@@ -6,7 +6,8 @@ class LiveSession extends EventEmitter {
     super();
     
     this.apiKey = options.apiKey;
-    this.model = options.model;
+    this.model = options.model || 'gemini-2.0-flash-exp';
+    this.endpoint = options.endpoint || 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent';
     this.responseModalities = options.responseModalities || ['TEXT', 'AUDIO'];
     this.systemInstruction = options.systemInstruction;
     this.onMessage = options.onMessage;
@@ -16,8 +17,6 @@ class LiveSession extends EventEmitter {
     this.ws = null;
     this.connected = false;
     this.sessionId = null;
-    
-
   }
 
   async connect() {

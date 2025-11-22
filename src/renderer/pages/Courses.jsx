@@ -58,10 +58,10 @@ const Courses = () => {
     }
   });
   const [userProgress, setUserProgress] = useState({
-    currentStreak: 7,
-    totalXP: 270,
-    nextLevelXP: 500,
-    level: 3
+    currentStreak: 0,
+    totalXP: 0,
+    nextLevelXP: 100,
+    level: 1
   });
 
   // Mock vocabulary images library
@@ -75,6 +75,7 @@ const Courses = () => {
 
   useEffect(() => {
     loadCourses();
+    loadUserProgress();
     // Attempt to load persisted wishlist from server
     (async () => {
       const res = await supabaseService.getWishlistCourseIds();
@@ -85,11 +86,43 @@ const Courses = () => {
     })();
   }, []);
 
+  const loadUserProgress = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('total_xp, current_level, daily_streak')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const level = parseInt(data.current_level) || 1;
+        const nextLevelXP = Math.pow(level + 1, 2) * 100; // Same formula as ProgressProvider
+
+        setUserProgress({
+          currentStreak: data.daily_streak || 0,
+          totalXP: data.total_xp || 0,
+          nextLevelXP: nextLevelXP,
+          level: level
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user progress:', error);
+    }
+  };
+
   const loadCourses = async () => {
     try {
       setLoading(true);
       
-      // Try to fetch from Supabase first
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Fetch courses from Supabase
       const { data: supabaseCourses, error } = await supabase
         .from('courses')
         .select('id,title,description,cefr_level,is_active,created_at')
@@ -97,26 +130,80 @@ const Courses = () => {
 
       if (error) {
         console.warn('Supabase courses not available, using mock data:', error.message);
-        // Use mock data if Supabase is not available
         setCourses(getMockCourses());
-      } else {
-        // Transform Supabase data to match our component structure
-        const transformedCourses = supabaseCourses.map(course => ({
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          icon: course.icon || "📚",
-          progress: course.progress || 0,
-          isUnlocked: course.is_active !== false, // Use is_active field from database
-          isCompleted: course.is_completed || false,
-          lessons: course.lesson_count || 0,
-          xp: course.xp_reward || 0,
-          level: course.cefr_level || 'A1',
-          estimatedTime: course.estimated_time || '2-3 weeks',
-          createdAt: course.created_at ? new Date(course.created_at) : new Date(0)
-        }));
-        setCourses(transformedCourses.length > 0 ? transformedCourses : getMockCourses());
+        return;
       }
+
+      // Fetch user enrollments
+      let enrollments = [];
+      if (user) {
+        const { data: enrollmentData } = await supabase
+          .from('user_course_enrollments')
+          .select('course_id, progress_percentage, status, enrolled_at')
+          .eq('user_id', user.id);
+        
+        enrollments = enrollmentData || [];
+      }
+
+      // Fetch lesson counts and XP for each course
+      const coursesWithData = await Promise.all(
+        supabaseCourses.map(async (course) => {
+          // Get lesson count for this course
+          const { count: lessonCount } = await supabase
+            .from('lessons')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', course.id);
+
+          // Get user's XP earned from this course's lessons
+          let xpEarned = 0;
+          let completedLessons = 0;
+          if (user) {
+            const { data: lessonProgress } = await supabase
+              .from('user_lesson_progress')
+              .select('xp_earned, lesson_id')
+              .eq('user_id', user.id)
+              .not('completed_at', 'is', null);
+
+            if (lessonProgress) {
+              // Get lessons that belong to this course
+              const { data: courseLessons } = await supabase
+                .from('lessons')
+                .select('id')
+                .eq('course_id', course.id);
+
+              const courseLessonIds = new Set(courseLessons?.map(l => l.id) || []);
+              
+              lessonProgress.forEach(progress => {
+                if (courseLessonIds.has(progress.lesson_id)) {
+                  xpEarned += progress.xp_earned || 0;
+                  completedLessons++;
+                }
+              });
+            }
+          }
+
+          // Find enrollment data
+          const enrollment = enrollments.find(e => e.course_id === course.id);
+          const progress = enrollment?.progress_percentage || (completedLessons > 0 && lessonCount > 0 ? Math.round((completedLessons / lessonCount) * 100) : 0);
+
+          return {
+            id: course.id,
+            title: course.title,
+            description: course.description,
+            icon: "📚",
+            progress: progress,
+            isUnlocked: course.is_active !== false,
+            isCompleted: enrollment?.status === 'completed' || progress === 100,
+            lessons: lessonCount || 0,
+            xp: xpEarned,
+            level: course.cefr_level || 'A1',
+            estimatedTime: '2-3 weeks',
+            createdAt: course.created_at ? new Date(course.created_at) : new Date(0)
+          };
+        })
+      );
+
+      setCourses(coursesWithData.length > 0 ? coursesWithData : getMockCourses());
     } catch (error) {
       console.error('Error loading courses:', error);
       setCourses(getMockCourses());

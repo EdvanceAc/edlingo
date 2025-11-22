@@ -18,48 +18,89 @@ import { Badge } from '../../renderer/components/ui/Badge';
 import Button from '../../renderer/components/ui/Button';
 import { supabase } from '../../renderer/config/supabaseConfig';
 import CourseProgressCard from '../../renderer/components/Course/CourseProgressCard';
+import { useProgress } from '../../renderer/providers/ProgressProvider';
 
 const CourseSection = () => {
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentStreak, setCurrentStreak] = useState(7);
-  const [totalXP, setTotalXP] = useState(270);
-  const [nextLevelXP, setNextLevelXP] = useState(500);
+  const { userProgress, getProgressStats } = useProgress();
+  
+  // Get dynamic data from ProgressProvider
+  const stats = getProgressStats();
+  const currentStreak = stats.streak || 0;
+  const totalXP = stats.xp || 0;
+  const nextLevelXP = Math.pow(stats.level, 2) * 100; // Calculate next level XP
 
   useEffect(() => {
     loadCourses();
-  }, []);
+  }, [userProgress]);
 
   const loadCourses = async () => {
     try {
       setLoading(true);
       
-      // Try to fetch from Supabase first
-      const { data: supabaseCourses, error } = await supabase
+      // Fetch courses from Supabase
+      const { data: supabaseCourses, error: coursesError } = await supabase
         .from('courses')
-        .select('id,title,description,is_active,duration_weeks,price,created_at')
+        .select('id,title,description,is_active,duration_weeks,price,category,level,created_at')
         .order('created_at', { ascending: true });
 
-      if (error) {
-        console.warn('Supabase courses not available, using mock data:', error.message);
-        // Use mock data if Supabase is not available
+      if (coursesError) {
+        console.warn('Supabase courses not available, using mock data:', coursesError.message);
         setUnits(getMockCourses());
-      } else {
-        // Transform Supabase data to match our component structure
-        const transformedCourses = supabaseCourses.map(course => ({
+        return;
+      }
+
+      // Fetch user enrollments to get progress data
+      let userEnrollments = [];
+      if (userProgress) {
+        const { data: enrollments, error: enrollmentError } = await supabase
+          .from('user_course_enrollments')
+          .select('course_id,progress_percentage,status,completed_at');
+        
+        if (!enrollmentError && enrollments) {
+          userEnrollments = enrollments;
+        } else if (enrollmentError) {
+          console.warn('Could not fetch user enrollments:', enrollmentError.message);
+        }
+      }
+
+      // Transform and merge Supabase data with user progress
+      const transformedCourses = supabaseCourses.map(course => {
+        const enrollment = userEnrollments.find(e => e.course_id === course.id);
+        
+        // Map course category/title to icon
+        const getIconForCourse = (title, category) => {
+          const titleLower = (title || '').toLowerCase();
+          const categoryLower = (category || '').toLowerCase();
+          
+          if (titleLower.includes('greet')) return '👋';
+          if (titleLower.includes('family') || titleLower.includes('friend')) return '👨‍👩‍👧‍👦';
+          if (titleLower.includes('food') || titleLower.includes('dining') || titleLower.includes('restaurant')) return '🍽️';
+          if (titleLower.includes('travel') || titleLower.includes('transport')) return '✈️';
+          if (titleLower.includes('work') || titleLower.includes('business')) return '💼';
+          if (titleLower.includes('home') || titleLower.includes('house')) return '🏠';
+          if (categoryLower.includes('conversation')) return '💬';
+          if (categoryLower.includes('grammar')) return '📝';
+          if (categoryLower.includes('vocabulary')) return '📚';
+          return '📚'; // Default icon
+        };
+        
+        return {
           id: course.id,
           title: course.title,
           description: course.description,
-          icon: course.icon || "📚",
-          progress: course.progress || 0,
-          isUnlocked: course.is_active !== false, // Use is_active field from database
-          isCompleted: course.is_completed || false,
-          lessons: course.lesson_count || course.duration_weeks || 4, // Use duration_weeks as fallback for lessons
-          xp: course.xp_reward || course.price || 100 // Use price as fallback for xp, default to 100
-        }));
-        setUnits(transformedCourses.length > 0 ? transformedCourses : getMockCourses());
-      }
+          icon: getIconForCourse(course.title, course.category),
+          progress: enrollment ? Math.round(enrollment.progress_percentage || 0) : 0,
+          isUnlocked: course.is_active !== false,
+          isCompleted: enrollment?.status === 'completed' || enrollment?.completed_at != null,
+          lessons: course.duration_weeks || 4,
+          xp: Math.round(course.price || 100)
+        };
+      });
+      
+      setUnits(transformedCourses.length > 0 ? transformedCourses : getMockCourses());
     } catch (error) {
       console.error('Error loading courses:', error);
       setUnits(getMockCourses());

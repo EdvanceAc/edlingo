@@ -178,3 +178,16 @@ package-lock.json
 yarn.lock
 # Local Netlify folder
 .netlify
+
+# Capacitor / Android
+android/app/build/
+android/app/.gradle/
+android/.gradle/
+android/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/release/
+android/app/debug/
+*.keystore
+*.jks

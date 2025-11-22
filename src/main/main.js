@@ -94,7 +94,10 @@ function createWindow() {
       spellcheck: true,
       webSecurity: isDev ? false : true, // Disable web security in development for resource loading
       allowRunningInsecureContent: isDev, // Allow mixed content in development
-      experimentalFeatures: true // Enable experimental web features
+      experimentalFeatures: true, // Enable experimental web features
+      enableRemoteModule: false,
+      // Enable Web Speech API by allowing Google's speech servers
+      partition: 'persist:main'
     },
     // Modern, minimal design with subtle frame
     frame: true,
@@ -116,13 +119,57 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Ensure microphone permission is granted for getUserMedia in Electron
-  const ses = session.fromPartition('default');
-  ses.setPermissionRequestHandler((wc, permission, callback) => {
-    if (permission === 'media') {
+  // Set Content Security Policy to allow Speech API connections
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss: http://localhost:* http://127.0.0.1:*; " +
+          "connect-src 'self' https://*.googleapis.com https://*.google.com https://ecglfwqylqchdyuhmtuv.supabase.co wss://ecglfwqylqchdyuhmtuv.supabase.co ws://localhost:* http://localhost:* http://127.0.0.1:* https://*.supabase.co; " +
+          "media-src 'self' blob: data: https://*.googleapis.com https://*.google.com; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+          "style-src 'self' 'unsafe-inline';"
+        ]
+      }
+    });
+  });
+
+  // Ensure microphone permission is granted for getUserMedia and Speech Recognition in Electron
+  const ses = session.fromPartition('persist:main');
+  
+  // Handle permission requests (for getUserMedia)
+  ses.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowedPermissions = ['media', 'microphone', 'audioCapture'];
+    if (allowedPermissions.includes(permission)) {
+      console.log(`✓ Granted permission: ${permission}`);
       return callback(true);
     }
+    console.log(`✗ Denied permission: ${permission}`);
     callback(false);
+  });
+  
+  // Handle permission checks (for Web APIs like Speech Recognition)
+  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    const allowedPermissions = ['media', 'microphone', 'audioCapture'];
+    if (allowedPermissions.includes(permission)) {
+      console.log(`✓ Permission check passed: ${permission} from ${requestingOrigin}`);
+      return true;
+    }
+    console.log(`✗ Permission check failed: ${permission} from ${requestingOrigin}`);
+    return false;
+  });
+  
+  // Allow connections to Google's Speech Recognition API
+  ses.webRequest.onBeforeSendHeaders((details, callback) => {
+    const { url } = details;
+    // Allow requests to Google's speech services
+    if (url.includes('speech.googleapis.com') || 
+        url.includes('www.google.com/speech-api') ||
+        url.includes('clients1.google.com')) {
+      console.log(`✓ Allowing request to Speech API: ${url}`);
+    }
+    callback({ requestHeaders: details.requestHeaders });
   });
 
   // Handle window closed

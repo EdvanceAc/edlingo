@@ -11,6 +11,6 @@
     "declaration": true,
     "outDir": "./dist/node"
   },
-  "include": ["vite.config.js", "vite.config.ts", "src/main/**/*", "src/preload/**/*"],
+  "include": ["vite.config.js", "src/main/**/*", "src/preload/**/*", "src/services/**/*", "src/utils/**/*"],
   "exclude": ["node_modules", "dist", "build", "src/renderer"]
 }

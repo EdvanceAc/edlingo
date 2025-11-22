@@ -93,7 +93,7 @@ const Header = ({ onToggleSidebar }) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full relative border-b border-white/15 bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-pink-600/90 backdrop-blur-2xl shadow-xl">
+    <header className="sticky top-0 z-[100] w-full border-b border-white/15 bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-pink-600/90 backdrop-blur-2xl shadow-xl">
       {/* Aurora accents for premium feel */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-8 -left-24 h-40 w-40 rounded-full bg-fuchsia-400/25 blur-3xl" />

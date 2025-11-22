@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, CheckCircle, Lock, Star, BookOpen, Clock, Target, Award, ArrowRight, Volume2, RotateCcw } from 'lucide-react';
 import { useProgress } from '../providers/ProgressProvider';
 import { useAudio } from '../providers/AudioProvider';
+import { useProgressTracking } from '../hooks/useProgressTracking';
 
 const Lessons = () => {
   const [selectedUnit, setSelectedUnit] = useState(null);
@@ -14,6 +15,7 @@ const Lessons = () => {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const { progress, addXP, updateProgress } = useProgress();
   const { speak } = useAudio();
+  const { trackLessonCompleted } = useProgressTracking();
 
   // Lessons database
   const lessonsData = {
@@ -270,9 +272,19 @@ const Lessons = () => {
     return isLessonCompleted(unitId, previousLesson.id);
   };
 
-  const handleLessonComplete = () => {
+  const handleLessonComplete = async () => {
     if (selectedUnit && selectedLesson) {
       saveProgress(selectedUnit.id, selectedLesson.id, true);
+      
+      // Track lesson completion with progress system
+      await trackLessonCompleted({
+        lessonId: selectedLesson.id,
+        courseId: selectedUnit.id,
+        score: 100,
+        duration: 15 // estimated 15 minutes
+      });
+      
+      // Keep old progress provider for compatibility
       addXP(50, 'lessons');
       updateProgress('completedLessons', 1);
       
@@ -285,7 +297,7 @@ const Lessons = () => {
     }
   };
 
-  const handleQuizSubmit = () => {
+  const handleQuizSubmit = async () => {
     setQuizSubmitted(true);
     
     // Calculate score
@@ -298,7 +310,7 @@ const Lessons = () => {
     
     const score = (correct / selectedLesson.quiz.length) * 100;
     
-    // Award XP based on score
+    // Award XP based on score (but don't double-count, lesson completion will award XP)
     const xpAmount = Math.round(score / 10) * 5; // 5 XP per 10% score
     addXP(xpAmount, 'lessons');
     

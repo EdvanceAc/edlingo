@@ -20,15 +20,106 @@ import {
 import { useProgress } from '../providers/ProgressProvider';
 import CourseSection from '../../components/Course/CourseSection';
 import { useTheme } from '../providers/ThemeProvider';
+import { supabase } from '../config/supabaseConfig';
 
 const Dashboard = () => {
   const { getProgressStats, userProgress } = useProgress();
   const [stats, setStats] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [recentAchievements, setRecentAchievements] = useState([]);
   const { theme } = useTheme();
 
   useEffect(() => {
     setStats(getProgressStats());
+    
+    // Fetch achievements from database
+    const fetchAchievements = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('user_achievements')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('earned_at', { ascending: false })
+          .limit(3);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          // Transform database achievements to match expected format
+          const achievements = data.map(ach => ({
+            id: ach.id,
+            name: ach.achievement_name,
+            description: ach.description,
+            icon: ach.metadata?.icon || '🏆',
+            xp: ach.metadata?.xp_reward || 0,
+            earnedAt: ach.earned_at
+          }));
+          setRecentAchievements(achievements);
+        }
+      } catch (error) {
+        console.error('Failed to fetch achievements:', error);
+      }
+    };
+
+    // Fetch weekly activity from database
+    const fetchWeeklyActivity = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Get current week's start (Monday)
+        const today = new Date();
+        const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // If Sunday, go back 6 days, else go to Monday
+        const monday = new Date(today);
+        monday.setDate(today.getDate() + mondayOffset);
+        monday.setHours(0, 0, 0, 0);
+
+        // Fetch lesson completions for current week
+        const { data: lessons, error: lessonsError } = await supabase
+          .from('user_lesson_progress')
+          .select('completed_at, time_spent_minutes')
+          .eq('user_id', user.id)
+          .gte('completed_at', monday.toISOString())
+          .not('completed_at', 'is', null);
+
+        if (lessonsError) throw lessonsError;
+
+        // Calculate weekly stats
+        const weeklyStats = {
+          monday: 0,
+          tuesday: 0,
+          wednesday: 0,
+          thursday: 0,
+          friday: 0,
+          saturday: 0,
+          sunday: 0
+        };
+
+        if (lessons && lessons.length > 0) {
+          lessons.forEach(lesson => {
+            const date = new Date(lesson.completed_at);
+            const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+            weeklyStats[dayName] += lesson.time_spent_minutes || 5; // Default 5 min if not tracked
+          });
+        }
+
+        // Update stats with weekly data
+        setStats(prev => ({
+          ...prev,
+          weeklyStats
+        }));
+
+      } catch (error) {
+        console.error('Failed to fetch weekly activity:', error);
+      }
+    };
+
+    fetchAchievements();
+    fetchWeeklyActivity();
     
     // Update time every minute
     const timer = setInterval(() => {
@@ -36,7 +127,7 @@ const Dashboard = () => {
     }, 60000);
 
     return () => clearInterval(timer);
-  }, [getProgressStats]);
+  }, [getProgressStats, userProgress]);
 
   if (!stats) {
     return (
@@ -80,8 +171,6 @@ const Dashboard = () => {
       textColor: 'text-orange-600'
     }
   ];
-
-  const recentAchievements = stats.achievements.slice(-3);
 
   const weeklyData = Object.entries(stats.weeklyStats).map(([day, minutes]) => ({
     day: day.charAt(0).toUpperCase() + day.slice(1, 3),

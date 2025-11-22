@@ -662,10 +662,10 @@ const Chat = () => {
             ) : (
               <div className="space-y-1">
                 {(sessions || []).map((s) => (
-                  <button
+                  <div
                     key={s.id}
                     onClick={() => openSession(s)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedSessionId === s.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'} `}
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors cursor-pointer ${selectedSessionId === s.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'} `}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-slate-800">{s.title || 'New Chat'}</span>
@@ -687,7 +687,7 @@ const Chat = () => {
                         </button>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
                 {(!sessions || sessions.length === 0) && (
                   <div className="p-3 text-sm text-muted-foreground">No history yet. Start a new chat!</div>
@@ -1004,10 +1004,10 @@ const Chat = () => {
                 ) : (
                   <div className="space-y-1">
                     {(sessions || []).map((s) => (
-                      <button
+                      <div
                         key={s.id}
                         onClick={() => { openSession(s); setIsMobileSidebarOpen(false); }}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedSessionId === s.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'} `}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors cursor-pointer ${selectedSessionId === s.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'} `}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-slate-800">{s.title || 'New Chat'}</span>
@@ -1029,7 +1029,7 @@ const Chat = () => {
                             </button>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     ))}
                     {(!sessions || sessions.length === 0) && (
                       <div className="p-3 text-sm text-muted-foreground">No history yet. Start a new chat!</div>

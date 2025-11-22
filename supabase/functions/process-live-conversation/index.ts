@@ -15,6 +15,7 @@ interface LiveConversationRequest {
   focus_area?: string
   language?: string
   streaming?: boolean
+  conversation_history?: Array<{ role: string; text: string }>
 }
 
 serve(async (req) => {
@@ -42,7 +43,8 @@ serve(async (req) => {
       user_level = 'intermediate',
       focus_area = 'conversation',
       language = 'English',
-      streaming = true
+      streaming = true,
+      conversation_history = []
     } = await req.json() as LiveConversationRequest
 
     // Get Gemini API key from environment
@@ -83,6 +85,35 @@ Example good responses:
 
 Keep it brief for faster audio!`
 
+    // Build conversation contents from history
+    const contents: any[] = [
+      { role: 'user', parts: [{ text: systemPrompt }] },
+      { role: 'model', parts: [{ text: 'Understood. I will help the user practice their language skills in a supportive and conversational way.' }] }
+    ]
+    
+    // Add conversation history if provided (backward compatible)
+    if (conversation_history && Array.isArray(conversation_history) && conversation_history.length > 0) {
+      console.log('[Live] Adding', conversation_history.length, 'messages from history')
+      for (const msg of conversation_history) {
+        if (msg && msg.text) {
+          contents.push({
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.text }]
+          })
+        }
+      }
+    } else {
+      console.log('[Live] No conversation history provided - single message mode')
+    }
+    
+    // Add current message
+    contents.push({
+      role: 'user',
+      parts: [{ text: message }]
+    })
+    
+    console.log('[Live] Building conversation with', contents.length, 'total messages')
+
     if (streaming) {
       const origin = req.headers.get('origin') || '*'
       // Set up SSE streaming
@@ -95,11 +126,7 @@ Keep it brief for faster audio!`
         try {
           console.log('[Live] Starting streaming with message:', message)
           const result = await model.generateContentStream({
-            contents: [
-              { role: 'user', parts: [{ text: systemPrompt }] },
-              { role: 'model', parts: [{ text: 'Understood. I will help the user practice their language skills in a supportive and conversational way.' }] },
-              { role: 'user', parts: [{ text: message }] }
-            ]
+            contents: contents
           })
           let fullResponse = ''
           console.log('[Live] Stream started, waiting for chunks...')
@@ -244,11 +271,7 @@ Keep it brief for faster audio!`
       const origin = req.headers.get('origin') || '*'
       // Non-streaming response
       const result = await model.generateContent({
-        contents: [
-          { role: 'user', parts: [{ text: systemPrompt }] },
-          { role: 'model', parts: [{ text: 'Understood. I will help the user practice their language skills in a supportive and conversational way.' }] },
-          { role: 'user', parts: [{ text: message }] }
-        ]
+        contents: contents
       })
       const response = result.response.text()
 

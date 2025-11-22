@@ -66,7 +66,7 @@ function AppLayout({ children }) {
 
   // Student layout with sidebar and header
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar */}
       <motion.div
         initial={false}
@@ -83,9 +83,11 @@ function AppLayout({ children }) {
       </motion.div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <Header />
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Header - Ensure it's always visible */}
+        <Header 
+          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} 
+        />
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto pb-[calc(var(--bottom-nav-height,88px)+env(safe-area-inset-bottom))] md:pb-0 bg-background">
